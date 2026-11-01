@@ -1,22 +1,27 @@
-# Point d'entrée SDL. Les lignes #import suivent la convention graphql-import.
+# Point d'entrée SDL, composé avec la convention graphql-import.
 #import "./brands.graphql"
 #import "./categories.graphql"
+#import "./accessories.graphql"
 #import "./motorcycles.graphql"
 #import "./spare-parts.graphql"
 #import "./equipment.graphql"
-#import "./accessories.graphql"
 
-"""
-Racines de lecture correspondant aux collections frontend actuellement
-présentes dans les domaines demandés. Les résolveurs restent hors périmètre.
-"""
+"""Vue agrégée des fiches produit hors motos, sans enum de catégorie."""
+union ProductDetail = SparePart | Equipment | Accessory
+
+"""Racines de lecture pour les entités et collections du schéma."""
 type Query {
   brands: [Brand!]!
   categories: [Category!]!
-  bikeFamilies: [BikeFamily!]!
+  families: [Family!]!
+  subfamilies: [Subfamily!]!
   partTypes: [PartType!]!
+  equipmentTypes: [EquipmentType!]!
+  accessoryTypes: [AccessoryType!]!
   motorcycles: [Motorcycle!]!
   spareParts: [SparePart!]!
   equipment: [Equipment!]!
-  allParts: [AccessoryProduct!]!
+  accessories: [Accessory!]!
+  products: [CatalogProduct!]!
+  allParts: [ProductDetail!]!
 }

@@ -1,47 +1,6 @@
 """
-Valeurs des filtres moto déjà présents dans BikeFamily.
-Les identifiants GraphQL représentent les libellés frontend suivants :
-OFF_ROAD = `Off-road`, URBAIN = `Urbain`, THREE_WHEELS = `3 roues`.
-Aucun enregistrement Famille ni relation générique produit-famille n'existe.
-"""
-enum BikeFamily {
-  OFF_ROAD
-  URBAIN
-  THREE_WHEELS
-}
-
-"""
-Valeurs actuelles de PartType, utilisées comme sous-types de pièces :
-PNEUS = `Pneus`, FREINAGE = `Freinage`, TRANSMISSION = `Transmission`,
-FILTRATION = `Filtration`, PIECES_MOTEUR = `Pièces moteur`,
-CONSOMMABLES = `Consommables`.
-Aucune entité Sous-famille distincte n'est présente dans les données.
-"""
-enum PartType {
-  PNEUS
-  FREINAGE
-  TRANSMISSION
-  FILTRATION
-  PIECES_MOTEUR
-  CONSOMMABLES
-}
-
-"""
-Valeurs de AccessoryCategory; les noms GraphQL correspondent aux libellés
-frontend `Casques`, `Blousons`, `Gants`, `Bottes` et `Pièces`.
-"""
-enum AccessoryCategory {
-  CASQUES
-  BLOUSONS
-  GANTS
-  BOTTES
-  PIECES
-}
-
-"""
-Lien éditorial de la page d'accueil (CATEGORIES), distinct d'une taxonomie
-ou d'une relation entre un produit et une famille. `brand` reste la clé texte
-présente dans les données, et `to` la route frontend existante.
+Liens éditoriaux de la page d'accueil (CATEGORIES). Ils restent distincts de la
+taxonomie administrable Famille/Sous-famille.
 """
 type Category {
   title: String!
@@ -49,4 +8,21 @@ type Category {
   src: String!
   to: String!
   brand: String
+}
+
+"""Famille administrable; aucune valeur de famille n'est figée dans le SDL."""
+type Family {
+  id: ID!
+  name: String!
+  subfamilies: [Subfamily!]!
+}
+
+"""
+Sous-famille administrable, toujours rattachée à une famille.
+Les produits référencent leur sous-famille; la famille se déduit de cette relation.
+"""
+type Subfamily {
+  id: ID!
+  name: String!
+  family: Family!
 }

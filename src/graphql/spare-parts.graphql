@@ -1,29 +1,30 @@
-# This domain reuses the shared product-detail interface and current classifications.
+# Spare-part types are database records, not a fixed GraphQL enum.
 #import "./accessories.graphql"
-#import "./categories.graphql"
 
-"""Valeurs du type CompatibleBrand, conservées à l'identique depuis le frontend."""
-enum CompatibleBrand {
-  Universal
-  TVS
-  Sherco
-  Fantic
+"""
+Type de pièce administrable depuis le futur dashboard. De nouvelles lignes
+peuvent être ajoutées sans modifier ce schéma.
+"""
+type PartType {
+  id: ID!
+  name: String!
+  spareParts: [SparePart!]!
 }
 
 """
-Pièce détachée ou consommable. `partType` est le classement déjà appliqué
-aux pièces dans SPARE_PARTS; il ne crée pas de relation famille-produit.
+Pièce détachée ou consommable. `compatibleBrand` conserve la compatibilité
+optionnelle existante, distincte de la marque propre du produit.
 """
-type SparePart implements AccessoryProduct {
+type SparePart implements CatalogProduct {
   id: ID!
   name: String!
+  brand: Brand!
+  subfamily: Subfamily!
   price: String!
   image: String!
-  kind: AccessoryKind!
-  category: AccessoryCategory
+  partType: PartType!
+  compatibleBrand: Brand
   gallery: [String!]
   desc: String
   specs: [ProductSpec!]
-  compatibleBrand: CompatibleBrand
-  partType: PartType
 }
