@@ -1,0 +1,21 @@
+# Equipment-specific fields extend the existing shared product-detail shape.
+#import "./accessories.graphql"
+#import "./categories.graphql"
+
+"""
+Équipement pilote présent dans GEAR_ITEMS (TVS, TLD, Gaerne ou MT).
+La marque est portée par la valeur existante de `kind`; aucune propriété
+`brand` supplémentaire n'est ajoutée.
+"""
+type Equipment implements AccessoryProduct {
+  id: ID!
+  name: String!
+  price: String!
+  image: String!
+  kind: AccessoryKind!
+  category: AccessoryCategory
+  gallery: [String!]
+  desc: String
+  specs: [ProductSpec!]
+  sourceUrl: String
+}
