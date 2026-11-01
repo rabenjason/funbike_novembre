@@ -19,6 +19,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { AnimatePresence, motion } from "framer-motion";
 import { LOGO } from "../data";
+import { getFooterFeaturedMotoBrands, getFooterMotoBrands } from "../data/brands";
 import { content } from "../constants";
 
 export type Route = { page: string; id?: string };
@@ -170,11 +171,21 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const shopIcons = [faMotorcycle, faMotorcycle, faHelmetSafety, faGears, faStore];
-  const shop = content.footer.catalogueLiens.map((item, index) => ({
-    ...item,
-    icon: shopIcons[index] ?? faMotorcycle,
-  }));
+  const footerMotoBrands = getFooterMotoBrands();
+  const footerFeaturedBrands = getFooterFeaturedMotoBrands();
+  const shopIcons = [faHelmetSafety, faGears, faStore];
+  const shop = [
+    ...footerMotoBrands.map((brand) => ({
+      label: `${content.footer.motosPrefix} ${brand.name}`,
+      page: "motos",
+      id: brand.name,
+      icon: faMotorcycle,
+    })),
+    ...content.footer.catalogueLiens.map((item, index) => ({
+      ...item,
+      icon: shopIcons[index] ?? faMotorcycle,
+    })),
+  ];
 
   const stagger = {
     hidden: {},
@@ -259,10 +270,10 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
                 {content.footer.distributeurExclusif}
               </p>
               <p className="mt-1 text-xs font-semibold text-white/85">
-                {content.footer.marquesExclusives.map((name, index) => (
-                  <span key={name}>
+                {footerFeaturedBrands.map((brand, index) => (
+                  <span key={brand.id}>
                     {index > 0 && <span className="text-[#ffd100]"> · </span>}
-                    {name}
+                    {brand.name}
                   </span>
                 ))}
               </p>

@@ -3,29 +3,28 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGears, faMagnifyingGlass, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
-  ACCESSORY_BRANDS,
   BIKES,
-  BRANDS,
   SPARE_PARTS,
   GEAR_ITEMS,
   TVS_ACCESSORIES,
   TLD,
-  GAERNE,
-  MT_HELMETS,
   type AccessoryCategory,
   type Part,
 } from "../data";
+import {
+  getBrandById,
+  getBrandByName,
+  getBrandLabel,
+  getBrandSection,
+  getBrandsForSection,
+} from "../data/brands";
 import { PageHeader, Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { BikeCardSkeleton, PartCardSkeleton } from "../components/Skeletons";
 import Pagination from "../components/Pagination";
 import { content } from "../constants";
 import { useBriefLoading } from "../hooks/useBriefLoading";
-import {
-  AccessoryBrandSelector,
-  BrandVisual,
-  type AccessoryBrandKey,
-} from "../components/AccessoryBrands";
+import { AccessoryBrandSelector, BrandVisual } from "../components/AccessoryBrands";
 
 /* ------------------------------------------------------------------ */
 /*  Constantes                                                         */
@@ -34,15 +33,10 @@ import {
 const FAMILIES = content.catalogue.filtres;
 const BIKES_PER_PAGE = 6;
 const PARTS_PER_PAGE = 8;
-
-/** Équipements pilote, par marque. */
-const GEAR_BY_BRAND: Record<AccessoryBrandKey, Part[]> = {
-  tld: TLD,
-  gaerne: GAERNE,
-  mt: MT_HELMETS,
-  tvs: TVS_ACCESSORIES,
-  bihr: [],
-};
+const EQUIPMENT_BRANDS = getBrandsForSection("equipements");
+const MOTO_BRANDS = getBrandsForSection("motos");
+const SPARE_BRANDS = getBrandsForSection("pieces-detachees", { filterableOnly: true });
+const SPARE_ALL_BRAND_ID = "all";
 
 const TVS_CATEGORIES: (typeof content.equipements.categorieToutes | AccessoryCategory)[] = [
   content.equipements.categorieToutes,
@@ -53,16 +47,16 @@ const TVS_CATEGORIES: (typeof content.equipements.categorieToutes | AccessoryCat
   ),
 ];
 
-/** Marques de pièces détachées (sélecteur visuel, mêmes proportions qu'Équipements). */
-const SPARE_BRANDS = content.piecesDetachees.marquesFiltres;
-type SpareBrand = (typeof SPARE_BRANDS)[number];
+type SpareBrandTab = { key: string; name: string; logo?: string; icon?: IconDefinition; routeId?: string };
 
-const SPARE_BRAND_TABS: { key: SpareBrand; name: string; logo?: string; icon?: IconDefinition }[] = [
-  { key: SPARE_BRANDS[0], name: SPARE_BRANDS[0], icon: faGears },
-  ...SPARE_BRANDS.slice(1).map((name) => ({
-    key: name as SpareBrand,
-    name,
-    logo: BRANDS.find((brand) => brand.name === name)?.src ?? "",
+/** Marques et routes des pièces, dérivées des associations du référentiel. */
+const SPARE_BRAND_TABS: SpareBrandTab[] = [
+  { key: SPARE_ALL_BRAND_ID, name: content.piecesDetachees.marqueToutes, icon: faGears },
+  ...SPARE_BRANDS.map((brand) => ({
+    key: brand.id,
+    name: getBrandLabel(brand, "pieces-detachees"),
+    logo: brand.logo,
+    routeId: getBrandSection(brand, "pieces-detachees")?.routeId,
   })),
 ];
 
@@ -79,10 +73,16 @@ const containsAll = (text: string, terms: string[]) => {
   return terms.every((term) => normalized.includes(term));
 };
 
+const bikeSearchText = (bike: (typeof BIKES)[number]) => {
+  const brand = getBrandByName(bike.brand);
+  const associatedBrand = brand && MOTO_BRANDS.some((item) => item.id === brand.id) ? `${brand.name} ${brand.id}` : bike.brand;
+  return `${bike.name} ${associatedBrand} ${bike.desc} ${bike.family}`;
+};
+
 const itemLabel = (part: Part) =>
   [
     part.name,
-    part.kind === "piece" ? content.navigation.piecesDetachees : (ACCESSORY_BRANDS.find((b) => b.key === part.kind)?.name ?? part.kind),
+    part.kind === "piece" ? content.navigation.piecesDetachees : (getBrandById(part.kind)?.name ?? part.kind),
     part.category ?? "",
     part.compatibleBrand ?? "",
     part.partType ?? "",
@@ -167,8 +167,8 @@ export function Catalogue({
   const bikeList = useMemo(
     () =>
       BIKES.filter(
-        (b) =>
-          (family === FAMILIES[0] || b.family === family) && containsAll(`${b.name} ${b.brand} ${b.desc} ${b.family}`, terms),
+        (bike) =>
+          (family === FAMILIES[0] || bike.family === family) && containsAll(bikeSearchText(bike), terms),
       ),
     [family, terms],
   );
@@ -303,13 +303,15 @@ export function Catalogue({
 /* ------------------------------------------------------------------ */
 
 export function Equipements({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
-  const validBrand = ACCESSORY_BRANDS.some((brand) => brand.key === initialBrand);
-  const [tab, setTab] = useState<AccessoryBrandKey>(validBrand ? (initialBrand as AccessoryBrandKey) : "tld");
+  const validBrand = EQUIPMENT_BRANDS.some((brand) => brand.id === initialBrand);
+  const [tab, setTab] = useState(validBrand ? initialBrand! : (EQUIPMENT_BRANDS[0]?.id ?? "tld"));
   const [category, setCategory] = useState<typeof content.equipements.categorieToutes | AccessoryCategory>(content.equipements.categorieToutes);
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const allItems = GEAR_BY_BRAND[tab];
+  const selectedBrand = EQUIPMENT_BRANDS.find((brand) => brand.id === tab) ?? EQUIPMENT_BRANDS[0];
+  const selectedBrandSection = selectedBrand ? getBrandSection(selectedBrand, "equipements") : undefined;
+  const allItems = GEAR_ITEMS.filter((item) => item.kind === tab);
   const items =
     tab === "tvs" && category !== content.equipements.categorieToutes ? allItems.filter((item) => item.category === category) : allItems;
   const totalPages = Math.max(1, Math.ceil(items.length / PARTS_PER_PAGE));
@@ -317,8 +319,8 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
   const visible = items.slice((safePage - 1) * PARTS_PER_PAGE, safePage * PARTS_PER_PAGE);
   const loading = useBriefLoading(`gear-${tab}-${category}-${safePage}`);
 
-  const heading = content.equipements.marques[tab];
-  const isBihr = tab === "bihr";
+  const heading = content.equipements.marques[tab as keyof typeof content.equipements.marques];
+  const isPartnerInfo = selectedBrandSection?.displayMode === "partner-info";
 
   return (
     <div>
@@ -334,7 +336,7 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
         <div ref={gridRef}>
           <AccessoryBrandSelector
             active={tab}
-            brands={ACCESSORY_BRANDS}
+            brands={EQUIPMENT_BRANDS}
             onSelect={(key) => {
               setTab(key);
               setCategory(content.equipements.categorieToutes);
@@ -353,13 +355,13 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
             transition={{ duration: 0.22 }}
             className="mt-8"
           >
-            {isBihr ? (
+            {isPartnerInfo ? (
               <BrandInfoPanel
-                logo={ACCESSORY_BRANDS.find((b) => b.key === "bihr")!.logo!}
-                alt={ACCESSORY_BRANDS.find((brand) => brand.key === "bihr")!.alt}
-                title={content.equipements.marques.bihr.titre}
-                text={content.equipements.marques.bihr.description}
-                lines={content.equipements.marques.bihr.lignes}
+                logo={selectedBrand?.logo ?? ""}
+                alt={selectedBrand?.logoAlt ?? ""}
+                title={heading.titre}
+                text={heading.description}
+                lines={"lignes" in heading ? heading.lignes : []}
                 go={go}
               />
             ) : (
@@ -434,14 +436,7 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
 /*  Page PIÈCES DÉTACHÉES                                               */
 /* ------------------------------------------------------------------ */
 
-const SPARE_ROUTE_MAP: Record<string, SpareBrand> = {
-  "spare-tvs": "TVS",
-  "spare-sherco": "Sherco",
-  "spare-fantic": "Fantic",
-  "spare-bihr": "BIHR",
-};
-
-function SpareBrandSelector({ active, onSelect }: { active: SpareBrand; onSelect: (brand: SpareBrand) => void }) {
+function SpareBrandSelector({ active, onSelect }: { active: string; onSelect: (brandId: string) => void }) {
   return (
     <div className="no-scrollbar flex overflow-x-auto border-b border-black/15 dark:border-white/15">
       {SPARE_BRAND_TABS.map((brand) => {
@@ -495,20 +490,27 @@ function SpareBrandSelector({ active, onSelect }: { active: SpareBrand; onSelect
 }
 
 export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
-  const requested = initialBrand ? (SPARE_ROUTE_MAP[initialBrand] ?? SPARE_BRANDS[0]) : SPARE_BRANDS[0];
-  const [brand, setBrand] = useState<SpareBrand>(requested);
+  const requested =
+    SPARE_BRAND_TABS.find((item) => item.routeId === initialBrand || item.key === initialBrand)?.key ?? SPARE_ALL_BRAND_ID;
+  const [brand, setBrand] = useState<string>(requested);
   const [type, setType] = useState<SpareType>(SPARE_TYPES[0]);
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const selectedBrand = SPARE_BRANDS.find((item) => item.id === brand);
+  const selectedBrandSection = selectedBrand ? getBrandSection(selectedBrand, "pieces-detachees") : undefined;
+  const brandLabel = selectedBrand ? getBrandLabel(selectedBrand, "pieces-detachees") : "";
+  const isAllBrands = brand === SPARE_ALL_BRAND_ID;
+  const isPartnerInfo = selectedBrandSection?.displayMode === "partner-info";
 
   const items = useMemo(
     () =>
       SPARE_PARTS.filter(
         (part) =>
-          (brand === SPARE_BRANDS[0] || brand === "BIHR" || part.compatibleBrand === brand) &&
+          (isAllBrands || isPartnerInfo || part.compatibleBrand === selectedBrand?.name) &&
           (type === SPARE_TYPES[0] || part.partType === type),
       ),
-    [brand, type],
+    [isAllBrands, isPartnerInfo, selectedBrand?.name, type],
   );
 
   const totalPages = Math.max(1, Math.ceil(items.length / PARTS_PER_PAGE));
@@ -516,12 +518,11 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
   const visible = items.slice((safePage - 1) * PARTS_PER_PAGE, safePage * PARTS_PER_PAGE);
   const loading = useBriefLoading(`spares-${brand}-${type}-${safePage}`);
 
-  const isBihr = brand === "BIHR";
-  const title = brand === SPARE_BRANDS[0] ? content.piecesDetachees.titreToutes : `${content.piecesDetachees.titreMarquePrefix} ${brand}`;
-  const text =
-    brand === SPARE_BRANDS[0]
-      ? content.piecesDetachees.descriptionToutes
-      : `${content.piecesDetachees.descriptionMarquePrefix} ${brand}${content.piecesDetachees.descriptionMarqueSuffix}`;
+  const partnerCopy = brand === "bihr" ? content.piecesDetachees.bihr : undefined;
+  const title = isAllBrands ? content.piecesDetachees.titreToutes : `${content.piecesDetachees.titreMarquePrefix} ${brandLabel}`;
+  const text = isAllBrands
+    ? content.piecesDetachees.descriptionToutes
+    : `${content.piecesDetachees.descriptionMarquePrefix} ${brandLabel}${content.piecesDetachees.descriptionMarqueSuffix}`;
 
   return (
     <div>
@@ -554,13 +555,13 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
             transition={{ duration: 0.22 }}
             className="mt-8"
           >
-            {isBihr ? (
+            {isPartnerInfo ? (
               <BrandInfoPanel
-                logo={BRANDS.find((b) => b.name === "Bihr")!.src}
-                alt={ACCESSORY_BRANDS.find((brand) => brand.key === "bihr")!.alt}
-                title={content.piecesDetachees.bihr.titre}
-                text={content.piecesDetachees.bihr.description}
-                lines={content.piecesDetachees.bihr.lignes}
+                logo={selectedBrand?.logo ?? ""}
+                alt={selectedBrand?.logoAlt ?? ""}
+                title={partnerCopy?.titre ?? title}
+                text={partnerCopy?.description ?? text}
+                lines={partnerCopy?.lignes ?? []}
                 go={go}
               />
             ) : (

@@ -10,16 +10,14 @@ import {
   faShirt,
 } from "@fortawesome/free-solid-svg-icons";
 import {
-  ACCESSORY_BRANDS,
   BIKES,
-  BRANDS,
   CATEGORIES,
-  EXCLUSIVE_BRANDS,
   FEATURED_BANNERS,
   HOME_PROMOTIONS,
   TVS_ACCESSORIES,
   TVS_PARTS,
 } from "../data";
+import { getBrandsForSection, getHomeFeaturedBrands, getHomePartnerBrands } from "../data/brands";
 import { Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { AccessoryBrandQuickLinks } from "../components/AccessoryBrands";
@@ -30,6 +28,9 @@ import TypedText from "../components/TypedText";
 import { content } from "../constants";
 
 const CATEGORY_ICONS = [faMotorcycle, faHelmetSafety, faGears, faShirt];
+const HOME_EQUIPMENT_BRANDS = getBrandsForSection("equipements");
+const HOME_FEATURED_BRANDS = getHomeFeaturedBrands();
+const HOME_PARTNER_BRANDS = getHomePartnerBrands();
 
 export default function Home({ go }: { go: (p: string, id?: string) => void }) {
   const [activeHero, setActiveHero] = useState(0);
@@ -181,7 +182,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
       <ShercoBanner go={go} />
 
-      <BrandExclusif go={go} brands={EXCLUSIVE_BRANDS} />
+      <BrandExclusif go={go} brands={HOME_FEATURED_BRANDS} />
 
       <NewArrivals go={go} items={HOME_PROMOTIONS} />
 
@@ -219,7 +220,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
           </div>
 
           <div className="mb-6">
-            <AccessoryBrandQuickLinks brands={ACCESSORY_BRANDS} onSelect={(brand) => go("equipements", brand)} />
+            <AccessoryBrandQuickLinks brands={HOME_EQUIPMENT_BRANDS} onSelect={(brand) => go("equipements", brand)} />
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 lg:gap-x-5">
             {[TVS_PARTS[0], TVS_PARTS[2], TVS_ACCESSORIES[0], TVS_ACCESSORIES[2]].map((part) => (
@@ -258,7 +259,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
             />
 
             <div className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10">
-              {[...BRANDS, ...BRANDS].map((brand, index) => (
+              {[...HOME_PARTNER_BRANDS, ...HOME_PARTNER_BRANDS].map((brand, index) => (
                 <motion.div
                   key={`${brand.name}-${index}`}
                   whileHover={{ scale: 1.08 }}
@@ -266,7 +267,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
                   className="brand-logo-tile shrink-0"
                 >
                   <img
-                    src={brand.src}
+                    src={brand.logo}
                     alt={`${content.accueil.partenaires.logoPrefix} ${brand.name}`}
                     loading="lazy"
                     className="partner-logo h-full w-full object-contain transition-opacity hover:opacity-100"

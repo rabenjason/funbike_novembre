@@ -1,12 +1,7 @@
 import type {
-  AccessoryBrand,
-  AccessoryBrandKey,
-  AccessoryCategory,
   Bike,
-  Brand,
   Category,
   Dealer,
-  ExclusiveBrand,
   FeaturedBanner,
   HomepagePromotion,
   Part,
@@ -14,79 +9,39 @@ import type {
 } from "./types";
 
 export type {
-  AccessoryBrand,
-  AccessoryBrandKey,
   AccessoryCategory,
   Bike,
   Brand,
+  BrandSectionAssociation,
+  BrandSectionId,
   Category,
   Dealer,
-  ExclusiveBrand,
   FeaturedBanner,
   HomepagePromotion,
   Part,
   PartType,
-};
+} from "./types";
+
+export type { BrandId } from "./data/brands";
+
+export {
+  BRANDS,
+  LOGO,
+  getBrandById,
+  getBrandByName,
+  getBrandLabel,
+  getBrandSection,
+  getBrandsForSection,
+  getFooterFeaturedMotoBrands,
+  getFooterMotoBrands,
+  getHomeFeaturedBrands,
+  getHomePartnerBrands,
+} from "./data/brands";
 
 /**
  * Données actuellement affichées par le frontend (sans client API ni simulation de backend).
  * Ces collections typées pourront être remplacées par les réponses de l'API lorsqu'elle existera.
  */
-
-export const LOGO = "https://funbike.mg/wp-content/themes/funbike/images/logo-funbike.png";
-
-export const BRANDS: Brand[] = [
-  { name: "TVS", src: "https://funbike.mg/wp-content/uploads/2026/02/tvs-logo.png" },
-  { name: "Fantic", src: "https://funbike.mg/wp-content/themes/funbike/images/fantic.png" },
-  { name: "Sherco", src: "https://funbike.mg/wp-content/uploads/2026/02/sherco.png" },
-  { name: "Bihr", src: "https://funbike.mg/wp-content/uploads/2026/02/bihr-logo.jpg" },
-  { name: "Trace", src: "https://funbike.mg/wp-content/uploads/2026/02/Trace-1.png" },
-  { name: "Gaerne", src: "https://funbike.mg/wp-content/uploads/2026/02/gaerne-logo.jpg" },
-  { name: "Galfer", src: "https://funbike.mg/wp-content/uploads/2026/02/Galfer-logo.png" },
-  { name: "MT Helmets", src: "https://funbike.mg/wp-content/uploads/2026/02/mt.png" },
-  {
-    name: "Troy Lee Designs",
-    src: "https://funbike.mg/wp-content/uploads/2026/02/sticker-troy-lee-designs-shield-logo-rouge-16cm.png",
-  },
-];
-
-const logoOf = (name: string) => BRANDS.find((brand) => brand.name === name)?.src ?? "";
-
-/** Marques affichées comme distributeurs officiels sur l'accueil. */
-export const EXCLUSIVE_BRANDS: ExclusiveBrand[] = [
-  {
-    key: "tvs",
-    name: "TVS",
-    tagline: "Robustesse garantie",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/tvs-logo.png",
-  },
-  {
-    key: "fantic",
-    name: "Fantic",
-    tagline: "Performance italienne",
-    image: "https://funbike.mg/wp-content/themes/funbike/images/fantic.png",
-  },
-  {
-    key: "sherco",
-    name: "Sherco",
-    tagline: "ADN Compétition",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/sherco.png",
-  },
-];
-
-/** Marques d'équipements affichées dans les sélecteurs de catalogue. */
-export const ACCESSORY_BRANDS: AccessoryBrand[] = [
-  {
-    key: "tld",
-    name: "Troy Lee Designs",
-    logo: "https://funbike.mg/wp-content/uploads/2026/02/sticker-troy-lee-designs-shield-logo-rouge-16cm.png",
-    alt: "Logo Troy Lee Designs",
-  },
-  { key: "gaerne", name: "Gaerne", logo: logoOf("Gaerne"), alt: "Logo Gaerne" },
-  { key: "mt", name: "MT Helmets", logo: logoOf("MT Helmets"), alt: "Logo MT Helmets" },
-  { key: "tvs", name: "TVS", logo: logoOf("TVS"), alt: "Logo TVS" },
-  { key: "bihr", name: "BIHR", logo: logoOf("Bihr"), alt: "Logo Bihr" },
-];
 
 export const CATEGORIES: Category[] = [
   {

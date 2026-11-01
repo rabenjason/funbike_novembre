@@ -1,9 +1,10 @@
-import { ACCESSORY_BRANDS, type Part } from "../data";
+import { type Part } from "../data";
+import { getBrandById } from "../data/brands";
 import { content } from "../constants";
 
 /** Libellés de catalogue dérivés des données, distincts du modèle métier. */
 export function partBrandLabel(part: Part): string {
-  const brand = ACCESSORY_BRANDS.find((item) => item.key === part.kind);
+  const brand = getBrandById(part.kind);
   if (brand) return brand.name;
   if (part.compatibleBrand && part.compatibleBrand !== "Universal") return part.compatibleBrand;
   return content.accessoires.fiche.universel;

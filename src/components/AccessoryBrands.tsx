@@ -1,10 +1,9 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUpRightFromSquare, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
-import type { AccessoryBrand as AccessoryBrandRecord, AccessoryBrandKey } from "../types";
+import type { Brand } from "../types";
+import { getBrandLabel } from "../data/brands";
 
-export type { AccessoryBrandKey };
-export type AccessoryBrand = AccessoryBrandRecord & { icon?: IconDefinition };
 type BrandVisualData = { logo?: string; icon?: IconDefinition };
 
 /** Brand mark in one fixed-size slot so every selector logo has the same footprint. */
@@ -29,20 +28,20 @@ export function AccessoryBrandSelector({
   onSelect,
   brands,
 }: {
-  active: AccessoryBrandKey;
-  onSelect: (brand: AccessoryBrandKey) => void;
-  brands: AccessoryBrand[];
+  active: string;
+  onSelect: (brandId: string) => void;
+  brands: Brand[];
 }) {
   return (
     <div className="no-scrollbar flex overflow-x-auto border-b border-black/15 dark:border-white/15">
       {brands.map((brand) => {
-        const selected = active === brand.key;
+        const selected = active === brand.id;
         return (
           <button
-            key={brand.key}
+            key={brand.id}
             type="button"
             aria-pressed={selected}
-            onClick={() => onSelect(brand.key)}
+            onClick={() => onSelect(brand.id)}
             className={
               "relative flex min-w-max items-center gap-2.5 px-3 py-3 text-left transition sm:px-5 " +
               (selected ? "bg-[#ffd100]/15" : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]")
@@ -55,7 +54,7 @@ export function AccessoryBrandSelector({
                 (selected ? "text-[#171816] dark:text-[#f2f0ea]" : "text-black/50 dark:text-white/50")
               }
             >
-              {brand.name}
+              {getBrandLabel(brand, "equipements")}
             </span>
             {selected && (
               <>
@@ -84,16 +83,16 @@ export function AccessoryBrandQuickLinks({
   onSelect,
   brands,
 }: {
-  onSelect: (brand: AccessoryBrandKey) => void;
-  brands: AccessoryBrand[];
+  onSelect: (brandId: string) => void;
+  brands: Brand[];
 }) {
   return (
     <div className="grid grid-cols-2 border-y border-black/15 sm:flex sm:flex-wrap dark:border-white/15">
       {brands.map((brand, index) => (
         <motion.button
-          key={brand.key}
+          key={brand.id}
           type="button"
-          onClick={() => onSelect(brand.key)}
+          onClick={() => onSelect(brand.id)}
           whileHover={{ x: 3 }}
           className={
             "group grid w-full min-w-0 grid-cols-[3.25rem_minmax(0,1fr)_1rem] items-center gap-1.5 border-b border-r border-black/10 px-2 py-2.5 text-left transition hover:bg-white/50 even:border-r-0 sm:w-auto sm:flex-none sm:grid-cols-[3.25rem_auto_1rem] sm:gap-2 sm:border-b-0 sm:px-4 sm:even:border-r sm:last:border-r-0 dark:border-white/10 dark:hover:bg-white/[0.04] " +
@@ -101,7 +100,7 @@ export function AccessoryBrandQuickLinks({
           }
         >
           <BrandVisual brand={brand} />
-          <span className="min-w-0 truncate text-[10px] font-bold text-black/65 dark:text-white/65">{brand.name}</span>
+          <span className="min-w-0 truncate text-[10px] font-bold text-black/65 dark:text-white/65">{getBrandLabel(brand, "equipements")}</span>
           <FontAwesomeIcon
             icon={faArrowUpRightFromSquare}
             className="justify-self-end text-[10px] text-black/35 transition group-hover:text-[#98741b] dark:text-white/35 dark:group-hover:text-[#ffd100]"

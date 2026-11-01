@@ -6,27 +6,30 @@
  * Elles ne créent ni API, ni backend, ni base de données.
  */
 
-export interface Brand {
-  name: string;
-  src: string;
+export type BrandSectionId = "motos" | "equipements" | "pieces-detachees" | "partenaires";
+
+/** Association normalisée entre une marque et une rubrique du catalogue. */
+export interface BrandSectionAssociation {
+  section: BrandSectionId;
+  order: number;
+  label?: string;
+  routeId?: string;
+  filterable?: boolean;
+  displayMode?: "catalogue" | "partner-info";
+  homeFeatured?: boolean;
+  footerOrder?: number;
+  footerFeaturedOrder?: number;
 }
 
-/** Marque d'équipement et identité visuelle administrable. */
-export type AccessoryBrandKey = "tld" | "gaerne" | "mt" | "tvs" | "bihr";
-
-export interface AccessoryBrand {
-  key: AccessoryBrandKey;
+/** Enregistrement de marque stable, remplaçable ultérieurement par une réponse API. */
+export interface Brand {
+  id: string;
   name: string;
   logo: string;
-  alt: string;
-}
-
-/** Marque officielle présentée dans la sélection de la page d'accueil. */
-export interface ExclusiveBrand {
-  key: string;
-  name: string;
-  tagline: string;
-  image: string;
+  logoAlt: string;
+  description?: string;
+  isActive: boolean;
+  sections: readonly BrandSectionAssociation[];
 }
 
 /** Diapositive héro de la page d'accueil, à terme fournie par l'API. */
