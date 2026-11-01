@@ -1,4 +1,4 @@
-/** Textes fixes de l’interface FunBike ; les contenus administrables restent dans src/data.ts. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const contact = {
     titre: "On prend la route ?",
     description: "Une question, un essai ou un devis ? L'équipe Funbike vous répond et vous aide à trouver la bonne configuration.",

@@ -2,15 +2,10 @@ import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGears, faMagnifyingGlass, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import {
-  BIKES,
-  SPARE_PARTS,
-  GEAR_ITEMS,
-  TVS_ACCESSORIES,
-  TLD,
-  type AccessoryCategory,
-  type Part,
-} from "../data";
+import { BIKES } from "../data/motorcycles";
+import { SPARE_PARTS } from "../data/spare-parts";
+import { GEAR_ITEMS, TLD, TVS_ACCESSORIES } from "../data/equipment";
+import type { AccessoryCategory, Part } from "../types";
 import {
   getBrandById,
   getBrandByName,

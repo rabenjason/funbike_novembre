@@ -10,7 +10,9 @@ import Product from "./pages/Product";
 import AccessoryDetail from "./pages/AccessoryDetail";
 import Contact from "./pages/Contact";
 import Dealers from "./pages/Dealers";
-import { BIKES, FEATURED_BANNERS, findPart } from "./data";
+import { BIKES } from "./data/motorcycles";
+import { FEATURED_BANNERS } from "./data/banners";
+import { findPart } from "./data/index";
 import { content } from "./constants";
 
 const FIRST_HERO = FEATURED_BANNERS[0].image;

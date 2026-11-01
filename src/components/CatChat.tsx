@@ -19,7 +19,8 @@ import {
   faXmark,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
-import { BIKES, type Bike } from "../data";
+import { BIKES } from "../data/motorcycles";
+import type { Bike } from "../types";
 import { content } from "../constants";
 import SmartImage from "./SmartImage";
 import {

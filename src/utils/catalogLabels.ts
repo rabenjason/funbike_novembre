@@ -1,4 +1,4 @@
-import { type Part } from "../data";
+import type { Part } from "../types";
 import { getBrandById } from "../data/brands";
 import { content } from "../constants";
 

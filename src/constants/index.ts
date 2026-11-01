@@ -1,6 +1,6 @@
 /**
  * Point d'entrée unique des textes fixes de l'interface.
- * Les contenus administrables sont typés dans src/data.ts et le référentiel des marques
+ * Les contenus administrables sont organisés dans src/data/ et le référentiel des marques
  * dans src/data/brands.ts ; ils pourront être remplacés par une API sans l'implémenter ici.
  */
 import { accueil } from "./accueil";

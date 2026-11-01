@@ -1,4 +1,6 @@
-/** Textes fixes de l’interface FunBike ; les contenus administrables restent dans src/data.ts. */
+import { BIKE_FAMILIES } from "../data/families";
+
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data. */
 export const catalogue = {
     titreComplet: "Tout le Catalogue",
     descriptionComplete: "Découvrez nos motos, pièces et équipements officiels.",
@@ -9,7 +11,7 @@ export const catalogue = {
     modelesDisponibles: "modèle(s) disponible(s)",
     pageSur: "page",
     sur: "sur",
-    filtres: ["Tous", "Off-road", "Urbain", "3 roues"],
+    filtres: ["Tous", ...BIKE_FAMILIES],
     rechercheMotosPlaceholder: "Rechercher une moto ou une marque",
     rechercheGlobalePlaceholder: "Motos, casques, blousons, pièces...",
     rechercheAria: "Rechercher dans le catalogue",

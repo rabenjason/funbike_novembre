@@ -1,4 +1,4 @@
-/** Textes fixes de l’interface FunBike ; les contenus administrables restent dans src/data.ts. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const equipements = {
     titre: "Équipements Pilote",
     description: "Protection, casques, tenues et accessoires pour le pilote.",

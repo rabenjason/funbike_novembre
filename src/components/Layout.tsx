@@ -18,7 +18,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { LOGO } from "../data";
+import { LOGO } from "../data/brands";
 import { getFooterFeaturedMotoBrands, getFooterMotoBrands } from "../data/brands";
 import { content } from "../constants";
 
