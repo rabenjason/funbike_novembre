@@ -1,22 +1,22 @@
-# The source strings in Bike.family are represented by BikeFamily.
-#import "./categories.graphql"
+# Motorcycle family is reached through Subfamily.family; no family enum is used.
+#import "./accessories.graphql"
 
-"""Caractéristique moto, telle qu'utilisée dans Bike.specs."""
+"""Caractéristique propre à une moto, telle qu'utilisée dans Bike.specs."""
 type BikeSpec {
   label: String!
   value: String!
 }
 
 """
-Moto du catalogue frontend. `brand` est le nom conservé dans les données,
-pas une relation normalisée vers Brand. `price` reste une chaîne car les
-valeurs affichées incluent notamment `Sur devis`.
+Moto du catalogue. La marque et la sous-famille sont des relations vers des
+entités administrables; la famille se déduit de `subfamily.family`.
+`price` reste une chaîne, car le frontend affiche notamment `Sur devis`.
 """
-type Motorcycle {
+type Motorcycle implements CatalogProduct {
   id: ID!
   name: String!
-  brand: String!
-  family: BikeFamily!
+  brand: Brand!
+  subfamily: Subfamily!
   price: String!
   tag: String
   alt: String!

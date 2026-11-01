@@ -1,21 +1,30 @@
-# Equipment-specific fields extend the existing shared product-detail shape.
+# Equipment types are database records, not a fixed GraphQL enum.
 #import "./accessories.graphql"
-#import "./categories.graphql"
 
 """
-Équipement pilote présent dans GEAR_ITEMS (TVS, TLD, Gaerne ou MT).
-La marque est portée par la valeur existante de `kind`; aucune propriété
-`brand` supplémentaire n'est ajoutée.
+Type d'équipement pilote administrable. Aucune liste de valeurs n'est codée
+ici; les valeurs viendront des futurs enregistrements.
 """
-type Equipment implements AccessoryProduct {
+type EquipmentType {
   id: ID!
   name: String!
+  equipment: [Equipment!]!
+}
+
+"""
+Équipement pilote avec son type administrable et ses caractéristiques propres.
+Les détails sourceUrl/gallery/desc/specs restent facultatifs comme dans Part.
+"""
+type Equipment implements CatalogProduct {
+  id: ID!
+  name: String!
+  brand: Brand!
+  subfamily: Subfamily!
   price: String!
   image: String!
-  kind: AccessoryKind!
-  category: AccessoryCategory
+  equipmentType: EquipmentType!
+  sourceUrl: String
   gallery: [String!]
   desc: String
   specs: [ProductSpec!]
-  sourceUrl: String
 }
