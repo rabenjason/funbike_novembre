@@ -1,7 +1,7 @@
 /**
  * Point d'entrée unique des textes fixes de l'interface.
- * Les contenus administrables (motos, produits, bannières, revendeurs, partenaires)
- * sont typés et regroupés dans src/data.ts ; ils pourront être remplacés par l'API.
+ * Les contenus administrables sont typés dans src/data.ts et le référentiel des marques
+ * dans src/data/brands.ts ; ils pourront être remplacés par une API sans l'implémenter ici.
  */
 import { accueil } from "./accueil";
 import { accessoires, equipements } from "./equipements";

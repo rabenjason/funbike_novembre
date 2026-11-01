@@ -74,7 +74,7 @@ export const footer = {
     descriptionMarque:
       "Le terrain change. La passion reste. Motos Sherco, Fantic & TVS, pièces détachées et équipements pilote pour les routes de Madagascar.",
     distributeurExclusif: "Distributeur exclusif",
-    marquesExclusives: ["Sherco", "Fantic", "TVS"],
+    motosPrefix: "Motos",
     explorer: "Explorer",
     catalogue: "Catalogue",
     nousTrouver: "Nous trouver",
@@ -85,8 +85,6 @@ export const footer = {
     cookies: "Cookies",
     hautDePage: "Retour en haut de page",
     catalogueLiens: [
-      { label: "Motos Sherco", page: "motos", id: "Sherco" },
-      { label: "Motos TVS", page: "motos", id: "TVS" },
       { label: "Équipements pilote", page: "equipements" },
       { label: "Pièces détachées", page: "spares" },
       { label: "Nos revendeurs", page: "revendeurs" },

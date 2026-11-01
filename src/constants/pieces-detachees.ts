@@ -8,7 +8,7 @@ export const piecesDetachees = {
     famille: "Pièce détachée",
     references: "références",
     page: "page",
-    marquesFiltres: ["Toutes", "TVS", "Sherco", "Fantic", "BIHR"],
+    marqueToutes: "Toutes",
     typesFiltres: ["Toutes", "Pneus", "Freinage", "Transmission", "Filtration", "Pièces moteur", "Consommables"],
     titreToutes: "Pièces détachées moto",
     descriptionToutes:

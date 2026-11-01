@@ -1,5 +1,5 @@
 import { motion, type Variants } from "framer-motion";
-import type { ExclusiveBrand } from "../types";
+import type { Brand } from "../types";
 import { content } from "../constants";
 import SmartImage from "./SmartImage";
 
@@ -18,7 +18,7 @@ export default function BrandExclusif({
   brands,
 }: {
   go: (p: string, id?: string) => void;
-  brands: ExclusiveBrand[];
+  brands: Brand[];
 }) {
   return (
     <section className="py-10 sm:py-12 lg:py-14">
@@ -50,7 +50,7 @@ export default function BrandExclusif({
           >
             {brands.map((brand) => (
               <motion.button
-                key={brand.key}
+                key={brand.id}
                 variants={item}
                 whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.98 }}
@@ -60,7 +60,7 @@ export default function BrandExclusif({
               >
                 <div className="flex h-14 w-full items-center justify-center sm:h-20">
                   <SmartImage
-                    src={brand.image}
+                    src={brand.logo}
                     alt={`${content.accueil.distributeur.logoPrefix} ${brand.name}`}
                     className="h-9 w-full max-w-[90px] sm:h-12 sm:max-w-[130px]"
                     imgClassName="object-contain transition-transform duration-500 group-hover:scale-105"
@@ -71,7 +71,7 @@ export default function BrandExclusif({
                     {brand.name}
                   </h3>
                   <p className="mt-0.5 hidden truncate text-[10px] text-black/45 sm:block dark:text-white/45">
-                    {brand.tagline}
+                    {brand.description}
                   </p>
                 </div>
               </motion.button>
