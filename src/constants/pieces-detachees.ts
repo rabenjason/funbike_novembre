@@ -1,4 +1,6 @@
-/** Textes fixes de l’interface FunBike ; les contenus administrables restent dans src/data.ts. */
+import { SPARE_PART_TYPES } from "../data/subfamilies";
+
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data. */
 export const piecesDetachees = {
     titre: "Pièces & Consommables",
     description: "Pneus, kits chaîne, freinage, filtration et pièces mécaniques.",
@@ -9,7 +11,7 @@ export const piecesDetachees = {
     references: "références",
     page: "page",
     marqueToutes: "Toutes",
-    typesFiltres: ["Toutes", "Pneus", "Freinage", "Transmission", "Filtration", "Pièces moteur", "Consommables"],
+    typesFiltres: ["Toutes", ...SPARE_PART_TYPES],
     titreToutes: "Pièces détachées moto",
     descriptionToutes:
       "Pneus, kits chaîne, freinage, filtration, pièces mécaniques et consommables. Contactez-nous pour confirmer la compatibilité avec votre moto.",

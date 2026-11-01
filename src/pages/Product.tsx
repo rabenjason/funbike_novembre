@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faCheck, faMagnifyingGlassPlus, faPhone } from "@fortawesome/free-solid-svg-icons";
-import { BIKES } from "../data";
+import { BIKES } from "../data/motorcycles";
 import { Section } from "../components/Layout";
 import { BikeCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";

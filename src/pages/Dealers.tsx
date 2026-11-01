@@ -13,7 +13,8 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 
-import { DEALERS, type Dealer } from "../data";
+import { DEALERS } from "../data/dealers";
+import type { Dealer } from "../types";
 import { content } from "../constants";
 
 export type { Dealer };

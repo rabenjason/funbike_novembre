@@ -9,14 +9,12 @@ import {
   faMotorcycle,
   faShirt,
 } from "@fortawesome/free-solid-svg-icons";
-import {
-  BIKES,
-  CATEGORIES,
-  FEATURED_BANNERS,
-  HOME_PROMOTIONS,
-  TVS_ACCESSORIES,
-  TVS_PARTS,
-} from "../data";
+import { BIKES } from "../data/motorcycles";
+import { CATEGORIES } from "../data/categories";
+import { FEATURED_BANNERS } from "../data/banners";
+import { HOME_PROMOTIONS } from "../data/promotions";
+import { TVS_ACCESSORIES } from "../data/equipment/tvs";
+import { TVS_PARTS } from "../data/spare-parts/tvs";
 import { getBrandsForSection, getHomeFeaturedBrands, getHomePartnerBrands } from "../data/brands";
 import { Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";

@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faClock, faEnvelope, faLocationDot, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { PageHeader } from "../components/Layout";
-import { PARTS, TVS_PARTS, SHERCO_PARTS, FANTIC_PARTS, TVS_ACCESSORIES } from "../data";
+import { PARTS, TVS_PARTS, SHERCO_PARTS, FANTIC_PARTS } from "../data/spare-parts";
+import { TVS_ACCESSORIES } from "../data/equipment/tvs";
 import { content } from "../constants";
 
 const CONTACT_EMAIL = content.site.email;

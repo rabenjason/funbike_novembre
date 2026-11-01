@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
-import type { Bike, Part } from "../data";
+import type { Bike, Part } from "../types";
 import { content } from "../constants";
 import { partEyebrow } from "../utils/catalogLabels";
 import SmartImage from "./SmartImage";

@@ -8,7 +8,8 @@ import {
   faMagnifyingGlassPlus,
   faPhone,
 } from "@fortawesome/free-solid-svg-icons";
-import { ALL_PARTS, findPart, type Part } from "../data";
+import { ALL_PARTS, findPart } from "../data/index";
+import type { Part } from "../types";
 import { partBrandLabel, partFamily } from "../utils/catalogLabels";
 import { Section, type Route } from "../components/Layout";
 import { PartCard } from "../components/Cards";

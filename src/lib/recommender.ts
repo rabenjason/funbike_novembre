@@ -1,4 +1,5 @@
-import { BIKES, type Bike } from "../data";
+import { BIKES } from "../data/motorcycles";
+import type { Bike } from "../types";
 import { recommendationCopy } from "../constants";
 import type { ChatAction } from "./assistant";
 

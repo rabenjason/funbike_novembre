@@ -1,4 +1,7 @@
-import { BIKES, TLD, TVS_PARTS, type Bike } from "../data";
+import { BIKES } from "../data/motorcycles";
+import { TLD } from "../data/equipment/tld";
+import { TVS_PARTS } from "../data/spare-parts/tvs";
+import type { Bike } from "../types";
 import { assistantCopy, content } from "../constants";
 import { runRecommender, isSpecificModelRequest, detectBrandText, type NeedProfile } from "./recommender";
 
