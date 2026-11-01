@@ -1,20 +1,37 @@
 import type {
+  AccessoryBrand,
+  AccessoryBrandKey,
   AccessoryCategory,
   Bike,
   Brand,
   Category,
+  Dealer,
+  ExclusiveBrand,
+  FeaturedBanner,
+  HomepagePromotion,
   Part,
   PartType,
 } from "./types";
 
 export type {
+  AccessoryBrand,
+  AccessoryBrandKey,
   AccessoryCategory,
   Bike,
   Brand,
   Category,
+  Dealer,
+  ExclusiveBrand,
+  FeaturedBanner,
+  HomepagePromotion,
   Part,
   PartType,
 };
+
+/**
+ * Données actuellement affichées par le frontend (sans client API ni simulation de backend).
+ * Ces collections typées pourront être remplacées par les réponses de l'API lorsqu'elle existera.
+ */
 
 export const LOGO = "https://funbike.mg/wp-content/themes/funbike/images/logo-funbike.png";
 
@@ -31,6 +48,44 @@ export const BRANDS: Brand[] = [
     name: "Troy Lee Designs",
     src: "https://funbike.mg/wp-content/uploads/2026/02/sticker-troy-lee-designs-shield-logo-rouge-16cm.png",
   },
+];
+
+const logoOf = (name: string) => BRANDS.find((brand) => brand.name === name)?.src ?? "";
+
+/** Marques affichées comme distributeurs officiels sur l'accueil. */
+export const EXCLUSIVE_BRANDS: ExclusiveBrand[] = [
+  {
+    key: "tvs",
+    name: "TVS",
+    tagline: "Robustesse garantie",
+    image: "https://funbike.mg/wp-content/uploads/2026/02/tvs-logo.png",
+  },
+  {
+    key: "fantic",
+    name: "Fantic",
+    tagline: "Performance italienne",
+    image: "https://funbike.mg/wp-content/themes/funbike/images/fantic.png",
+  },
+  {
+    key: "sherco",
+    name: "Sherco",
+    tagline: "ADN Compétition",
+    image: "https://funbike.mg/wp-content/uploads/2026/02/sherco.png",
+  },
+];
+
+/** Marques d'équipements affichées dans les sélecteurs de catalogue. */
+export const ACCESSORY_BRANDS: AccessoryBrand[] = [
+  {
+    key: "tld",
+    name: "Troy Lee Designs",
+    logo: "https://funbike.mg/wp-content/uploads/2026/02/sticker-troy-lee-designs-shield-logo-rouge-16cm.png",
+    alt: "Logo Troy Lee Designs",
+  },
+  { key: "gaerne", name: "Gaerne", logo: logoOf("Gaerne"), alt: "Logo Gaerne" },
+  { key: "mt", name: "MT Helmets", logo: logoOf("MT Helmets"), alt: "Logo MT Helmets" },
+  { key: "tvs", name: "TVS", logo: logoOf("TVS"), alt: "Logo TVS" },
+  { key: "bihr", name: "BIHR", logo: logoOf("Bihr"), alt: "Logo Bihr" },
 ];
 
 export const CATEGORIES: Category[] = [
@@ -62,6 +117,40 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
+/** Slides actuelles du hero — remplaçables par une collection de bannières d'API. */
+export const FEATURED_BANNERS: FeaturedBanner[] = [
+  {
+    id: "sherco-sef-250-factory-2026",
+    short: "SEF 250 Factory",
+    brand: "Sherco",
+    tag: "Enduro / Factory",
+    image: "https://funbike.mg/wp-content/uploads/2026/02/01-250-SEF-FACTORY-2026-3679x2456-1-1920x1080-1.jpg",
+    alt: "Sherco SEF 250 Factory 2026 en action",
+    targetPage: "product",
+    targetId: "sherco-sef-250-factory-2026",
+  },
+  {
+    id: "sherco-sef-300-factory-2026",
+    short: "SEF 300 Factory",
+    brand: "Sherco",
+    tag: "Enduro / Factory",
+    image: "https://funbike.mg/wp-content/uploads/2026/02/01-300-SEF-FACTORY-2026-3679x2456-1-1920x1080-1.jpg",
+    alt: "Sherco SEF 300 Factory 2026 en action",
+    targetPage: "product",
+    targetId: "sherco-sef-300-factory-2026",
+  },
+  {
+    id: "xx-125-2026",
+    short: "XX 125 Off-Road",
+    brand: "Fantic",
+    tag: "Cross / 125 cc",
+    image: "https://funbike.mg/wp-content/uploads/2026/02/7b566adac57a4b5dbfd74d4f768e6fdb.jpg",
+    alt: "Fantic XX 125 2026 sur piste",
+    targetPage: "product",
+    targetId: "xx-125-2026",
+  },
+];
+
 export const BIKES: Bike[] = [
   {
     id: "sherco-sef-250-factory-2026",
@@ -89,6 +178,7 @@ export const BIKES: Bike[] = [
     ],
     desc:
       "La référence enduro Sherco en finition Factory : châssis affûté, suspensions KYB haut de gamme et moteur 250 cc au couple généreux. Une machine de compétition prête à dévorer les pistes de Madagascar.",
+    recommendation: "une machine d'enduro performante pour la piste et le tout-terrain",
   },
   {
     id: "sherco-sef-300-factory-2026",
@@ -109,6 +199,7 @@ export const BIKES: Bike[] = [
     ],
     desc:
       "Plus de couple, plus de traction : la SEF 300 Factory est taillée pour l'enduro extrême et les longues liaisons hors-piste.",
+    recommendation: "plus de couple et d'autonomie pour l'enduro exigeant et les longues liaisons",
   },
   {
     id: "xx-125-2026",
@@ -127,6 +218,7 @@ export const BIKES: Bike[] = [
     ],
     desc:
       "Légère, vive et facile à prendre en main : la XX 125 est la porte d'entrée idéale vers le tout-terrain sportif.",
+    recommendation: "légère et facile à prendre en main, idéale pour débuter le tout-terrain",
   },
   {
     id: "offroad-450",
@@ -142,6 +234,7 @@ export const BIKES: Bike[] = [
       { label: "Réservoir", value: "9,7 L" },
     ],
     desc: "Le gros cube tout-terrain pour les raids et les pilotes expérimentés.",
+    recommendation: "le gros cube pour les raids et les longues distances",
   },
   {
     id: "offroad-trail",
@@ -156,6 +249,7 @@ export const BIKES: Bike[] = [
       { label: "Roues", value: "21\" / 18\"" },
     ],
     desc: "Polyvalence route et piste, pour partir loin sans compromis.",
+    recommendation: "polyvalente route et piste pour partir loin sans compromis",
   },
   {
     id: "tvs-hlx-plus",
@@ -171,6 +265,7 @@ export const BIKES: Bike[] = [
       { label: "Consommation", value: "≈ 2 L / 100 km" },
     ],
     desc: "La monture utilitaire par excellence : increvable, économique, parfaite pour les routes exigeantes.",
+    recommendation: "utilitaire increvable et économique pour le travail et la ville",
   },
   {
     id: "tvs-bleu",
@@ -193,6 +288,7 @@ export const BIKES: Bike[] = [
     ],
     desc:
       "Un style moderne et un moteur sobre : la Sport Series se décline en plusieurs coloris pour la ville comme pour les trajets quotidiens.",
+    recommendation: "sobre et confortable pour la ville et les trajets quotidiens",
   },
   {
     id: "tvs-200-4v",
@@ -208,6 +304,7 @@ export const BIKES: Bike[] = [
       { label: "Mode", value: "Sport / Urbain / Pluie" },
     ],
     desc: "La sportive urbaine de TVS : nerveuse, équipée ABS et d'un tableau de bord connecté.",
+    recommendation: "sportive nerveuse, ABS et confort, pour la ville comme les longs trajets",
   },
   {
     id: "tvs-red",
@@ -222,6 +319,7 @@ export const BIKES: Bike[] = [
       { label: "Écran", value: "LCD / TFT" },
     ],
     desc: "Design agressif et consommation maîtrisée pour les jeunes conducteurs.",
+    recommendation: "agile et économique, un design agressif pour la ville",
   },
   {
     id: "tvs-125-hlx-5g",
@@ -237,6 +335,7 @@ export const BIKES: Bike[] = [
       { label: "Usage", value: "Mixte ville / brousse" },
     ],
     desc: "Cinq rapports et une fiabilité éprouvée pour rouler partout, tous les jours.",
+    recommendation: "économique et maniable, fiable pour rouler partout tous les jours",
   },
   {
     id: "tuktuk",
@@ -252,6 +351,7 @@ export const BIKES: Bike[] = [
       { label: "Usage", value: "Transport urbain" },
     ],
     desc: "Le 3 roues de référence pour le transport de personnes et de marchandises en ville.",
+    recommendation: "le 3 roues pour transporter passagers et marchandises en ville",
   },
   {
     id: "concept-urbain",
@@ -264,6 +364,53 @@ export const BIKES: Bike[] = [
       "https://funbike.mg/wp-content/uploads/2026/02/Gemini_Generated_Image_mmvxscmmvxscmmvx.png",
     specs: [{ label: "Série", value: "Limitée" }],
     desc: "Une série personnalisée par nos ateliers Funbike.",
+    recommendation: "une série spéciale polyvalente, confortable et soignée",
+  },
+];
+
+/** Nouveautés et mises en avant actuellement utilisées sur la page d'accueil. */
+export const HOME_PROMOTIONS: HomepagePromotion[] = [
+  {
+    id: "sherco-sef-250-factory-2026",
+    badge: "Nouveauté 2026",
+    eyebrow: "Sherco / Enduro",
+    title: "SEF 250 Factory",
+    description:
+      "La nouvelle génération Factory arrive chez Funbike : suspensions KYB, châssis affûté et moteur 250 cc.",
+    image: BIKES.find((bike) => bike.id === "sherco-sef-250-factory-2026")!.image,
+    alt: "Sherco SEF 250 Factory 2026 sur piste",
+    highlights: ["Suspensions KYB", "Deux cartographies", "Freinage Galfer"],
+    price: "Sur devis",
+    targetPage: "product",
+    targetId: "sherco-sef-250-factory-2026",
+  },
+  {
+    id: "tvs-200-4v",
+    badge: "Arrivage",
+    eyebrow: "TVS / Urbain sportif",
+    title: "Apache 200 4V",
+    description:
+      "Une sportive urbaine pensée pour le quotidien : moteur 200 cc, ABS et plusieurs modes de conduite.",
+    image: BIKES.find((bike) => bike.id === "tvs-200-4v")!.image,
+    alt: "TVS Apache 200 4V",
+    highlights: ["ABS", "Modes de conduite", "Tableau de bord digital"],
+    price: "Sur devis",
+    targetPage: "product",
+    targetId: "tvs-200-4v",
+  },
+  {
+    id: "tld",
+    badge: "Collection 2026",
+    eyebrow: "Troy Lee Designs / Pilote",
+    title: "Casques GP Pro",
+    description:
+      "Les nouveaux graphismes Pulse, Slides et Segment viennent renouveler la gamme de casques pilote.",
+    image: "https://troyleedesigns.eu/cdn/shop/files/TLD_M26D2_GPPRO_PULSE_BLACK_01.jpg?v=1785777688&width=533",
+    alt: "Casque Troy Lee Designs GP Pro Pulse Black",
+    highlights: ["Coque légère", "Ventilation travaillée", "Graphismes inédits"],
+    price: "Sur devis",
+    targetPage: "equipements",
+    targetId: "tld",
   },
 ];
 
@@ -750,6 +897,70 @@ export const MT_HELMETS: Part[] = [
 /** Tous les équipements destinés au pilote (casques, tenues, bottes, gants). */
 export const GEAR_ITEMS: Part[] = [...TVS_ACCESSORIES, ...TLD, ...GAERNE, ...MT_HELMETS];
 
+/** Points de vente actuellement affichés ; contenu typé, remplaçable par l'API. */
+export const DEALERS: Dealer[] = [
+  {
+    key: "antananarivo",
+    city: "Antananarivo",
+    name: "Funbike Showroom",
+    kind: "Showroom principal",
+    address: "Ambodivona, Antananarivo",
+    hours: "Lun – Sam · 8h30 – 17h30",
+    phone: "+261 34 00 000 00",
+    email: "contact@funbike.mg",
+    desc: "Le point de départ de votre prochaine aventure. Retrouvez les motos, les équipements et notre atelier à la même adresse.",
+    assistantLabel: "Antananarivo (showroom principal, Ambodivona)",
+    lat: -18.8792,
+    lon: 47.5079,
+    services: ["Motos", "Essais", "Atelier", "Pièces"],
+  },
+  {
+    key: "toamasina",
+    city: "Toamasina",
+    name: "Funbike Est",
+    kind: "Point de vente",
+    address: "Boulevard Joffre, Toamasina",
+    hours: "Lun – Ven · 9h – 17h",
+    phone: "+261 34 11 111 11",
+    email: "est@funbike.mg",
+    desc: "Sur la côte est, une équipe à vos côtés pour choisir votre moto, vous équiper et assurer l'entretien courant.",
+    assistantLabel: "Toamasina (Funbike Est, boulevard Joffre)",
+    lat: -18.1492,
+    lon: 49.4023,
+    services: ["Motos", "Équipements", "Entretien"],
+  },
+  {
+    key: "mahajanga",
+    city: "Mahajanga",
+    name: "Funbike Nord-Ouest",
+    kind: "Point de vente",
+    address: "Avenue de France, Mahajanga",
+    hours: "Lun – Ven · 9h – 17h",
+    phone: "+261 34 22 222 22",
+    email: "ouest@funbike.mg",
+    desc: "Votre relais Funbike dans le nord-ouest pour les motos, les essais et les commandes de pièces.",
+    assistantLabel: "Mahajanga (Funbike Nord-Ouest, avenue de France)",
+    lat: -15.7167,
+    lon: 46.3167,
+    services: ["Motos", "Essais", "Pièces"],
+  },
+  {
+    key: "fianarantsoa",
+    city: "Fianarantsoa",
+    name: "Atelier Partenaire",
+    kind: "Atelier partenaire",
+    address: "Route nationale 7, Fianarantsoa",
+    hours: "Lun – Sam · 8h – 16h",
+    phone: "+261 34 33 333 33",
+    email: "sud@funbike.mg",
+    desc: "Sur la RN7, un atelier partenaire pour l'entretien, les réparations et le montage de pièces.",
+    assistantLabel: "Fianarantsoa (atelier partenaire, RN7)",
+    lat: -21.4527,
+    lon: 47.0857,
+    services: ["Atelier", "Pièces", "Entretien"],
+  },
+];
+
 /** Tous les accessoires (pièces + équipements), sans doublons, pour les fiches détail. */
 export const ALL_PARTS: Part[] = (() => {
   const seen = new Set<string>();
@@ -761,21 +972,6 @@ export function findPart(id?: string): Part | undefined {
   return ALL_PARTS.find((p) => p.id === id);
 }
 
-/** Libellé marque pour un accessoire. */
-export function partBrandLabel(part: Part): string {
-  if (part.kind === "tld") return "Troy Lee Designs";
-  if (part.kind === "gaerne") return "Gaerne";
-  if (part.kind === "mt") return "MT Helmets";
-  if (part.kind === "tvs") return "TVS";
-  if (part.compatibleBrand && part.compatibleBrand !== "Universal") return part.compatibleBrand;
-  return "Universel";
-}
-
-/** Famille d'usage : équipement pilote ou pièce moto. */
-export function partFamily(part: Part): "Équipement" | "Pièce détachée" {
-  return part.kind === "piece" ? "Pièce détachée" : "Équipement";
-}
-
 /* ------------------------------------------------------------------ */
-/*  Update Part type to support gaerne and mt kinds                    */
+/*  Mise à jour de Part : équipements Gaerne et MT Helmets inclus      */
 /* ------------------------------------------------------------------ */

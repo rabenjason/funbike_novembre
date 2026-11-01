@@ -1,4 +1,5 @@
 import { BIKES, TLD, TVS_PARTS, type Bike } from "../data";
+import { assistantCopy, content } from "../constants";
 import { runRecommender, isSpecificModelRequest, detectBrandText, type NeedProfile } from "./recommender";
 
 /* ------------------------------------------------------------------ */
@@ -74,10 +75,10 @@ const byId = (id: string) => BIKES.find((b) => b.id === id);
 /* ------------------------------------------------------------------ */
 
 export const SHOP = {
-  phone: "+261 34 00 000 00",
-  email: "contact@funbike.mg",
-  city: "Antananarivo",
-  hours: "du lundi au samedi, de 8h à 17h30",
+  phone: content.site.telephoneAffiche,
+  email: content.site.email,
+  city: content.site.ville,
+  hours: assistantCopy.shopStatus.hours,
 };
 
 /** Opening status computed in Madagascar time (UTC+3). */
@@ -108,13 +109,13 @@ export function shopStatus(now = new Date()): { open: boolean; text: string } {
 
   if (!sunday && minutes >= OPEN && minutes < CLOSE) {
     const left = CLOSE - minutes;
-    const soon = left <= 60 ? ` (fermeture dans ${left} min)` : " jusqu'à 17h30";
-    return { open: true, text: `Le showroom est **ouvert en ce moment**${soon}.` };
+    const soon = left <= 60 ? assistantCopy.shopStatus.closingSoon(left) : assistantCopy.shopStatus.openUntil;
+    return { open: true, text: assistantCopy.shopStatus.openNow(soon) };
   }
-  if (!sunday && minutes < OPEN) return { open: false, text: "Le showroom est fermé pour l'instant, il **ouvre aujourd'hui à 8h**." };
-  if (sunday) return { open: false, text: "Le showroom est fermé le dimanche, **réouverture lundi à 8h**." };
-  if (saturday) return { open: false, text: "Le showroom est fermé, **réouverture lundi à 8h**." };
-  return { open: false, text: "Le showroom est fermé, **réouverture demain à 8h**." };
+  if (!sunday && minutes < OPEN) return { open: false, text: assistantCopy.shopStatus.beforeOpening };
+  if (sunday) return { open: false, text: assistantCopy.shopStatus.closedSunday };
+  if (saturday) return { open: false, text: assistantCopy.shopStatus.closedSaturday };
+  return { open: false, text: assistantCopy.shopStatus.closedTomorrow };
 }
 
 /* ------------------------------------------------------------------ */
@@ -218,14 +219,14 @@ function specAnswer(bike: Bike, t: string): string | undefined {
   for (const key of SPEC_KEYS) {
     if (!hasAny(t, key.stems)) continue;
     const spec = bike.specs.find((s) => norm(s.label).includes(key.label));
-    if (spec) return `Sur la **${bike.name}**, ${spec.label.toLowerCase()} : **${spec.value}**.`;
-    return `Je n'ai pas cette information pour la **${bike.name}** dans ma fiche. L'équipe peut vous la confirmer.`;
+    if (spec) return assistantCopy.spec.answer(bike.name, spec.label, spec.value);
+    return assistantCopy.spec.unknown(bike.name);
   }
   return undefined;
 }
 
 function specList(bike: Bike): string {
-  return `Fiche **${bike.name}** :\n${bike.specs.map((s) => `• ${s.label} : ${s.value}`).join("\n")}`;
+  return `${assistantCopy.spec.listTitle(bike.name)}\n${bike.specs.map((s) => assistantCopy.spec.listItem(s.label, s.value)).join("\n")}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -254,9 +255,9 @@ const I = {
   catalog: ["moto", "catalogue", "gamme", "modele", "vous avez quoi", "vendez", "dispo", "stock", "nouveaute"],
 };
 
-const DEFAULT_QUICK = ["Quelle moto pour débuter ?", "Motos Sherco", "Horaires du showroom", "Pièces pour ma moto"];
+const DEFAULT_QUICK = [...assistantCopy.quick.defaults];
 
-const CONTACT_ACTION: ChatAction = { label: "Demander un devis", page: "contact", icon: "contact" };
+const CONTACT_ACTION: ChatAction = { label: assistantCopy.contact.askQuote, page: "contact", icon: "contact" };
 
 /* ------------------------------------------------------------------ */
 /*  Main entry                                                         */
@@ -264,12 +265,12 @@ const CONTACT_ACTION: ChatAction = { label: "Demander un devis", page: "contact"
 
 export function greetingText(name?: string): string {
   const hour = new Date().getHours();
-  const hello = hour >= 18 || hour < 5 ? "Bonsoir" : "Bonjour";
-  return `${hello}${name ? ` ${name}` : ""} ! Je suis **Piston**, le conseiller virtuel de Funbike.\nJe connais tout le catalogue : motos, pièces et équipements. Que recherchez-vous ?`;
+  const hello = hour >= 18 || hour < 5 ? assistantCopy.greeting.evening : assistantCopy.greeting.morning;
+  return assistantCopy.greeting.firstVisit(hello, name ? ` ${name}` : "");
 }
 
 export function initialQuick(): string[] {
-  return DEFAULT_QUICK;
+  return [...DEFAULT_QUICK];
 }
 
 function withBikes(reply: BotReply, bikes: Bike[], mem: Memory, max = 4): BotReply {
@@ -289,15 +290,15 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     return { reply, memory: mem };
   };
 
-  if (!t) return done({ text: "Je vous écoute ! Posez-moi votre question.", quick: DEFAULT_QUICK });
+  if (!t) return done({ text: assistantCopy.emptyInput, quick: [...DEFAULT_QUICK] });
 
   /* --- Name ---------------------------------------------------------- */
   const nameMatch = raw.match(/(?:je m'?\s?appelle|mon (?:nom|prénom|prenom) (?:est|c'est)|moi c'?\s?est)\s+([A-Za-zÀ-ÿ-]{2,20})/i);
   if (nameMatch) {
     mem.name = capitalize(nameMatch[1]);
     return done({
-      text: `Enchanté ${mem.name} ! Dites-moi ce que vous cherchez : une moto, une pièce ou un équipement ?`,
-      quick: ["Une moto", "Une pièce", "Un casque"],
+      text: assistantCopy.nameResponse(mem.name),
+      quick: [...assistantCopy.quick.name],
     });
   }
 
@@ -306,20 +307,20 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     const malagasy = hasAny(t, ["salama", "manao ahoana"]);
     return done({
       text: malagasy
-        ? `Salama${you} ! Tongasoa eto amin'ny Funbike. Je peux vous aider en français : quelle moto vous intéresse ?`
-        : `${pick(["Bonjour", "Hello", "Ravi de vous lire"])}${you} ! Comment puis-je vous aider aujourd'hui ?`,
-      quick: DEFAULT_QUICK,
+        ? assistantCopy.greeting.malagasy(you)
+        : assistantCopy.greeting.friendly(pick([...assistantCopy.greeting.options]), you),
+      quick: [...DEFAULT_QUICK],
     });
   }
-  if (hasAny(t, I.bye)) return done({ text: `Merci de votre visite${you} ! À très bientôt chez Funbike, et bonne route.` });
+  if (hasAny(t, I.bye)) return done({ text: assistantCopy.goodbye(you) });
   if ((hasAny(t, I.thanks) && ws.length <= 5) || (hasAny(t, I.thanksShort) && ws.length <= 2))
-    return done({ text: pick([`Avec plaisir${you} !`, "Je vous en prie !", "Toujours là pour aider !"]) + " Autre chose ?", quick: DEFAULT_QUICK });
+    return done({ text: pick(assistantCopy.thanks.options(you)) + assistantCopy.thanks.followUp, quick: [...DEFAULT_QUICK] });
 
   /* --- Human / contact ---------------------------------------------- */
   if (hasAny(t, I.human)) {
     return done({
-      text: `Bien sûr, l'équipe est joignable directement :\n• Téléphone : **${SHOP.phone}**\n• Email : **${SHOP.email}**\n${shopStatus().text}`,
-      actions: [{ label: "Écrire à l'équipe", page: "contact", icon: "contact" }],
+      text: assistantCopy.contact.team(SHOP.phone, SHOP.email, shopStatus().text),
+      actions: [{ label: assistantCopy.contact.writeTeam, page: "contact", icon: "contact" }],
     });
   }
 
@@ -339,37 +340,31 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     };
     const hitKey = Object.keys(cityHit).find((c) => hasAny(t, [c]));
     const hit = hitKey ? cityHit[hitKey] : undefined;
-    const names: Record<string, string> = {
-      antananarivo: "Antananarivo (showroom principal, Ambodivona)",
-      toamasina: "Toamasina (Funbike Est, boulevard Joffre)",
-      mahajanga: "Mahajanga (Funbike Nord-Ouest, avenue de France)",
-      fianarantsoa: "Fianarantsoa (atelier partenaire, RN7)",
-    };
     return done({
       text: hit
-        ? `Oui, retrouvez-nous à **${names[hit]}** ! Voici la carte, les horaires et les contacts du point de vente.`
-        : `Nous avons **4 points de vente** à Madagascar : **Antananarivo** (showroom principal), **Toamasina**, **Mahajanga** et **Fianarantsoa**. Voici la carte et toutes les adresses.`,
+        ? assistantCopy.dealers.selected(assistantCopy.dealers.locations[hit as keyof typeof assistantCopy.dealers.locations])
+        : assistantCopy.dealers.overview(Object.keys(assistantCopy.dealers.locations).length, assistantCopy.dealers.overviewLocations),
       actions: [
         {
-          label: "Voir nos revendeurs",
+          label: assistantCopy.dealers.seeDealers,
           page: "revendeurs",
           ...(hit ? { id: hit } : {}),
           icon: "contact",
         },
       ],
-      quick: ["Horaires du showroom", "Réserver un essai"],
+      quick: [...assistantCopy.quick.showroom],
     });
   }
 
   /* --- Hours & location -------------------------------------------- */
   if (hasAny(t, I.hours)) {
     return done({
-      text: `Showroom & atelier Funbike à **${SHOP.city}**, ${SHOP.hours}.\n${shopStatus().text}`,
+      text: assistantCopy.showroom.hours(SHOP.city, SHOP.hours, shopStatus().text),
       actions: [
-        { label: "Tous nos revendeurs", page: "revendeurs", icon: "contact" },
-        { label: "Nous contacter", page: "contact", icon: "contact" },
+        { label: assistantCopy.dealers.allDealers, page: "revendeurs", icon: "contact" },
+        { label: assistantCopy.dealers.contactUs, page: "contact", icon: "contact" },
       ],
-      quick: ["Réserver un essai", "Motos disponibles"],
+      quick: [...assistantCopy.quick.showroomAndBikes],
     });
   }
 
@@ -414,21 +409,25 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (hasAny(t, I.price)) {
     if (hasAny(t, I.gear) && hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
-        text: "Pour les **casques, blousons et gants TVS**, le prix et la disponibilité à Madagascar sont à confirmer auprès de Funbike. Vous pouvez consulter les références puis demander un devis pour celle qui vous intéresse.",
-        actions: [{ label: "Équipements TVS", page: "equipements", id: "tvs", icon: "gear" }],
+        text: assistantCopy.price.gearTvs,
+        actions: [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: "tvs", icon: "gear" }],
       });
     }
-    const text = target
-      ? `Le prix de la **${target.name}** est communiqué **sur devis** : il dépend de la finition, des options et du stock du moment. Je vous prépare la demande ?`
-      : "Nos prix sont communiqués **sur devis**, selon le modèle, la finition et le stock. Dites-moi quel modèle vous intéresse et je vous oriente.";
-    const reply: BotReply = { text, actions: [CONTACT_ACTION], quick: target ? ["Voir la fiche", "Réserver un essai"] : ["Motos Sherco", "Motos TVS"] };
+    const text = target ? assistantCopy.price.forBike(target.name) : assistantCopy.price.general;
+    const reply: BotReply = {
+      text,
+      actions: [CONTACT_ACTION],
+      quick: target
+        ? [assistantCopy.price.seeSheet, assistantCopy.price.reserveTest]
+        : [assistantCopy.price.bikesSherco, assistantCopy.price.bikesTvs],
+    };
     return done(target ? withBikes(reply, [target], mem, 1) : reply);
   }
 
   /* --- Financing ----------------------------------------------------- */
   if (hasAny(t, I.credit)) {
     return done({
-      text: "Les modalités de paiement se discutent directement avec l'équipe commerciale, selon le modèle choisi. Envoyez une demande et on vous répond avec les options possibles.",
+      text: assistantCopy.financing,
       actions: [CONTACT_ACTION],
     });
   }
@@ -436,17 +435,17 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   /* --- Test ride ----------------------------------------------------- */
   if (hasAny(t, I.test)) {
     return done({
-      text: `Excellente idée${you} ! Les essais se réservent auprès du showroom${target ? ` pour la **${target.name}**` : ""}. Laissez vos coordonnées, l'équipe vous rappelle pour fixer un créneau.\n${shopStatus().text}`,
-      actions: [{ label: "Réserver un essai", page: "contact", icon: "contact" }],
+      text: assistantCopy.testRide(you, target?.name ?? "", shopStatus().text),
+      actions: [{ label: assistantCopy.showroom.reserveTest, page: "contact", icon: "contact" }],
     });
   }
 
   /* --- Workshop ------------------------------------------------------ */
   if (hasAny(t, I.service)) {
     return done({
-      text: `Notre atelier s'occupe de l'entretien, des révisions et des réparations${target ? `, y compris sur la **${target.name}**` : ""}. Indiquez le modèle et l'année de votre moto pour un diagnostic rapide.`,
-      actions: [{ label: "Contacter l'atelier", page: "contact", icon: "contact" }],
-      quick: ["Pièces pour ma moto", "Horaires du showroom"],
+      text: assistantCopy.workshop(target?.name ?? ""),
+      actions: [{ label: assistantCopy.contact.contactWorkshop, page: "contact", icon: "contact" }],
+      quick: [...assistantCopy.quick.workshop],
     });
   }
 
@@ -461,18 +460,18 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
       const [a, b] = pool;
       mem.lastIds = [a.id, b.id];
       return done({
-        text: `Voici la comparaison **${a.name}** vs **${b.name}** :`,
+        text: assistantCopy.compare.title(a.name, b.name),
         compare: [a.id, b.id],
-        quick: [`Fiche ${a.name.split(" ").slice(0, 3).join(" ")}`, "Laquelle pour débuter ?"],
+        quick: [assistantCopy.compare.firstSheet(a.name.split(" ").slice(0, 3).join(" ")), assistantCopy.compare.beginner],
       });
     }
-    return done({ text: "Dites-moi les deux modèles à comparer, par exemple : « compare la SEF 250 et la SEF 300 ».", quick: ["Compare SEF 250 et SEF 300"] });
+    return done({ text: assistantCopy.compare.askModels, quick: [assistantCopy.compare.example] });
   }
 
   /* --- Spec follow-up ------------------------------------------------ */
   if (hasAny(t, I.specs) && target) {
     const answer = specAnswer(target, t) ?? specList(target);
-    return done(withBikes({ text: answer, quick: ["Prix de ce modèle", "Réserver un essai", "Comparer"] }, [target], mem, 1));
+    return done(withBikes({ text: answer, quick: [...assistantCopy.quick.spec] }, [target], mem, 1));
   }
 
   /* --- Open a product ------------------------------------------------ */
@@ -480,8 +479,8 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     return done(
       withBikes(
         {
-          text: `Voici la **${target.name}**. Touchez la carte pour ouvrir la fiche complète.`,
-          actions: [{ label: "Ouvrir la fiche", page: "product", id: target.id, icon: "product" }],
+          text: assistantCopy.openProduct(target.name),
+          actions: [{ label: assistantCopy.contact.openSheet, page: "product", id: target.id, icon: "product" }],
         },
         [target],
         mem,
@@ -493,10 +492,10 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   /* --- Sizing -------------------------------------------------------- */
   if (hasAny(t, I.size)) {
     return done({
-      text: "Pour un **casque** : mesurez votre tour de tête avec un mètre ruban, environ 2 cm au-dessus des sourcils. Le casque doit serrer uniformément, sans point de pression.\nPour des **bottes** : partez de votre pointure habituelle.\nLe plus sûr reste l'essayage au showroom, l'équipe vous guide.",
+      text: assistantCopy.sizing,
       actions: [
-        { label: "Casques Troy Lee", page: "equipements", id: "tld", icon: "gear" },
-        { label: "Bottes Gaerne", page: "equipements", id: "gaerne", icon: "gear" },
+        { label: assistantCopy.gear.seeTroyLee, page: "equipements", id: "tld", icon: "gear" },
+        { label: assistantCopy.gear.seeGaerneBoots, page: "equipements", id: "gaerne", icon: "gear" },
       ],
     });
   }
@@ -505,22 +504,20 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (hasAny(t, I.gear)) {
     if (hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
-        text: "TVS propose aussi des **casques, blousons et gants** pour les pilotes. Retrouvez les références officielles dans la gamme TVS ; tailles, prix et disponibilité chez Funbike sont à confirmer.",
-        actions: [{ label: "Voir les équipements TVS", page: "equipements", id: "tvs", icon: "gear" }],
-        quick: ["Un casque TVS", "Un blouson TVS", "Prix des équipements TVS"],
+        text: assistantCopy.gear.tvs,
+        actions: [{ label: assistantCopy.gear.seeTvsGear, page: "equipements", id: "tvs", icon: "gear" }],
+        quick: [...assistantCopy.quick.gear],
       });
     }
     const boots = hasAny(t, ["botte", "gaerne", "chaussure"]);
     const mt = hasAny(t, ["mt helmet", "mt$"]);
     return done({
-      text: boots
-        ? "Pour les bottes, nous travaillons avec **Gaerne** (tout-terrain et route). Donnez votre pointure et votre pratique, l'équipe vérifie la disponibilité."
-        : `Côté équipement pilote : **${TLD.length} références Troy Lee Designs**, des casques **MT Helmets**, des bottes **Gaerne** et des **casques, blousons et gants TVS**.`,
+      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(TLD.length),
       actions: [
-        { label: boots ? "Voir Gaerne" : mt ? "Voir MT Helmets" : "Casques Troy Lee", page: "equipements", id: boots ? "gaerne" : mt ? "mt" : "tld", icon: "gear" },
-        ...(boots ? [] : [{ label: "Équipements TVS", page: "equipements", id: "tvs", icon: "gear" as const }]),
+        { label: boots ? assistantCopy.gear.seeGaerne : mt ? assistantCopy.gear.seeMt : assistantCopy.gear.seeTroyLee, page: "equipements", id: boots ? "gaerne" : mt ? "mt" : "tld", icon: "gear" },
+        ...(boots ? [] : [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: "tvs", icon: "gear" as const }]),
       ],
-      quick: ["Quelle taille choisir ?", "Pièces pour ma moto"],
+      quick: [...assistantCopy.quick.gearSizing],
     });
   }
 
@@ -529,15 +526,15 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     const requestedBrand = detectBrandText(t);
     if (requestedBrand === "TVS") {
       return done({
-        text: `La sélection **pièces détachées TVS** comprend notamment des pneus, kits chaîne, plaquettes et disques de frein, filtres, câbles et kits d’entretien (${TVS_PARTS.length} références simulées). Indiquez le modèle et l’année pour confirmer les dimensions et la compatibilité.`,
-        actions: [{ label: "Voir les pièces TVS", page: "spares", id: "spare-tvs", icon: "parts" }],
-        quick: ["Pneu TVS", "Kit chaîne TVS", "Freinage TVS"],
+        text: assistantCopy.parts.tvs(TVS_PARTS.length),
+        actions: [{ label: assistantCopy.parts.seeTvs, page: "spares", id: "spare-tvs", icon: "parts" }],
+        quick: [...assistantCopy.quick.partsTvs],
       });
     }
     return done({
-      text: `Nous proposons des **pièces détachées moto** : pneus, kits chaîne, freinage Galfer, filtration, pièces mécaniques et consommables${target ? ` compatibles avec la **${target.name}**` : ""}. Précisez le modèle et l'année de votre moto pour vérifier la compatibilité et la disponibilité.`,
-        actions: [{ label: "Voir les pièces", page: "spares", icon: "parts" }],
-      quick: ["Plaquettes de frein", "Kit chaîne", "Contacter l'atelier"],
+      text: assistantCopy.parts.general(target?.name ?? ""),
+      actions: [{ label: assistantCopy.parts.seeParts, page: "spares", icon: "parts" }],
+      quick: [...assistantCopy.quick.parts],
     });
   }
 
@@ -545,13 +542,13 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (found.length) {
     const brand = detectBrand(t);
     const family = detectFamily(t);
-    const label = brand ? `les motos **${brand}**` : family ? `la gamme **${family}**` : "ce que j'ai trouvé";
+    const label = brand ? assistantCopy.search.brand(brand) : family ? assistantCopy.search.family(family) : assistantCopy.search.found;
     return done(
       withBikes(
         {
-          text: `Voici ${label} (${Math.min(found.length, 4)} sur ${found.length}) :`,
-          quick: ["Comparer les deux premières", "Laquelle pour débuter ?", "Prix"],
-          actions: [{ label: "Tout le catalogue", page: "motos", icon: "catalog" }],
+          text: assistantCopy.search.resultTitle(label, Math.min(found.length, 4), found.length),
+          quick: [...assistantCopy.quick.search],
+          actions: [{ label: assistantCopy.search.seeCatalog, page: "motos", icon: "catalog" }],
         },
         found,
         mem,
@@ -563,9 +560,9 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (hasAny(t, I.catalog)) {
     const count = (f: Bike["family"]) => BIKES.filter((b) => b.family === f).length;
     return done({
-      text: `Notre catalogue compte **${BIKES.length} véhicules** :\n• ${count("Off-road")} motos off-road (Sherco, Fantic)\n• ${count("Urbain")} motos urbaines (TVS)\n• ${count("3 roues")} tuktuk 3 roues\nQuelle famille vous intéresse ?`,
-      quick: ["Enduro / off-road", "Motos TVS", "Tuktuk 3 roues"],
-      actions: [{ label: "Voir le catalogue", page: "motos", icon: "catalog" }],
+      text: assistantCopy.catalog.overview(BIKES.length, count("Off-road"), count("Urbain"), count("3 roues")),
+      quick: [...assistantCopy.quick.catalog],
+      actions: [{ label: assistantCopy.catalog.seeCatalog, page: "motos", icon: "catalog" }],
     });
   }
 
@@ -574,17 +571,17 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (mem.misses >= 2) {
     return {
       reply: {
-        text: `Je préfère ne pas vous répondre au hasard${you}. Un conseiller Funbike pourra vous aider précisément : **${SHOP.phone}**.`,
-        actions: [{ label: "Contacter un conseiller", page: "contact", icon: "phone" }],
-        quick: DEFAULT_QUICK,
+        text: assistantCopy.fallback.counselor(you, SHOP.phone),
+        actions: [{ label: assistantCopy.contact.contactCounselor, page: "contact", icon: "phone" }],
+        quick: [...DEFAULT_QUICK],
       },
       memory: mem,
     };
   }
   return {
     reply: {
-      text: "Je n'ai pas bien saisi. Vous pouvez me demander par exemple une moto (« enduro 250 »), une pièce, un casque, les horaires ou un devis.",
-      quick: DEFAULT_QUICK,
+      text: assistantCopy.fallback.unclear,
+      quick: [...DEFAULT_QUICK],
     },
     memory: mem,
   };

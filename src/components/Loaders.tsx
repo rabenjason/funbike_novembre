@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { LOGO } from "../data";
+import { content } from "../constants";
 
 /** Short branded splash shown while the first hero image preloads. */
 export function SplashLoader({ show }: { show: boolean }) {
@@ -13,12 +14,12 @@ export function SplashLoader({ show }: { show: boolean }) {
           transition={{ duration: 0.35, ease: "easeOut" }}
           className="fixed inset-0 z-[100] grid place-items-center bg-white dark:bg-[#141513]"
           role="status"
-          aria-label="Chargement du site"
+          aria-label={content.messages.chargementSite}
         >
           <div className="flex flex-col items-center gap-5">
             <motion.img
               src={LOGO}
-              alt="Funbike Madagascar"
+              alt={content.site.logoAlt}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -33,7 +34,7 @@ export function SplashLoader({ show }: { show: boolean }) {
               />
             </div>
             <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-black/40 dark:text-white/40">
-              Mise en route
+              {content.messages.miseEnRoute}
             </p>
           </div>
         </motion.div>

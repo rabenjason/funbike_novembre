@@ -1,34 +1,7 @@
 import { motion, type Variants } from "framer-motion";
+import type { ExclusiveBrand } from "../types";
+import { content } from "../constants";
 import SmartImage from "./SmartImage";
-import { content } from "../constants/content";
-
-export type ExclusiveBrand = {
-  key: string;
-  name: string;
-  tagline: string;
-  image: string;
-};
-
-export const EXCLUSIVE_BRANDS: ExclusiveBrand[] = [
-  {
-    key: "tvs",
-    name: "TVS",
-    tagline: "Robustesse garantie",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/tvs-logo.png",
-  },
-  {
-    key: "fantic",
-    name: "Fantic",
-    tagline: "Performance italienne",
-    image: "https://funbike.mg/wp-content/themes/funbike/images/fantic.png",
-  },
-  {
-    key: "sherco",
-    name: "Sherco",
-    tagline: "ADN Compétition",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/sherco.png",
-  },
-];
 
 const list: Variants = {
   hidden: {},
@@ -40,7 +13,13 @@ const item: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
 
-export default function BrandExclusif({ go }: { go: (p: string, id?: string) => void }) {
+export default function BrandExclusif({
+  go,
+  brands,
+}: {
+  go: (p: string, id?: string) => void;
+  brands: ExclusiveBrand[];
+}) {
   return (
     <section className="py-10 sm:py-12 lg:py-14">
       <div className="mx-auto w-full max-w-(--container-site) px-4 sm:px-7 lg:px-10">
@@ -69,7 +48,7 @@ export default function BrandExclusif({ go }: { go: (p: string, id?: string) => 
             viewport={{ once: true, amount: 0.15 }}
             className="grid grid-cols-3 gap-2.5 sm:gap-5"
           >
-            {EXCLUSIVE_BRANDS.map((brand) => (
+            {brands.map((brand) => (
               <motion.button
                 key={brand.key}
                 variants={item}

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { content } from "../constants";
 
 type Props = {
   id: string;
@@ -18,12 +19,12 @@ export default function Pagination({ id, page, total, onChange }: Props) {
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={content.boutons.pagination}
       className="mt-10 flex items-center justify-between gap-3 border-t border-black/15 pt-4 dark:border-white/15"
     >
       <button onClick={() => onChange(page - 1)} disabled={page === 1} className={arrow}>
         <FontAwesomeIcon icon={faArrowLeft} />
-        <span className="hidden sm:inline">Précédent</span>
+        <span className="hidden sm:inline">{content.boutons.precedent}</span>
       </button>
 
       <div className="flex items-center gap-1">
@@ -33,7 +34,7 @@ export default function Pagination({ id, page, total, onChange }: Props) {
             <button
               key={n}
               onClick={() => onChange(n)}
-              aria-label={`Page ${n}`}
+              aria-label={`${content.boutons.page} ${n}`}
               aria-current={active ? "page" : undefined}
               className={
                 "relative grid h-11 w-11 place-items-center font-display text-xs font-semibold transition " +
@@ -54,7 +55,7 @@ export default function Pagination({ id, page, total, onChange }: Props) {
       </div>
 
       <button onClick={() => onChange(page + 1)} disabled={page === total} className={arrow}>
-        <span className="hidden sm:inline">Suivant</span>
+        <span className="hidden sm:inline">{content.boutons.suivant}</span>
         <FontAwesomeIcon icon={faArrowRight} />
       </button>
     </nav>

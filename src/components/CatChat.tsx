@@ -20,6 +20,7 @@ import {
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { BIKES, type Bike } from "../data";
+import { content } from "../constants";
 import SmartImage from "./SmartImage";
 import {
   EMPTY_MEMORY,
@@ -280,11 +281,11 @@ function ProductStrip({
                 </p>
                 {hasReasons && reasons?.[bike.id] && (
                   <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-black/55 dark:text-white/55">
-                    <span className="font-semibold text-black/75 dark:text-white/75">Pourquoi&nbsp;:</span> {reasons[bike.id]}.
+                    <span className="font-semibold text-black/75 dark:text-white/75">{content.chat.pourquoiLabel}&nbsp;:</span> {reasons[bike.id]}.
                   </p>
                 )}
                 <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-black/60 transition group-hover:text-black dark:text-white/60 dark:group-hover:text-white">
-                  Voir la fiche <FontAwesomeIcon icon={faArrowRight} className="text-[9px]" />
+                  {content.chat.voirFiche} <FontAwesomeIcon icon={faArrowRight} className="text-[9px]" />
                 </span>
               </div>
             </motion.button>
@@ -296,7 +297,7 @@ function ProductStrip({
           <>
             <button
               type="button"
-              aria-label="Moto précédente"
+              aria-label={content.chat.motoPrecedente}
               onClick={() => scrollToIndex(Math.max(0, index - 1))}
               disabled={index === 0}
               className="absolute -left-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-black/10 bg-white/95 text-[11px] text-[#171816] shadow-md backdrop-blur transition hover:bg-white disabled:pointer-events-none disabled:opacity-0 dark:border-white/10 dark:bg-[#1c1d19]/95 dark:text-white"
@@ -305,7 +306,7 @@ function ProductStrip({
             </button>
             <button
               type="button"
-              aria-label="Moto suivante"
+              aria-label={content.chat.motoSuivante}
               onClick={() => scrollToIndex(Math.min(bikes.length - 1, index + 1))}
               disabled={index === bikes.length - 1}
               className="absolute -right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-black/10 bg-white/95 text-[11px] text-[#171816] shadow-md backdrop-blur transition hover:bg-white disabled:pointer-events-none disabled:opacity-0 dark:border-white/10 dark:bg-[#1c1d19]/95 dark:text-white"
@@ -324,7 +325,7 @@ function ProductStrip({
               key={bike.id}
               type="button"
               onClick={() => scrollToIndex(i)}
-              aria-label={`Voir ${bike.name}`}
+              aria-label={`${content.chat.voirMoto} ${bike.name}`}
               className={
                 "h-1.5 rounded-full transition-all " +
                 (i === index ? "w-5 bg-[#ffd100]" : "w-1.5 bg-black/20 dark:bg-white/25")
@@ -351,7 +352,7 @@ function CompareTable({ ids }: { ids: [string, string] }) {
     <div className="no-scrollbar mt-2 overflow-x-auto rounded-xl border border-black/10 text-[12px] dark:border-white/10">
       <div className="min-w-[24rem]">
       <div className="grid grid-cols-[0.9fr_1fr_1fr] bg-black/[0.04] font-semibold dark:bg-white/[0.05]">
-        <span className="px-2.5 py-2 text-black/45 dark:text-white/45">Critère</span>
+        <span className="px-2.5 py-2 text-black/45 dark:text-white/45">{content.chat.critere}</span>
         <span className="min-w-0 break-words px-2.5 py-2">{short(a)}</span>
         <span className="min-w-0 break-words px-2.5 py-2">{short(b)}</span>
       </div>
@@ -529,7 +530,7 @@ export default function CatChat({
   }
 
   const status = shopStatus();
-  const statusText = typing ? "écrit…" : status.open ? "En ligne · répond instantanément" : "En ligne · équipe disponible dès 8h";
+  const statusText = typing ? content.chat.ecrit : status.open ? content.chat.enLigne : content.chat.enLigneEquipe;
 
   const panelMotion = isMobile
     ? {
@@ -554,7 +555,7 @@ export default function CatChat({
             key="chat-panel"
             role="dialog"
             aria-modal={isMobile}
-            aria-label="Discussion avec Piston, conseiller Funbike"
+            aria-label={content.chat.ariaDiscussion}
             {...panelMotion}
             style={{ transformOrigin: "bottom right" }}
             className="fixed inset-0 z-[70] flex h-[100dvh] flex-col overflow-hidden bg-white text-[#171816] dark:bg-[#161714] dark:text-[#f2f0ea] sm:inset-auto sm:bottom-[92px] sm:right-6 sm:h-[min(620px,calc(100dvh-116px))] sm:w-[380px] sm:rounded-2xl sm:border sm:border-black/10 sm:shadow-[0_24px_70px_-12px_rgba(0,0,0,0.35)] lg:h-[min(660px,calc(100dvh-116px))] lg:w-[400px] dark:border-white/10"
@@ -565,7 +566,7 @@ export default function CatChat({
               style={isMobile ? { paddingTop: "max(0.5rem, env(safe-area-inset-top))" } : undefined}
             >
               {isMobile && (
-                <IconButton label="Réduire la discussion" onClick={() => setOpen(false)}>
+                <IconButton label={content.chat.reduireDiscussion} onClick={() => setOpen(false)}>
                   <FontAwesomeIcon icon={faChevronDown} />
                 </IconButton>
               )}
@@ -575,9 +576,9 @@ export default function CatChat({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 text-[15px] font-semibold leading-tight">
-                  Piston
+                  {content.chat.nom}
                   <span className="rounded-full bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black/55 dark:bg-white/10 dark:text-white/60">
-                    Funbike
+                    {content.chat.badge}
                   </span>
                 </p>
                 <AnimatePresence mode="wait" initial={false}>
@@ -593,11 +594,11 @@ export default function CatChat({
                   </motion.p>
                 </AnimatePresence>
               </div>
-              <IconButton label="Nouvelle conversation" onClick={reset}>
+              <IconButton label={content.chat.nouvelleConversation} onClick={reset}>
                 <FontAwesomeIcon icon={faRotateLeft} />
               </IconButton>
               {!isMobile && (
-                <IconButton label="Fermer la discussion" onClick={() => setOpen(false)}>
+                <IconButton label={content.chat.fermerDiscussion} onClick={() => setOpen(false)}>
                   <FontAwesomeIcon icon={faXmark} />
                 </IconButton>
               )}
@@ -611,7 +612,7 @@ export default function CatChat({
             >
               <div className="mb-4 flex items-center gap-3 text-[11px] font-medium text-black/35 dark:text-white/35">
                 <span className="h-px flex-1 bg-black/[0.07] dark:bg-white/[0.07]" />
-                Aujourd'hui
+                {content.chat.aujourdHui}
                 <span className="h-px flex-1 bg-black/[0.07] dark:bg-white/[0.07]" />
               </div>
 
@@ -676,7 +677,7 @@ export default function CatChat({
                               <FontAwesomeIcon
                                 icon={m.seen ? faCheckDouble : faCheck}
                                 className={"text-[10px] " + (m.seen ? "text-emerald-500" : "")}
-                                aria-label={m.seen ? "Lu" : "Envoyé"}
+                                aria-label={m.seen ? content.chat.lu : content.chat.envoye}
                               />
                             )}
                           </span>
@@ -694,7 +695,7 @@ export default function CatChat({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
                       className="flex items-end gap-2 pb-2.5"
-                      aria-label="Piston est en train d'écrire"
+                      aria-label={content.chat.assistantEcrit}
                     >
                       <Avatar />
                       <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-black/[0.05] bg-white px-4 py-3.5 dark:border-white/[0.05] dark:bg-[#232420]">
@@ -751,7 +752,7 @@ export default function CatChat({
               style={{ paddingBottom: isMobile ? "max(0.625rem, env(safe-area-inset-bottom))" : "0.625rem" }}
             >
               <label className="flex min-h-11 flex-1 items-end rounded-[22px] border border-black/10 bg-[#f4f4f1] px-4 outline-none transition focus-within:border-black/30 focus-within:bg-white dark:border-white/10 dark:bg-[#22231f] dark:focus-within:border-white/30 dark:focus-within:bg-[#262722]">
-                <span className="sr-only">Votre message</span>
+                <span className="sr-only">{content.chat.votreMessage}</span>
                 <textarea
                   ref={inputRef}
                   rows={1}
@@ -761,7 +762,7 @@ export default function CatChat({
                     autoSize();
                   }}
                   onKeyDown={onKeyDown}
-                  placeholder="Écrivez votre message…"
+                  placeholder={content.chat.placeholder}
                   enterKeyHint="send"
                   className="chat-composer max-h-[120px] w-full resize-none border-0 bg-transparent py-[10px] text-base leading-6 text-[#171816] outline-none ring-0 placeholder:text-black/40 focus:border-0 focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:outline-none dark:text-[#f2f0ea] dark:placeholder:text-white/40 sm:text-[14px]"
                 />
@@ -770,7 +771,7 @@ export default function CatChat({
                 type="submit"
                 disabled={!input.trim()}
                 whileTap={{ scale: 0.9 }}
-                aria-label="Envoyer le message"
+                aria-label={content.chat.envoyer}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#171816] text-[15px] text-white transition disabled:opacity-30 dark:bg-[#ffd100] dark:text-[#171816]"
               >
                 <FontAwesomeIcon icon={faArrowUp} />
@@ -780,7 +781,7 @@ export default function CatChat({
               className="bg-white px-4 pb-2 text-center text-[10px] text-black/35 dark:bg-[#161714] dark:text-white/35"
               style={isMobile ? { paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" } : undefined}
             >
-              Assistant automatique · prix et disponibilités confirmés par l'équipe
+              {content.chat.note}
             </p>
           </motion.section>
         )}
@@ -804,13 +805,13 @@ export default function CatChat({
               className="relative flex max-w-[15rem] items-start gap-2 rounded-2xl rounded-br-md border border-black/10 bg-white py-2.5 pl-3.5 pr-2 text-[13px] leading-snug text-[#171816] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.25)] dark:border-white/10 dark:bg-[#1c1d1a] dark:text-[#f2f0ea]"
             >
               <button type="button" onClick={() => setOpen(true)} className="text-left">
-                <span className="block font-semibold">Piston, conseiller Funbike</span>
-                <span className="text-black/60 dark:text-white/60">Une question sur une moto ? Je réponds tout de suite.</span>
+                <span className="block font-semibold">{content.chat.teaserTitre}</span>
+                <span className="text-black/60 dark:text-white/60">{content.chat.teaserTexte}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTeaser(false)}
-                aria-label="Masquer le message"
+                aria-label={content.chat.masquerMessage}
                 className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] text-black/40 hover:bg-black/5 hover:text-black dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <FontAwesomeIcon icon={faXmark} />
@@ -822,7 +823,7 @@ export default function CatChat({
         <motion.button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Fermer la discussion" : unread ? `Ouvrir la discussion, ${unread} message non lu` : "Ouvrir la discussion"}
+          aria-label={open ? content.chat.fermerChat : unread ? content.chat.ouvrirAvecMessageNonLu(unread) : content.chat.ouvrirDiscussion}
           aria-expanded={open}
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.92 }}

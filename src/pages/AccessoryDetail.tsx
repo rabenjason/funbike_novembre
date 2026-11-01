@@ -8,11 +8,13 @@ import {
   faMagnifyingGlassPlus,
   faPhone,
 } from "@fortawesome/free-solid-svg-icons";
-import { ALL_PARTS, findPart, partBrandLabel, partFamily, type Part } from "../data";
+import { ALL_PARTS, findPart, type Part } from "../data";
+import { partBrandLabel, partFamily } from "../utils/catalogLabels";
 import { Section, type Route } from "../components/Layout";
 import { PartCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";
 import ImageZoomViewer from "../components/ImageZoomViewer";
+import { content } from "../constants";
 
 type Props = {
   id?: string;
@@ -24,30 +26,35 @@ type Props = {
 
 function autoDesc(part: Part): string {
   if (part.desc) return part.desc;
+  const copy = content.accessoires.fiche;
   const brand = partBrandLabel(part);
   if (part.kind === "piece") {
-    const compat = part.compatibleBrand && part.compatibleBrand !== "Universal" ? ` compatible ${part.compatibleBrand}` : "";
+    const compatible = part.compatibleBrand && part.compatibleBrand !== "Universal";
     const type = part.partType ? ` — ${part.partType.toLowerCase()}` : "";
-    return `Pièce détachée${compat}${type} proposée par Funbike. Compatibilité exacte et disponibilité à confirmer avec le modèle et l'année de votre moto.`;
+    const title = compatible
+      ? `${copy.pieceCompatiblePrefix} ${part.compatibleBrand}${type}`
+      : `${copy.piecePrefix}${type}`;
+    return `${title}${copy.pieceGeneriqueSuffix}`;
   }
-  const cat = part.category ? ` — ${part.category.toLowerCase()}` : "";
-  return `Équipement pilote ${brand}${cat} proposé par Funbike. Taille, coloris et disponibilité à confirmer avec l'équipe.`;
+  const category = part.category ? ` — ${part.category.toLowerCase()}` : "";
+  return `${copy.equipementPrefix} ${brand}${category}${copy.equipementSuffix}`;
 }
 
 function autoSpecs(part: Part): { label: string; value: string }[] {
   if (part.specs && part.specs.length) return part.specs.slice(0, 5);
-  const specs: { label: string; value: string }[] = [{ label: "Marque", value: partBrandLabel(part) }];
+  const copy = content.accessoires.fiche;
+  const specs: { label: string; value: string }[] = [{ label: copy.marque, value: partBrandLabel(part) }];
   if (part.kind === "piece") {
-    if (part.partType) specs.push({ label: "Type", value: part.partType });
+    if (part.partType) specs.push({ label: copy.type, value: part.partType });
     specs.push({
-      label: "Compatibilité",
-      value: part.compatibleBrand && part.compatibleBrand !== "Universal" ? part.compatibleBrand : "Toutes motos",
+      label: copy.compatibilite,
+      value: part.compatibleBrand && part.compatibleBrand !== "Universal" ? part.compatibleBrand : copy.toutesMotos,
     });
   } else {
-    if (part.category) specs.push({ label: "Catégorie", value: part.category });
-    specs.push({ label: "Usage", value: "Pilote" });
+    if (part.category) specs.push({ label: copy.categorie, value: part.category });
+    specs.push({ label: copy.usage, value: copy.usagePilote });
   }
-  specs.push({ label: "Référence", value: part.id });
+  specs.push({ label: copy.reference, value: part.id });
   return specs.slice(0, 5);
 }
 
@@ -76,7 +83,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
           className="inline-flex min-h-11 max-w-full items-center gap-2 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-black/50 transition hover:text-[#98741b] sm:tracking-[0.14em] dark:text-white/50 dark:hover:text-[#ffd100]"
         >
           <FontAwesomeIcon icon={faArrowLeft} className="shrink-0" />
-          <span className="truncate">Retour{backLabel ? ` — ${backLabel}` : ""}</span>
+          <span className="truncate">{content.accessoires.fiche.retour}{backLabel ? ` — ${backLabel}` : ""}</span>
         </button>
       </div>
 
@@ -85,7 +92,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
           <button
             type="button"
             onClick={() => setViewerOpen(true)}
-            aria-label={`Agrandir ${part.name}`}
+            aria-label={`${content.accessoires.fiche.agrandir} ${part.name}`}
             className="glass-panel product-media-stage group relative block aspect-[4/3] w-full min-w-0 cursor-zoom-in overflow-hidden p-2 text-left sm:aspect-[16/10]"
           >
             <SmartImage
@@ -100,7 +107,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
             </span>
             <span className="absolute right-3 top-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-black/10 bg-white/85 px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#171816] shadow-sm backdrop-blur transition group-hover:bg-white dark:border-white/10 dark:bg-black/55 dark:text-white dark:group-hover:bg-black/75">
               <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
-              <span className="hidden sm:inline">Agrandir</span>
+              <span className="hidden sm:inline">{content.accessoires.fiche.agrandir}</span>
             </span>
           </button>
           {gallery.length > 1 && (
@@ -109,7 +116,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
                 <button
                   key={`${image}-${index}`}
                   onClick={() => setActive(index)}
-                  aria-label={`Voir la photo ${index + 1}`}
+                  aria-label={content.accessoires.fiche.voirPhotoIndex(index + 1)}
                   aria-pressed={active === index}
                   className={
                     "shrink-0 snap-start border-b-2 bg-white p-1 transition " +
@@ -118,7 +125,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
                 >
                   <SmartImage
                     src={image}
-                    alt={`${part.name}, vue ${index + 1}`}
+                    alt={content.accessoires.fiche.altPhotoVue(part.name, index + 1)}
                     className="h-14 w-[5.25rem] sm:h-16 sm:w-24"
                     imgClassName="object-contain p-1"
                   />
@@ -159,11 +166,11 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
             ))}
           </dl>
 
-          <section className="mt-6 min-w-0 border-y border-black/15 dark:border-white/15 sm:mt-8" aria-label="Prix et contact">
+          <section className="mt-6 min-w-0 border-y border-black/15 dark:border-white/15 sm:mt-8" aria-label={content.accessoires.fiche.prixEtContact}>
             <div className="grid min-w-0 gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div className="min-w-0">
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
-                  Prix & disponibilité
+                  {content.accessoires.fiche.prixDisponibilite}
                 </p>
                 <p className="mt-1 font-display text-[clamp(1.25rem,1.1rem+0.6vw,1.65rem)] font-semibold leading-none text-[#171816] dark:text-[#f2f0ea]">
                   {part.price}
@@ -177,7 +184,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
                 onClick={() => go("contact", part.id)}
                 className="fluid-btn inline-flex min-h-12 w-full min-w-0 items-center justify-between gap-4 bg-[#ffd100] px-4 py-3 text-left font-bold uppercase text-[#171816] transition hover:bg-[#ffe36b] lg:min-w-[210px] lg:w-auto lg:px-5 sm:px-4"
               >
-                Demander un devis
+                {content.accessoires.fiche.demanderDevis}
                 <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
               </motion.button>
             </div>
@@ -185,7 +192,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
             <div className="flex min-w-0 flex-col gap-3 border-t border-black/[0.07] py-4 dark:border-white/[0.07] sm:flex-row sm:items-center sm:justify-between">
               <p className="flex min-w-0 items-start gap-2 text-[11px] leading-5 text-black/50 dark:text-white/50">
                 <FontAwesomeIcon icon={faCheck} className="mt-1 shrink-0 text-[#98741b] dark:text-[#ffd100]" />
-                <span>Un conseiller confirme la compatibilité, le stock et les options disponibles.</span>
+                <span>{content.accessoires.fiche.messageConseiller}</span>
               </p>
 
               <button
@@ -194,7 +201,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
                 className="inline-flex min-h-10 max-w-full shrink-0 items-center gap-2 self-start border-b border-black/25 text-[10px] font-bold uppercase tracking-[0.08em] text-black/60 transition hover:border-[#98741b] hover:text-[#98741b] dark:border-white/25 dark:text-white/60 dark:hover:border-[#ffd100] dark:hover:text-[#ffd100] sm:self-auto sm:tracking-[0.1em]"
               >
                 <FontAwesomeIcon icon={faPhone} />
-                Contacter l'équipe
+                {content.accessoires.fiche.contacterEquipe}
               </button>
             </div>
           </section>
@@ -202,7 +209,7 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
       </div>
 
       {related.length > 0 && (
-        <Section title="Dans le même esprit" subtitle="D'autres produits à découvrir." number="À explorer / 02">
+        <Section title={content.accessoires.fiche.similairesTitre} subtitle={content.accessoires.fiche.similairesDescription} number={content.accessoires.fiche.similairesNumero}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
             {related.map((item) => (
               <PartCard key={item.id} part={item} go={go} onEnquire={() => go("contact", item.id)} />

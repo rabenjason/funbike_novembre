@@ -1,4 +1,5 @@
 import { BIKES, type Bike } from "../data";
+import { recommendationCopy } from "../constants";
 import type { ChatAction } from "./assistant";
 
 /* ------------------------------------------------------------------ */
@@ -180,7 +181,6 @@ type BikeTags = {
   experience: Experience[];
   priority: Priority[];
   transport: Transport[];
-  pitch: string;
 };
 
 const TAGS: Record<string, BikeTags> = {
@@ -191,7 +191,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["intermediaire", "experimente"],
     priority: ["performance"],
     transport: [],
-    pitch: "une machine d'enduro performante pour la piste et le tout-terrain",
   },
   "sherco-sef-300-factory-2026": {
     usage: ["enduro", "loisir", "sport"],
@@ -200,7 +199,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["intermediaire", "experimente"],
     priority: ["performance", "puissance", "autonomie"],
     transport: [],
-    pitch: "plus de couple et d'autonomie pour l'enduro exigeant et les longues liaisons",
   },
   "xx-125-2026": {
     usage: ["cross", "enduro", "loisir", "sport"],
@@ -209,7 +207,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire", "experimente"],
     priority: ["maniable", "performance"],
     transport: [],
-    pitch: "légère et facile à prendre en main, idéale pour débuter le tout-terrain",
   },
   "offroad-450": {
     usage: ["enduro", "voyage", "loisir"],
@@ -218,7 +215,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["experimente", "intermediaire"],
     priority: ["autonomie", "performance", "puissance"],
     transport: [],
-    pitch: "le gros cube pour les raids et les longues distances",
   },
   "offroad-trail": {
     usage: ["voyage", "loisir", "polyvalent", "travail"],
@@ -227,7 +223,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire", "experimente"],
     priority: ["autonomie", "confort"],
     transport: [],
-    pitch: "polyvalente route et piste pour partir loin sans compromis",
   },
   "tvs-hlx-plus": {
     usage: ["travail", "ville", "polyvalent", "transport"],
@@ -236,7 +231,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire", "experimente"],
     priority: ["economie", "confort", "autonomie"],
     transport: ["marchandise", "passager"],
-    pitch: "utilitaire increvable et économique pour le travail et la ville",
   },
   "tvs-bleu": {
     usage: ["ville", "loisir", "polyvalent"],
@@ -245,7 +239,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire"],
     priority: ["economie", "maniable", "confort"],
     transport: ["passager"],
-    pitch: "sobre et confortable pour la ville et les trajets quotidiens",
   },
   "tvs-200-4v": {
     usage: ["sport", "ville", "loisir", "voyage"],
@@ -254,7 +247,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["intermediaire", "experimente"],
     priority: ["performance", "puissance", "confort"],
     transport: ["passager"],
-    pitch: "sportive nerveuse, ABS et confort, pour la ville comme les longs trajets",
   },
   "tvs-red": {
     usage: ["ville", "loisir", "sport"],
@@ -263,7 +255,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire"],
     priority: ["maniable", "economie", "performance"],
     transport: ["passager"],
-    pitch: "agile et économique, un design agressif pour la ville",
   },
   "tvs-125-hlx-5g": {
     usage: ["ville", "travail", "loisir", "polyvalent"],
@@ -272,7 +263,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire"],
     priority: ["economie", "maniable"],
     transport: ["passager"],
-    pitch: "économique et maniable, fiable pour rouler partout tous les jours",
   },
   "tuktuk": {
     usage: ["travail", "transport", "ville"],
@@ -281,7 +271,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire", "experimente"],
     priority: ["economie", "confort"],
     transport: ["passager", "marchandise"],
-    pitch: "le 3 roues pour transporter passagers et marchandises en ville",
   },
   "concept-urbain": {
     usage: ["ville", "loisir", "polyvalent", "voyage"],
@@ -290,7 +279,6 @@ const TAGS: Record<string, BikeTags> = {
     experience: ["debutant", "intermediaire", "experimente"],
     priority: ["confort", "performance"],
     transport: ["passager"],
-    pitch: "une série spéciale polyvalente, confortable et soignée",
   },
 };
 
@@ -298,31 +286,12 @@ const TAGS: Record<string, BikeTags> = {
 /*  Questions                                                          */
 /* ------------------------------------------------------------------ */
 
-type Question = { field: string; text: string; quick: string[] };
+type Question = { field: string; text: string; quick: readonly string[] };
 
-const Q_USAGE: Question = {
-  field: "usage",
-  text: "Bien sûr 👍 Pour te conseiller correctement, tu comptes principalement l'utiliser pour quoi ?",
-  quick: ["Ville / quotidien", "Travail / livraison", "Voyage / long trajet", "Cross / tout-terrain", "Enduro / loisir", "Transport de passagers"],
-};
-
-const Q_TERRAIN: Question = {
-  field: "terrain",
-  text: "D'accord 👍 Et tu vas principalement rouler sur quel type de terrain ?",
-  quick: ["Route / bitume", "Piste / terre", "Mixte des deux"],
-};
-
-const Q_DISTANCE: Question = {
-  field: "distance",
-  text: "Tes trajets sont plutôt courts au quotidien ou tu prévois de faire de longs trajets ?",
-  quick: ["Courts trajets quotidiens", "Trajets moyens", "Longs trajets"],
-};
-
-const Q_EXPERIENCE: Question = {
-  field: "experience",
-  text: "Et concernant ton expérience à moto, tu débutes ou tu as déjà de l'expérience ?",
-  quick: ["Débutant", "Intermédiaire", "Expérimenté"],
-};
+const Q_USAGE: Question = recommendationCopy.questions.usage;
+const Q_TERRAIN: Question = recommendationCopy.questions.terrain;
+const Q_DISTANCE: Question = recommendationCopy.questions.distance;
+const Q_EXPERIENCE: Question = recommendationCopy.questions.experience;
 
 function nextQuestion(p: NeedProfile): Question | null {
   if (!p.usage) return Q_USAGE;
@@ -360,7 +329,7 @@ export function recommend(p: NeedProfile, brand?: string): Match[] {
   if (p.usage) pool = pool.filter((b) => TAGS[b.id].usage.includes(p.usage as Usage));
 
   const matches: Match[] = pool
-    .map((bike) => ({ bike, score: scoreBike(bike, p), pitch: TAGS[bike.id].pitch }))
+    .map((bike) => ({ bike, score: scoreBike(bike, p), pitch: bike.recommendation ?? "" }))
     .filter((m) => m.score >= 7)
     .sort((a, b) => b.score - a.score);
 
@@ -373,24 +342,9 @@ export function recommend(p: NeedProfile, brand?: string): Match[] {
 
 function introText(p: NeedProfile): string {
   const bits: string[] = [];
-  if (p.usage) {
-    const map: Record<Usage, string> = {
-      ville: "une utilisation principalement en ville",
-      travail: "un usage principal pour le travail",
-      voyage: "un usage voyage / longs trajets",
-      cross: "de la pratique du cross",
-      enduro: "de la pratique de l'enduro",
-      "tout-terrain": "un usage tout-terrain",
-      loisir: "un usage loisir",
-      sport: "une recherche de sensations sport",
-      transport: "le transport de personnes ou de charges",
-      polyvalent: "un usage polyvalent",
-    };
-    bits.push(map[p.usage]);
-  }
-  if (p.distance) bits.push(p.distance === "longue" ? "avec de longs trajets" : p.distance === "courte" ? "avec des trajets quotidiens" : "avec des trajets moyens");
-  let intro = `D'après ce que tu m'as dit (${bits.join(", ") || "tes critères"}), voici les modèles qui correspondent à ton besoin :`;
-  return intro;
+  if (p.usage) bits.push(recommendationCopy.criteria.usage[p.usage]);
+  if (p.distance) bits.push(recommendationCopy.criteria.distance[p.distance]);
+  return recommendationCopy.criteria.summary(bits.join(", ") || recommendationCopy.criteria.fallback);
 }
 
 /* ------------------------------------------------------------------ */
@@ -407,7 +361,7 @@ export function runRecommender(t: string, mem: MemoryLike): { reply: ReplyLike; 
   if (q) {
     mem.need = profile;
     mem.needComplete = false;
-    return { reply: { text: q.text, quick: q.quick }, memory: mem };
+    return { reply: { text: q.text, quick: [...q.quick] }, memory: mem };
   }
 
   const brand = detectBrandText(t);
@@ -418,8 +372,8 @@ export function runRecommender(t: string, mem: MemoryLike): { reply: ReplyLike; 
   if (matches.length === 0) {
     return {
       reply: {
-        text: "Je n'ai pas encore trouvé de modèle qui corresponde exactement à ton besoin. Je peux élargir la recherche avec un usage proche. Dis-moi plutôt : ville, travail, voyage, cross, enduro ou transport ?",
-        quick: ["Ville / quotidien", "Travail / livraison", "Voyage / long trajet", "Cross / tout-terrain"],
+        text: recommendationCopy.noMatch,
+        quick: [...recommendationCopy.noMatchQuick],
       },
       memory: mem,
     };
@@ -432,15 +386,15 @@ export function runRecommender(t: string, mem: MemoryLike): { reply: ReplyLike; 
   const text =
     introText(profile) +
     "\n" +
-    matches.map((m) => `• ${m.bike.name} — ${m.pitch}.`).join("\n");
+    matches.map((match) => recommendationCopy.criteria.recommendation(match.bike.name, match.pitch)).join("\n");
 
   return {
     reply: {
       text,
       productIds: matches.map((m) => m.bike.id),
       reasons,
-      quick: ["Comparer les deux premières", "Prix de ces modèles", "Réserver un essai"],
-      actions: [{ label: "Tout le catalogue", page: "motos", icon: "catalog" }],
+      quick: [...recommendationCopy.quick.compare],
+      actions: [{ label: recommendationCopy.seeCatalog, page: "motos", icon: "catalog" }],
     },
     memory: mem,
   };

@@ -19,7 +19,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { AnimatePresence, motion } from "framer-motion";
 import { LOGO } from "../data";
-import { content } from "../constants/content";
+import { content } from "../constants";
 
 export type Route = { page: string; id?: string };
 
@@ -225,7 +225,7 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
             </motion.button>
             <motion.a
               whileTap={{ scale: 0.97 }}
-              href="tel:+261340000000"
+              href={content.site.telephoneLien}
               className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 border border-white/20 bg-white/[0.03] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:border-[#ffd100] hover:text-[#ffd100] active:bg-white/10 sm:w-auto"
             >
               <FontAwesomeIcon icon={faPhone} className="shrink-0" />
@@ -327,7 +327,7 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
               </li>
               <li>
                 <a
-                  href="tel:+261340000000"
+                  href={content.site.telephoneLien}
                   className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
                 >
                   <FontAwesomeIcon icon={faPhone} className="w-3.5 shrink-0 text-[#ffd100]" />
@@ -336,7 +336,7 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
               </li>
               <li>
                 <a
-                  href="mailto:contact@funbike.mg"
+                  href={`mailto:${content.site.email}`}
                   className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
                 >
                   <FontAwesomeIcon icon={faEnvelope} className="w-3.5 shrink-0 text-[#ffd100]" />

@@ -10,10 +10,10 @@ import Product from "./pages/Product";
 import AccessoryDetail from "./pages/AccessoryDetail";
 import Contact from "./pages/Contact";
 import Dealers from "./pages/Dealers";
-import { BIKES, findPart } from "./data";
+import { BIKES, FEATURED_BANNERS, findPart } from "./data";
+import { content } from "./constants";
 
-const FIRST_HERO =
-  "https://funbike.mg/wp-content/uploads/2026/02/01-250-SEF-FACTORY-2026-3679x2456-1-1920x1080-1.jpg";
+const FIRST_HERO = FEATURED_BANNERS[0].image;
 
 function sameRoute(a: Route, b: Route) {
   return a.page === b.page && (a.id ?? "") === (b.id ?? "");
@@ -22,29 +22,29 @@ function sameRoute(a: Route, b: Route) {
 function routeLabel(route: Route): string {
   switch (route.page) {
     case "home":
-      return "Accueil";
+      return content.navigation.accueil;
     case "catalogue":
-      return "Catalogue";
+      return content.navigation.catalogue;
     case "motos":
-      return "Motos";
+      return content.navigation.motos;
     case "equipements":
-      return "Équipements";
+      return content.navigation.equipements;
     case "spares":
-      return "Pièces détachées";
+      return content.navigation.piecesDetachees;
     case "product": {
       const bike = BIKES.find((b) => b.id === route.id);
-      return bike ? bike.name : "Fiche moto";
+      return bike ? bike.name : content.motos.fiche.titreDefaut;
     }
     case "accessory": {
       const part = findPart(route.id);
-      return part ? part.name : "Fiche produit";
+      return part ? part.name : content.accessoires.fiche.titreDefaut;
     }
     case "revendeurs":
-      return "Revendeurs";
+      return content.navigation.revendeurs;
     case "contact":
-      return "Contact";
+      return content.navigation.contact;
     default:
-      return "Page précédente";
+      return content.navigation.pagePrecedente;
   }
 }
 
@@ -61,7 +61,7 @@ export default function App() {
   const canGoBack = history.length > 1;
   const previousRoute = canGoBack ? history[history.length - 2] : null;
   const backLabel = useMemo(
-    () => (previousRoute ? routeLabel(previousRoute) : "Accueil"),
+    () => (previousRoute ? routeLabel(previousRoute) : content.navigation.accueil),
     [previousRoute?.page, previousRoute?.id],
   );
 

@@ -13,17 +13,10 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 
-import type { Dealer } from "../types";
+import { DEALERS, type Dealer } from "../data";
+import { content } from "../constants";
 
 export type { Dealer };
-
-// Verify contact details and exact street coordinates before publishing.
-export const DEALERS: Dealer[] = [
-  { key: "antananarivo", city: "Antananarivo", name: "Funbike Showroom", kind: "Showroom principal", address: "Ambodivona, Antananarivo", hours: "Lun – Sam · 8h30 – 17h30", phone: "+261 34 00 000 00", email: "contact@funbike.mg", desc: "Le point de départ de votre prochaine aventure. Retrouvez les motos, les équipements et notre atelier à la même adresse.", lat: -18.8792, lon: 47.5079, services: ["Motos", "Essais", "Atelier", "Pièces"] },
-  { key: "toamasina", city: "Toamasina", name: "Funbike Est", kind: "Point de vente", address: "Boulevard Joffre, Toamasina", hours: "Lun – Ven · 9h – 17h", phone: "+261 34 11 111 11", email: "est@funbike.mg", desc: "Sur la côte est, une équipe à vos côtés pour choisir votre moto, vous équiper et assurer l'entretien courant.", lat: -18.1492, lon: 49.4023, services: ["Motos", "Équipements", "Entretien"] },
-  { key: "mahajanga", city: "Mahajanga", name: "Funbike Nord-Ouest", kind: "Point de vente", address: "Avenue de France, Mahajanga", hours: "Lun – Ven · 9h – 17h", phone: "+261 34 22 222 22", email: "ouest@funbike.mg", desc: "Votre relais Funbike dans le nord-ouest pour les motos, les essais et les commandes de pièces.", lat: -15.7167, lon: 46.3167, services: ["Motos", "Essais", "Pièces"] },
-  { key: "fianarantsoa", city: "Fianarantsoa", name: "Atelier Partenaire", kind: "Atelier partenaire", address: "Route nationale 7, Fianarantsoa", hours: "Lun – Sam · 8h – 16h", phone: "+261 34 33 333 33", email: "sud@funbike.mg", desc: "Sur la RN7, un atelier partenaire pour l'entretien, les réparations et le montage de pièces.", lat: -21.4527, lon: 47.0857, services: ["Atelier", "Pièces", "Entretien"] },
-];
 
 const ZOOMS = [0.22, 0.12, 0.065, 0.035];
 const osmEmbed = (lat: number, lon: number, d: number) =>
@@ -69,14 +62,14 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
         {/* ---------------- Locator ---------------- */}
         <div ref={locatorRef} className="scroll-mt-20">
           <h1 className="mb-4 font-display text-[clamp(1.45rem,1.2rem+1.1vw,2.15rem)] font-semibold leading-tight tracking-[-0.05em]">
-            Choisissez votre ville.
+            {content.revendeurs.titre}
           </h1>
 
           {/* Phones: 2×2 segmented grid (every city visible, no hidden scroll).
               ≥640px: underlined tabs on one row. Styles live in index.css (.dealer-city). */}
           <div
             role="tablist"
-            aria-label="Choisir une ville"
+            aria-label={content.revendeurs.choisirVilleAria}
             className="mb-4 grid grid-cols-2 gap-2 border-black/10 sm:flex sm:gap-0 sm:border-y dark:border-white/10"
           >
             {DEALERS.map((d) => (
@@ -111,7 +104,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
               {!mapReady && <div className="skeleton absolute inset-0" aria-hidden="true" />}
               <iframe
                 key={`${dealer.key}-${zoom}`}
-                title={`Carte OpenStreetMap de ${dealer.city}`}
+                title={`${content.revendeurs.cartePrefix} ${dealer.city}`}
                 src={osmEmbed(dealer.lat, dealer.lon, ZOOMS[zoom])}
                 loading="lazy"
                 onLoad={() => setMapReady(true)}
@@ -124,11 +117,11 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                 <button
                   type="button"
                   onClick={() => setMapEnabled(true)}
-                  aria-label={`Activer la carte interactive de ${dealer.city}`}
+                  aria-label={`${content.revendeurs.activerCartePrefix} ${dealer.city}`}
                   className="absolute inset-0 z-10 flex items-end justify-start p-3 text-left sm:p-4"
                 >
                   <span className="inline-flex min-h-10 items-center gap-2 bg-[#171816] px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-white shadow-lg dark:bg-white dark:text-[#171816]">
-                    <FontAwesomeIcon icon={faLocationCrosshairs} /> Explorer la carte
+                    <FontAwesomeIcon icon={faLocationCrosshairs} /> {content.revendeurs.explorerCarte}
                   </span>
                 </button>
               )}
@@ -141,7 +134,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
               <div className="absolute right-3 top-3 z-20 flex flex-col border border-black/10 bg-white shadow-md dark:border-white/10 dark:bg-[#171816]">
                 <button
                   type="button"
-                  aria-label="Zoomer sur la carte"
+                  aria-label={content.revendeurs.zoomerCarte}
                   onClick={() => changeZoom(1)}
                   disabled={zoom === ZOOMS.length - 1}
                   className="grid h-10 w-10 place-items-center text-sm disabled:opacity-30"
@@ -151,7 +144,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                 <span className="h-px bg-black/10 dark:bg-white/10" />
                 <button
                   type="button"
-                  aria-label="Dézoomer la carte"
+                  aria-label={content.revendeurs.dezoomerCarte}
                   onClick={() => changeZoom(-1)}
                   disabled={zoom === 0}
                   className="grid h-10 w-10 place-items-center text-sm disabled:opacity-30"
@@ -180,21 +173,21 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                   <div className="flex gap-3 py-3">
                     <FontAwesomeIcon icon={faLocationDot} className={"mt-1 " + ICON} />
                     <div className="min-w-0">
-                      <dt className={LABEL}>Adresse</dt>
+                      <dt className={LABEL}>{content.revendeurs.adresse}</dt>
                       <dd className="break-words">{dealer.address}</dd>
                     </div>
                   </div>
                   <div className="flex gap-3 py-3">
                     <FontAwesomeIcon icon={faClock} className={"mt-1 " + ICON} />
                     <div className="min-w-0">
-                      <dt className={LABEL}>Horaires</dt>
+                      <dt className={LABEL}>{content.revendeurs.horaires}</dt>
                       <dd>{dealer.hours}</dd>
                     </div>
                   </div>
                   <div className="flex gap-3 py-3">
                     <FontAwesomeIcon icon={faPhone} className={"mt-1 " + ICON} />
                     <div className="min-w-0">
-                      <dt className={LABEL}>Téléphone</dt>
+                      <dt className={LABEL}>{content.revendeurs.telephone}</dt>
                       <dd>
                         <a href={telHref(dealer.phone)} className="hover:underline">{dealer.phone}</a>
                       </dd>
@@ -202,7 +195,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                   </div>
                 </dl>
 
-                <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Services">
+                <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={content.revendeurs.servicesAria}>
                   {dealer.services.map((s) => (
                     <li
                       key={s}
@@ -222,19 +215,19 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                     rel="noreferrer"
                     className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 bg-[#ffd100] px-4 text-[12px] font-bold uppercase tracking-[0.08em] text-[#171816] transition active:scale-[0.98] hover:bg-[#ffe36b] sm:min-h-11 sm:text-[11px]"
                   >
-                    Itinéraire <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+                    {content.revendeurs.itineraire} <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
                   </a>
                   <a
                     href={telHref(dealer.phone)}
                     className="inline-flex min-h-12 items-center justify-center gap-2 border border-black/15 text-[12px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.98] sm:min-h-11 sm:border-0 sm:border-b sm:border-black/30 sm:text-[11px] dark:border-white/20"
                   >
-                    <FontAwesomeIcon icon={faPhone} /> Appeler
+                    <FontAwesomeIcon icon={faPhone} /> {content.revendeurs.appeler}
                   </a>
                   <a
                     href={`mailto:${dealer.email}`}
                     className="inline-flex min-h-12 items-center justify-center gap-2 border border-black/15 text-[12px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.98] sm:min-h-11 sm:border-0 sm:border-b sm:border-black/30 sm:text-[11px] dark:border-white/20"
                   >
-                    <FontAwesomeIcon icon={faEnvelope} /> Écrire
+                    <FontAwesomeIcon icon={faEnvelope} /> {content.revendeurs.ecrire}
                   </a>
                 </div>
               </motion.div>
@@ -242,11 +235,11 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
           </div>
 
           <p className="mt-2 text-[10px] leading-4 text-black/40 dark:text-white/40">
-            Carte ©{" "}
+            {content.revendeurs.attributionPrefix}{" "}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
-              OpenStreetMap
+              {content.revendeurs.attributionNom}
             </a>{" "}
-            et ses contributeurs. Confirmez l'adresse exacte avant de vous déplacer.
+            {content.revendeurs.attributionSuffix.trimStart()}
           </p>
         </div>
 
@@ -254,9 +247,9 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
         <section className="mt-12 sm:mt-20" aria-labelledby="network-heading">
           <div className="mb-4 flex flex-col gap-1 border-t border-black/15 pt-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-3 dark:border-white/15">
             <h2 id="network-heading" className="font-display text-[clamp(1.4rem,1.15rem+1.5vw,2.7rem)] font-semibold tracking-[-0.05em]">
-              D'une ville à l'autre.
+              {content.revendeurs.reseauTitre}
             </h2>
-            <p className="text-[13px] text-black/50 sm:text-sm dark:text-white/50">Touchez une adresse pour la situer sur la carte.</p>
+            <p className="text-[13px] text-black/50 sm:text-sm dark:text-white/50">{content.revendeurs.reseauDescription}</p>
           </div>
 
           <ul className="border-t border-black/10 dark:border-white/10">
@@ -296,7 +289,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
         <section className="mt-12 border-t border-black/15 pt-8 sm:mt-20 sm:py-12 dark:border-white/15">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
             <h2 className="max-w-lg font-display text-[clamp(1.35rem,1.1rem+2vw,3rem)] font-semibold leading-[1.1] tracking-[-0.05em]">
-              Et si la prochaine adresse était la vôtre ?
+              {content.revendeurs.devenirRevendeur}
             </h2>
             {/* Phones: solid full-width button (48px) */}
             <button
@@ -304,7 +297,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
               onClick={() => go("contact")}
               className="inline-flex min-h-12 w-full items-center justify-between gap-4 bg-[#171816] px-4 text-[12px] font-bold uppercase tracking-[0.1em] text-white transition active:scale-[0.98] sm:hidden dark:bg-[#ffd100] dark:text-[#171816]"
             >
-              Devenir revendeur <FontAwesomeIcon icon={faArrowRight} />
+              {content.revendeurs.boutonRevendeur} <FontAwesomeIcon icon={faArrowRight} />
             </button>
             {/* Tablet / desktop: editorial underlined link */}
             <button
@@ -312,7 +305,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
               onClick={() => go("contact")}
               className="hidden min-h-11 items-center gap-4 border-b-2 border-[#171816] text-[11px] font-bold uppercase tracking-[0.12em] transition hover:text-[#98741b] sm:inline-flex dark:border-[#ffd100] dark:hover:text-[#ffd100]"
             >
-              Devenir revendeur <FontAwesomeIcon icon={faArrowRight} />
+              {content.revendeurs.boutonRevendeur} <FontAwesomeIcon icon={faArrowRight} />
             </button>
           </div>
         </section>

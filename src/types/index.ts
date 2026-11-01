@@ -11,6 +11,54 @@ export interface Brand {
   src: string;
 }
 
+/** Marque d'équipement et identité visuelle administrable. */
+export type AccessoryBrandKey = "tld" | "gaerne" | "mt" | "tvs" | "bihr";
+
+export interface AccessoryBrand {
+  key: AccessoryBrandKey;
+  name: string;
+  logo: string;
+  alt: string;
+}
+
+/** Marque officielle présentée dans la sélection de la page d'accueil. */
+export interface ExclusiveBrand {
+  key: string;
+  name: string;
+  tagline: string;
+  image: string;
+}
+
+/** Diapositive héro de la page d'accueil, à terme fournie par l'API. */
+export interface FeaturedBanner {
+  id: string;
+  short: string;
+  brand: string;
+  tag: string;
+  image: string;
+  alt: string;
+  targetPage: string;
+  targetId: string;
+}
+
+/** Promotion / nouveauté affichée sur la page d'accueil. */
+export interface HomepagePromotion {
+  id: string;
+  badge: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  image: string;
+  alt: string;
+  highlights: string[];
+  price: string;
+  targetPage: string;
+  targetId: string;
+  publishedAt?: string;
+  startsAt?: string;
+  endsAt?: string;
+}
+
 export interface Category {
   title: string;
   desc: string;
@@ -38,6 +86,9 @@ export interface Bike {
   gallery?: string[];
   specs: BikeSpec[];
   desc: string;
+  /** Phrase éditoriale de recommandation, indépendante du moteur de sélection. */
+  recommendation?: string;
+  publishedAt?: string;
 }
 
 /** Alias explicite pour les futurs usages métier. */
@@ -79,6 +130,8 @@ export interface Dealer {
   phone: string;
   email: string;
   desc: string;
+  /** Libellé localisé utilisé par l'assistant dans les réponses de recherche de point de vente. */
+  assistantLabel?: string;
   lat: number;
   lon: number;
   services: string[];
@@ -93,10 +146,23 @@ export interface Banner {
   alt: string;
   targetPage: string;
   targetId?: string;
+  publishedAt?: string;
 }
 
 export interface Promotion extends Banner {
   badge?: string;
+  startsAt?: string;
+  endsAt?: string;
+}
+
+/** Partenaire / marque affichable dans les zones éditoriales du site. */
+export interface Partner {
+  id: string;
+  name: string;
+  image: string;
+  alt: string;
+  description?: string;
+  publishedAt?: string;
 }
 
 export interface BlogArticle {

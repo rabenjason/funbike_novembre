@@ -1,38 +1,9 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { motion, type Variants } from "framer-motion";
-import { BIKES } from "../data";
+import type { HomepagePromotion } from "../types";
+import { content } from "../constants";
 import SmartImage from "./SmartImage";
-import { content } from "../constants/content";
-
-type NewItem = {
-  id: string;
-  badge: string;
-  eyebrow: string;
-  title: string;
-  desc: string;
-  image: string;
-  alt: string;
-  bullets: string[];
-  price: string;
-};
-
-const bike = (id: string) => BIKES.find((item) => item.id === id)!;
-
-const ITEMS: NewItem[] = content.accueil.nouveautes.items.map((item) => ({
-  id: item.id,
-  badge: item.badge,
-  eyebrow: item.surTitre,
-  title: item.titre,
-  desc: item.description,
-  image:
-    item.id === "tld"
-      ? "https://troyleedesigns.eu/cdn/shop/files/TLD_M26D2_GPPRO_PULSE_BLACK_01.jpg?v=1785777688&width=533"
-      : bike(item.id).image,
-  alt: item.alt,
-  bullets: [...item.points],
-  price: item.prix,
-}));
 
 const list: Variants = {
   hidden: {},
@@ -44,7 +15,13 @@ const itemMotion: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
 };
 
-export default function NewArrivals({ go }: { go: (p: string, id?: string) => void }) {
+export default function NewArrivals({
+  go,
+  items,
+}: {
+  go: (p: string, id?: string) => void;
+  items: HomepagePromotion[];
+}) {
   return (
     <section className="bg-white py-10 dark:bg-[#141513] sm:py-12 lg:py-14">
       <div className="mx-auto w-full max-w-(--container-site) px-4 sm:px-7 lg:px-10">
@@ -69,7 +46,7 @@ export default function NewArrivals({ go }: { go: (p: string, id?: string) => vo
           viewport={{ once: true, amount: 0.12 }}
           className="grid gap-x-5 gap-y-8 sm:grid-cols-2 md:grid-cols-3 md:gap-x-6 lg:gap-x-8"
         >
-          {ITEMS.map((product) => (
+          {items.map((product) => (
             <motion.article
               key={product.title}
               variants={itemMotion}
@@ -77,7 +54,7 @@ export default function NewArrivals({ go }: { go: (p: string, id?: string) => vo
               className="fb-card group flex min-w-0 flex-col p-2.5 sm:p-3"
             >
               <button
-                onClick={() => go(product.id === "tld" ? "equipements" : "product", product.id)}
+                onClick={() => go(product.targetPage, product.targetId)}
                 className="fb-stage-white relative block aspect-[16/10] overflow-hidden text-left"
                 aria-label={`${content.accueil.nouveautes.decouvrirPrefix} ${product.title}`}
               >
@@ -97,10 +74,10 @@ export default function NewArrivals({ go }: { go: (p: string, id?: string) => vo
                 <h3 className="fluid-h3 mt-1 font-display font-semibold text-[#171816] dark:text-[#f2f0ea]">
                   {product.title}
                 </h3>
-                <p className="mt-2 text-xs leading-5 text-black/55 dark:text-white/55">{product.desc}</p>
+                <p className="mt-2 text-xs leading-5 text-black/55 dark:text-white/55">{product.description}</p>
 
                 <ul className="mt-4 grid grid-cols-1 gap-y-1.5">
-                  {product.bullets.map((feature) => (
+                  {product.highlights.map((feature) => (
                     <li key={feature} className="flex items-center gap-2 text-[11px] text-black/70 dark:text-white/70">
                       <FontAwesomeIcon icon={faCheck} className="text-[9px] text-black/45 dark:text-white/55" />
                       {feature}
@@ -114,7 +91,7 @@ export default function NewArrivals({ go }: { go: (p: string, id?: string) => vo
                     <p className="mt-0.5 text-xs font-semibold text-[#171816] dark:text-[#f2f0ea]">{product.price}</p>
                   </div>
                   <button
-                    onClick={() => go(product.id === "tld" ? "equipements" : "product", product.id)}
+                    onClick={() => go(product.targetPage, product.targetId)}
                     className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#171816] transition hover:text-black/60 dark:text-[#f2f0ea] dark:hover:text-white/70"
                   >
                     {content.boutons.voirProduit}
@@ -130,7 +107,7 @@ export default function NewArrivals({ go }: { go: (p: string, id?: string) => vo
           onClick={() => go("catalogue")}
           className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
         >
-          Parcourir le catalogue <FontAwesomeIcon icon={faArrowRight} />
+          {content.accueil.nouveautes.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} />
         </button>
       </div>
     </section>

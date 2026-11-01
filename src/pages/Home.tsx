@@ -9,7 +9,17 @@ import {
   faMotorcycle,
   faShirt,
 } from "@fortawesome/free-solid-svg-icons";
-import { BIKES, BRANDS, CATEGORIES, TVS_ACCESSORIES, TVS_PARTS } from "../data";
+import {
+  ACCESSORY_BRANDS,
+  BIKES,
+  BRANDS,
+  CATEGORIES,
+  EXCLUSIVE_BRANDS,
+  FEATURED_BANNERS,
+  HOME_PROMOTIONS,
+  TVS_ACCESSORIES,
+  TVS_PARTS,
+} from "../data";
 import { Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { AccessoryBrandQuickLinks } from "../components/AccessoryBrands";
@@ -17,44 +27,17 @@ import ShercoBanner from "../components/ShercoBanner";
 import BrandExclusif from "../components/BrandExclusif";
 import NewArrivals from "../components/NewArrivals";
 import TypedText from "../components/TypedText";
-import { content } from "../constants/content";
-
-const FEATURED = [
-  {
-    id: "sherco-sef-250-factory-2026",
-    short: "SEF 250 Factory",
-    brand: "Sherco",
-    tag: "Enduro / Factory",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/01-250-SEF-FACTORY-2026-3679x2456-1-1920x1080-1.jpg",
-    alt: "Sherco SEF 250 Factory 2026 en action",
-  },
-  {
-    id: "sherco-sef-300-factory-2026",
-    short: "SEF 300 Factory",
-    brand: "Sherco",
-    tag: "Enduro / Factory",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/01-300-SEF-FACTORY-2026-3679x2456-1-1920x1080-1.jpg",
-    alt: "Sherco SEF 300 Factory 2026 en action",
-  },
-  {
-    id: "xx-125-2026",
-    short: "XX 125 Off-Road",
-    brand: "Fantic",
-    tag: "Cross / 125 cc",
-    image: "https://funbike.mg/wp-content/uploads/2026/02/7b566adac57a4b5dbfd74d4f768e6fdb.jpg",
-    alt: "Fantic XX 125 2026 sur piste",
-  },
-];
+import { content } from "../constants";
 
 const CATEGORY_ICONS = [faMotorcycle, faHelmetSafety, faGears, faShirt];
 
 export default function Home({ go }: { go: (p: string, id?: string) => void }) {
   const [activeHero, setActiveHero] = useState(0);
-  const current = FEATURED[activeHero];
+  const current = FEATURED_BANNERS[activeHero];
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setActiveHero((index) => (index + 1) % FEATURED.length);
+      setActiveHero((index) => (index + 1) % FEATURED_BANNERS.length);
     }, 6500);
     return () => window.clearInterval(timer);
   }, []);
@@ -119,7 +102,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               {content.accueil.hero.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
             </button>
             <button
-              onClick={() => go("product", current.id)}
+              onClick={() => go(current.targetPage, current.targetId)}
               className="glass-panel fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 border-white/40 bg-white/10 px-5 py-3 text-center font-bold uppercase text-white transition active:scale-[0.98] hover:border-[#ffd100] hover:text-[#ffd100] sm:min-h-11 sm:w-auto"
             >
               <span className="truncate">{current.short}</span>
@@ -149,7 +132,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
                 0{activeHero + 1}
               </span>
               <div className="flex items-center" aria-label={content.accueil.hero.choisirModele}>
-                {FEATURED.map((item, index) => (
+                {FEATURED_BANNERS.map((item, index) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveHero(index)}
@@ -161,7 +144,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
                   </button>
                 ))}
               </div>
-              <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">03</span>
+              <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">{String(FEATURED_BANNERS.length).padStart(2, "0")}</span>
             </div>
           </div>
         </div>
@@ -198,9 +181,9 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
       <ShercoBanner go={go} />
 
-      <BrandExclusif go={go} />
+      <BrandExclusif go={go} brands={EXCLUSIVE_BRANDS} />
 
-      <NewArrivals go={go} />
+      <NewArrivals go={go} items={HOME_PROMOTIONS} />
 
       <Section
         title={content.accueil.motos.titre}
@@ -208,7 +191,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
         number={content.accueil.motos.numero}
       >
         <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8">
-          {FEATURED.map((featured) => {
+          {FEATURED_BANNERS.map((featured) => {
             const model = BIKES.find((item) => item.id === featured.id);
             return model ? <BikeCard key={model.id} bike={model} go={go} /> : null;
           })}
@@ -236,7 +219,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
           </div>
 
           <div className="mb-6">
-            <AccessoryBrandQuickLinks onSelect={(brand) => go("equipements", brand)} />
+            <AccessoryBrandQuickLinks brands={ACCESSORY_BRANDS} onSelect={(brand) => go("equipements", brand)} />
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 lg:gap-x-5">
             {[TVS_PARTS[0], TVS_PARTS[2], TVS_ACCESSORIES[0], TVS_ACCESSORIES[2]].map((part) => (

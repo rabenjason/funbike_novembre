@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { motion, useInView, type Variants } from "framer-motion";
 import { useRef } from "react";
-import { content } from "../constants/content";
+import { content } from "../constants";
 
 /** Parent: reveals its children one after the other when scrolled into view */
 const group: Variants = {
