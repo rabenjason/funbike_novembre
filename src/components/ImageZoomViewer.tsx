@@ -11,6 +11,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import SmartImage from "./SmartImage";
+import { content } from "../constants";
 
 type Props = {
   open: boolean;
@@ -86,7 +87,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
         <motion.div
           role="dialog"
           aria-modal="true"
-          aria-label={`Visionneuse de ${alt}`}
+          aria-label={`${content.visionneuse.ariaPrefix} ${alt}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -98,7 +99,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{alt}</p>
               <p className="text-[11px] text-black/45 dark:text-white/45">
-                Photo {active + 1} / {images.length}
+                {content.visionneuse.photo} {active + 1} / {images.length}
               </p>
             </div>
 
@@ -107,7 +108,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                 type="button"
                 onClick={() => changeZoom(-1)}
                 disabled={zoom === LEVELS[0]}
-                aria-label="Réduire le zoom"
+                aria-label={content.visionneuse.reduireZoom}
                 className="grid h-10 w-10 place-items-center rounded-full text-sm transition hover:bg-black/5 disabled:opacity-25 dark:hover:bg-white/10"
               >
                 <FontAwesomeIcon icon={faMagnifyingGlassMinus} />
@@ -117,7 +118,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                 type="button"
                 onClick={() => changeZoom(1)}
                 disabled={zoom === LEVELS[LEVELS.length - 1]}
-                aria-label="Agrandir l’image"
+                aria-label={content.visionneuse.agrandirImage}
                 className="grid h-10 w-10 place-items-center rounded-full text-sm transition hover:bg-black/5 disabled:opacity-25 dark:hover:bg-white/10"
               >
                 <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
@@ -126,7 +127,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                 type="button"
                 onClick={resetZoom}
                 disabled={zoom === 1}
-                aria-label="Réinitialiser le zoom"
+                aria-label={content.visionneuse.reinitialiserZoom}
                 className="grid h-10 w-10 place-items-center rounded-full text-sm transition hover:bg-black/5 disabled:opacity-25 dark:hover:bg-white/10"
               >
                 <FontAwesomeIcon icon={faRotateLeft} />
@@ -136,7 +137,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fermer la visionneuse"
+              aria-label={content.visionneuse.fermer}
               className="ml-1 grid h-11 w-11 place-items-center rounded-full border border-black/10 text-lg transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
             >
               <FontAwesomeIcon icon={faXmark} />
@@ -176,7 +177,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
               style={{ transformOrigin: `${origin.x}% ${origin.y}%` }}
               className="pointer-events-none absolute inset-0"
             >
-              <SmartImage src={images[active]} alt={`${alt}, photo ${active + 1}`} eager className="h-full w-full" imgClassName="object-contain p-3 sm:p-8" />
+              <SmartImage src={images[active]} alt={content.visionneuse.photoAlt(alt, active + 1)} eager className="h-full w-full" imgClassName="object-contain p-3 sm:p-8" />
             </motion.div>
 
             {images.length > 1 && (
@@ -187,7 +188,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                     event.stopPropagation();
                     changeImage(active - 1);
                   }}
-                  aria-label="Photo précédente"
+                  aria-label={content.visionneuse.photoPrecedente}
                   className="absolute left-2 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-black/10 bg-white/85 text-sm shadow backdrop-blur transition hover:bg-white sm:left-5 sm:h-12 sm:w-12 dark:border-white/10 dark:bg-black/60 dark:hover:bg-black/80"
                 >
                   <FontAwesomeIcon icon={faChevronLeft} />
@@ -198,7 +199,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                     event.stopPropagation();
                     changeImage(active + 1);
                   }}
-                  aria-label="Photo suivante"
+                  aria-label={content.visionneuse.photoSuivante}
                   className="absolute right-2 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-black/10 bg-white/85 text-sm shadow backdrop-blur transition hover:bg-white sm:right-5 sm:h-12 sm:w-12 dark:border-white/10 dark:bg-black/60 dark:hover:bg-black/80"
                 >
                   <FontAwesomeIcon icon={faChevronRight} />
@@ -207,7 +208,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
             )}
 
             <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1.5 text-center text-[11px] text-white backdrop-blur sm:bottom-5">
-              {zoom === 1 ? "Cliquez ou double-cliquez pour zoomer" : "Déplacez le pointeur pour explorer"}
+              {zoom === 1 ? content.visionneuse.zoomer : content.visionneuse.explorer}
             </div>
           </main>
 
@@ -220,7 +221,7 @@ export default function ImageZoomViewer({ open, images, active, alt, onActiveCha
                     key={image}
                     type="button"
                     onClick={() => changeImage(index)}
-                    aria-label={`Afficher la photo ${index + 1}`}
+                    aria-label={`${content.visionneuse.afficherPhoto} ${index + 1}`}
                     aria-current={active === index}
                     className={
                       "shrink-0 border-2 p-0.5 transition " +

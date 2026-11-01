@@ -1,0 +1,51 @@
+/** Textes fixes de l’interface FunBike ; les contenus administrables restent dans src/data.ts. */
+export const catalogue = {
+    titreComplet: "Tout le Catalogue",
+    descriptionComplete: "Découvrez nos motos, pièces et équipements officiels.",
+    titreMotos: "Catalogue Motos",
+    descriptionMotos: "Performance, Aventure et Mobilité Urbaine.",
+    vehicules: "Véhicules",
+    numeroMotos: "01 / Motos",
+    modelesDisponibles: "modèle(s) disponible(s)",
+    pageSur: "page",
+    sur: "sur",
+    filtres: ["Tous", "Off-road", "Urbain", "3 roues"],
+    rechercheMotosPlaceholder: "Rechercher une moto ou une marque",
+    rechercheGlobalePlaceholder: "Motos, casques, blousons, pièces...",
+    rechercheAria: "Rechercher dans le catalogue",
+    resultatsRecherche: "Résultats de recherche",
+    produitsTrouves: "produit(s) trouvé(s)",
+    numeroResultats: "02 / Résultats",
+    piecesApercu: {
+      titre: "Pièces & Consommables",
+      description: "Pneus, kits chaîne, freinage, filtration et pièces mécaniques.",
+      numero: "02 / Atelier",
+      bouton: "Voir toutes les pièces détachées",
+    },
+    equipementsApercu: {
+      titre: "Équipements pilote",
+      description: "Casques, tenues, bottes et accessoires pour le pilote.",
+      numero: "03 / Équipement",
+      bouton: "Voir les équipements pilote",
+    },
+  } as const;
+
+export const motos = {
+    fiche: {
+      titreDefaut: "Fiche moto",
+      prixEtContact: "Prix et contact",
+      retour: "Retour",
+      agrandir: "Agrandir",
+      voirPhoto: "Voir la photo",
+      voirPhotoIndex: (index: number) => `Voir la photo ${index}`,
+      altPhotoVue: (name: string, index: number) => `${name}, vue ${index}`,
+      prixDisponibilite: "Prix & disponibilité",
+      demanderDevis: "Demander un devis",
+      messageConseiller: "Un conseiller confirme le modèle, le stock et les options disponibles.",
+      contacterEquipe: "Contacter l'équipe",
+      lienEquipementsTvs: "Casques, blousons et gants TVS",
+      similairesTitre: "Dans le même esprit",
+      similairesDescription: "D'autres modèles à découvrir.",
+      similairesNumero: "À explorer / 02",
+    },
+  } as const;

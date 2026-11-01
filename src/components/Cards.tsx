@@ -3,6 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
 import type { Bike, Part } from "../data";
+import { content } from "../constants";
+import { partEyebrow } from "../utils/catalogLabels";
 import SmartImage from "./SmartImage";
 
 export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string) => void }) {
@@ -23,7 +25,7 @@ export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string
         <button
           type="button"
           onClick={() => go("product", bike.id)}
-          aria-label={`Découvrir ${bike.name}`}
+          aria-label={`${content.boutons.decouvrir} ${bike.name}`}
           className="absolute inset-0 block"
         >
           <SmartImage
@@ -41,7 +43,7 @@ export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string
                 key={image}
                 type="button"
                 onClick={() => setActive(index)}
-                aria-label={`Voir la photo ${index + 1}`}
+                aria-label={content.motos.fiche.voirPhotoIndex(index + 1)}
                 aria-current={active === index}
                 className="grid h-7 min-w-7 place-items-center px-1"
               >
@@ -78,7 +80,7 @@ export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string
             onClick={() => go("product", bike.id)}
             className="fluid-btn inline-flex min-h-10 items-center gap-2.5 border border-black/25 px-4 py-2.5 font-bold uppercase text-[#171816] transition hover:border-[#171816] hover:bg-[#171816] hover:text-white dark:border-white/30 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-[#171816]"
           >
-            Découvrir
+            {content.boutons.decouvrir}
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-[10px]" />
           </motion.button>
 
@@ -89,15 +91,6 @@ export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string
       </div>
     </motion.article>
   );
-}
-
-function partEyebrow(part: Part): string {
-  if (part.kind === "tvs") return `TVS / ${part.category ?? "Equipement"}`;
-  if (part.kind === "tld") return "Troy Lee Designs";
-  if (part.kind === "gaerne") return "Gaerne";
-  if (part.kind === "mt") return "MT Helmets";
-  if (part.compatibleBrand && part.compatibleBrand !== "Universal") return `Pièce ${part.compatibleBrand}`;
-  return "Pièce détachée";
 }
 
 export function PartCard({
@@ -123,7 +116,7 @@ export function PartCard({
       <button
         type="button"
         onClick={openDetail}
-        aria-label={`Voir les détails de ${part.name}`}
+        aria-label={`${content.accessoires.cartes.detailsAltPrefix} ${part.name}`}
         className="block w-full cursor-pointer text-left"
       >
         <SmartImage
@@ -156,7 +149,7 @@ export function PartCard({
             }}
             className="mt-2.5 flex min-h-10 w-full items-center justify-between gap-1 border-t border-black/10 pt-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-black/55 transition hover:text-[#171816] dark:border-white/10 dark:text-white/55 dark:hover:text-white"
           >
-            Se renseigner <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+            {content.accessoires.cartes.seRenseigner} <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
           </button>
         )}
       </div>

@@ -1,36 +1,14 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUpRightFromSquare, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
-import { BRANDS } from "../data";
+import type { AccessoryBrand as AccessoryBrandRecord, AccessoryBrandKey } from "../types";
 
-export type AccessoryBrandKey = "tld" | "gaerne" | "mt" | "tvs" | "bihr";
-
-export type AccessoryBrand = {
-  key: AccessoryBrandKey;
-  name: string;
-  logo?: string;
-  icon?: IconDefinition;
-  alt: string;
-};
-
-const logoOf = (name: string) => BRANDS.find((brand) => brand.name === name)?.src ?? "";
-
-/** Marques d'équipements pilote. */
-export const ACCESSORY_BRANDS: AccessoryBrand[] = [
-  {
-    key: "tld",
-    name: "Troy Lee Designs",
-    logo: "https://funbike.mg/wp-content/uploads/2026/02/sticker-troy-lee-designs-shield-logo-rouge-16cm.png",
-    alt: "Logo Troy Lee Designs",
-  },
-  { key: "gaerne", name: "Gaerne", logo: logoOf("Gaerne"), alt: "Logo Gaerne" },
-  { key: "mt", name: "MT Helmets", logo: logoOf("MT Helmets"), alt: "Logo MT Helmets" },
-  { key: "tvs", name: "TVS", logo: logoOf("TVS"), alt: "Logo TVS" },
-  { key: "bihr", name: "BIHR", logo: logoOf("Bihr"), alt: "Logo Bihr" },
-];
+export type { AccessoryBrandKey };
+export type AccessoryBrand = AccessoryBrandRecord & { icon?: IconDefinition };
+type BrandVisualData = { logo?: string; icon?: IconDefinition };
 
 /** Brand mark in one fixed-size slot so every selector logo has the same footprint. */
-export function BrandVisual({ brand }: { brand: Pick<AccessoryBrand, "logo" | "icon"> }) {
+export function BrandVisual({ brand }: { brand: BrandVisualData }) {
   if (brand.icon) {
     return (
       <span className="brand-logo-slot text-sm text-[#98741b] dark:text-[#ffd100]" aria-hidden="true">
@@ -49,13 +27,15 @@ export function BrandVisual({ brand }: { brand: Pick<AccessoryBrand, "logo" | "i
 export function AccessoryBrandSelector({
   active,
   onSelect,
+  brands,
 }: {
   active: AccessoryBrandKey;
   onSelect: (brand: AccessoryBrandKey) => void;
+  brands: AccessoryBrand[];
 }) {
   return (
     <div className="no-scrollbar flex overflow-x-auto border-b border-black/15 dark:border-white/15">
-      {ACCESSORY_BRANDS.map((brand) => {
+      {brands.map((brand) => {
         const selected = active === brand.key;
         return (
           <button
@@ -100,10 +80,16 @@ export function AccessoryBrandSelector({
   );
 }
 
-export function AccessoryBrandQuickLinks({ onSelect }: { onSelect: (brand: AccessoryBrandKey) => void }) {
+export function AccessoryBrandQuickLinks({
+  onSelect,
+  brands,
+}: {
+  onSelect: (brand: AccessoryBrandKey) => void;
+  brands: AccessoryBrand[];
+}) {
   return (
     <div className="grid grid-cols-2 border-y border-black/15 sm:flex sm:flex-wrap dark:border-white/15">
-      {ACCESSORY_BRANDS.map((brand, index) => (
+      {brands.map((brand, index) => (
         <motion.button
           key={brand.key}
           type="button"
@@ -111,7 +97,7 @@ export function AccessoryBrandQuickLinks({ onSelect }: { onSelect: (brand: Acces
           whileHover={{ x: 3 }}
           className={
             "group grid w-full min-w-0 grid-cols-[3.25rem_minmax(0,1fr)_1rem] items-center gap-1.5 border-b border-r border-black/10 px-2 py-2.5 text-left transition hover:bg-white/50 even:border-r-0 sm:w-auto sm:flex-none sm:grid-cols-[3.25rem_auto_1rem] sm:gap-2 sm:border-b-0 sm:px-4 sm:even:border-r sm:last:border-r-0 dark:border-white/10 dark:hover:bg-white/[0.04] " +
-            (index === ACCESSORY_BRANDS.length - 1 && ACCESSORY_BRANDS.length % 2 ? "col-span-2 sm:col-span-1" : "")
+            (index === brands.length - 1 && brands.length % 2 ? "col-span-2 sm:col-span-1" : "")
           }
         >
           <BrandVisual brand={brand} />

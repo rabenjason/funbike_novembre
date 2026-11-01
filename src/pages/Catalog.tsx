@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGears, faMagnifyingGlass, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
+  ACCESSORY_BRANDS,
   BIKES,
   BRANDS,
   SPARE_PARTS,
@@ -13,18 +14,16 @@ import {
   MT_HELMETS,
   type AccessoryCategory,
   type Part,
-  type PartType,
 } from "../data";
 import { PageHeader, Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { BikeCardSkeleton, PartCardSkeleton } from "../components/Skeletons";
 import Pagination from "../components/Pagination";
+import { content } from "../constants";
 import { useBriefLoading } from "../hooks/useBriefLoading";
 import {
-  ACCESSORY_BRANDS,
   AccessoryBrandSelector,
   BrandVisual,
-  type AccessoryBrand,
   type AccessoryBrandKey,
 } from "../components/AccessoryBrands";
 
@@ -32,7 +31,7 @@ import {
 /*  Constantes                                                         */
 /* ------------------------------------------------------------------ */
 
-const FAMILIES = ["Tous", "Off-road", "Urbain", "3 roues"] as const;
+const FAMILIES = content.catalogue.filtres;
 const BIKES_PER_PAGE = 6;
 const PARTS_PER_PAGE = 8;
 
@@ -45,8 +44,8 @@ const GEAR_BY_BRAND: Record<AccessoryBrandKey, Part[]> = {
   bihr: [],
 };
 
-const TVS_CATEGORIES: ("Tous" | AccessoryCategory)[] = [
-  "Tous",
+const TVS_CATEGORIES: (typeof content.equipements.categorieToutes | AccessoryCategory)[] = [
+  content.equipements.categorieToutes,
   ...Array.from(
     new Set(
       TVS_ACCESSORIES.map((item) => item.category).filter((category): category is AccessoryCategory => Boolean(category)),
@@ -55,27 +54,19 @@ const TVS_CATEGORIES: ("Tous" | AccessoryCategory)[] = [
 ];
 
 /** Marques de pièces détachées (sélecteur visuel, mêmes proportions qu'Équipements). */
-const SPARE_BRANDS = ["Toutes", "TVS", "Sherco", "Fantic", "BIHR"] as const;
+const SPARE_BRANDS = content.piecesDetachees.marquesFiltres;
 type SpareBrand = (typeof SPARE_BRANDS)[number];
 
 const SPARE_BRAND_TABS: { key: SpareBrand; name: string; logo?: string; icon?: IconDefinition }[] = [
-  { key: "Toutes", name: "Toutes", icon: faGears },
-  ...(["TVS", "Sherco", "Fantic", "BIHR"] as const).map((name) => ({
+  { key: SPARE_BRANDS[0], name: SPARE_BRANDS[0], icon: faGears },
+  ...SPARE_BRANDS.slice(1).map((name) => ({
     key: name as SpareBrand,
     name,
     logo: BRANDS.find((brand) => brand.name === name)?.src ?? "",
   })),
 ];
 
-const SPARE_TYPES: ("Toutes" | PartType)[] = [
-  "Toutes",
-  "Pneus",
-  "Freinage",
-  "Transmission",
-  "Filtration",
-  "Pièces moteur",
-  "Consommables",
-];
+const SPARE_TYPES = content.piecesDetachees.typesFiltres;
 type SpareType = (typeof SPARE_TYPES)[number];
 
 const ALL_ITEMS = [...SPARE_PARTS, ...GEAR_ITEMS];
@@ -91,7 +82,7 @@ const containsAll = (text: string, terms: string[]) => {
 const itemLabel = (part: Part) =>
   [
     part.name,
-    part.kind === "piece" ? "Pièces détachées" : (ACCESSORY_BRANDS.find((b) => b.key === part.kind)?.name ?? part.kind),
+    part.kind === "piece" ? content.navigation.piecesDetachees : (ACCESSORY_BRANDS.find((b) => b.key === part.kind)?.name ?? part.kind),
     part.category ?? "",
     part.compatibleBrand ?? "",
     part.partType ?? "",
@@ -120,7 +111,7 @@ function BrandInfoPanel({
   alt: string;
   title: string;
   text: string;
-  lines: string[];
+  lines: readonly string[];
   go: (page: string, id?: string) => void;
 }) {
   return (
@@ -129,7 +120,7 @@ function BrandInfoPanel({
         <img src={logo} alt={alt} className="partner-logo h-16 max-w-[200px] object-contain" />
       </div>
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#98741b] dark:text-[#ffd100]">Marque partenaire Funbike</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#98741b] dark:text-[#ffd100]">{content.piecesDetachees.panneauMarque.surTitre}</p>
         <h3 className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em] text-[#171816] dark:text-[#f2f0ea]">{title}</h3>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/55 dark:text-white/55">{text}</p>
         <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
@@ -145,9 +136,9 @@ function BrandInfoPanel({
             onClick={() => go("contact")}
             className="bg-[#ffd100] px-5 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#171816] transition hover:bg-[#ffe36b]"
           >
-            Demander les disponibilités
+            {content.piecesDetachees.panneauMarque.demanderDisponibilites}
           </button>
-          <span className="text-xs text-black/45 dark:text-white/45">Modèles et tarifs confirmés par notre équipe.</span>
+          <span className="text-xs text-black/45 dark:text-white/45">{content.piecesDetachees.panneauMarque.note}</span>
         </div>
       </div>
     </div>
@@ -167,7 +158,7 @@ export function Catalogue({
   motosOnly?: boolean;
   initialQuery?: string;
 }) {
-  const [family, setFamily] = useState<string>("Tous");
+  const [family, setFamily] = useState<string>(FAMILIES[0]);
   const [query, setQuery] = useState(initialQuery ?? "");
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -177,7 +168,7 @@ export function Catalogue({
     () =>
       BIKES.filter(
         (b) =>
-          (family === "Tous" || b.family === family) && containsAll(`${b.name} ${b.brand} ${b.desc} ${b.family}`, terms),
+          (family === FAMILIES[0] || b.family === family) && containsAll(`${b.name} ${b.brand} ${b.desc} ${b.family}`, terms),
       ),
     [family, terms],
   );
@@ -199,14 +190,14 @@ export function Catalogue({
   return (
     <div>
       <PageHeader
-        title={motosOnly ? "Catalogue Motos" : "Tout le Catalogue"}
-        subtitle={motosOnly ? "Performance, Aventure et Mobilité Urbaine." : "Découvrez nos motos, pièces et équipements officiels."}
+        title={motosOnly ? content.catalogue.titreMotos : content.catalogue.titreComplet}
+        subtitle={motosOnly ? content.catalogue.descriptionMotos : content.catalogue.descriptionComplete}
       />
 
       <Section
-        title="Véhicules"
-        subtitle={`${bikeList.length} modèle(s) disponible(s) · page ${safePage} sur ${totalPages}`}
-        number="01 / Motos"
+        title={content.catalogue.vehicules}
+        subtitle={`${bikeList.length} ${content.catalogue.modelesDisponibles} · ${content.catalogue.pageSur} ${safePage} ${content.catalogue.sur} ${totalPages}`}
+        number={content.catalogue.numeroMotos}
       >
         <div
           ref={gridRef}
@@ -239,8 +230,8 @@ export function Catalogue({
                 setQuery(e.target.value);
                 setPage(1);
               }}
-              placeholder={motosOnly ? "Rechercher une moto ou une marque" : "Motos, casques, blousons, pièces..."}
-              aria-label="Rechercher dans le catalogue"
+              placeholder={motosOnly ? content.catalogue.rechercheMotosPlaceholder : content.catalogue.rechercheGlobalePlaceholder}
+              aria-label={content.catalogue.rechercheAria}
               className="min-w-0 flex-1 bg-transparent text-xs text-[#171816] outline-none placeholder:text-black/40 dark:text-[#f2f0ea] dark:placeholder:text-white/40"
             />
           </label>
@@ -253,7 +244,7 @@ export function Catalogue({
         </div>
         {!loading && bikeList.length === 0 && (
           <p className="py-12 text-center text-sm text-black/50 dark:text-white/50">
-            {partList.length > 0 ? "Aucune moto correspondante. Des produits sont proposés plus bas." : "Aucun résultat pour cette recherche."}
+            {partList.length > 0 ? content.messages.aucunModeleRecherche : content.messages.aucunResultatRecherche}
           </p>
         )}
 
@@ -263,7 +254,7 @@ export function Catalogue({
       {!motosOnly && (
         <>
           {partList.length > 0 && (
-            <Section title="Résultats de recherche" subtitle={`${partList.length} produit(s) trouvé(s).`} number="02 / Résultats">
+            <Section title={content.catalogue.resultatsRecherche} subtitle={`${partList.length} ${content.catalogue.produitsTrouves}.`} number={content.catalogue.numeroResultats}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
                 {partList.map((p) => (
                   <PartCard key={p.id} part={p} go={go} onEnquire={p.kind === "piece" || p.kind === "tvs" ? () => go("contact", p.id) : undefined} />
@@ -272,7 +263,7 @@ export function Catalogue({
             </Section>
           )}
           {!terms.length && (
-            <Section title="Pièces & Consommables" subtitle="Pneus, kits chaîne, freinage, filtration et pièces mécaniques." number="02 / Atelier">
+            <Section title={content.catalogue.piecesApercu.titre} subtitle={content.catalogue.piecesApercu.description} number={content.catalogue.piecesApercu.numero}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
                 {SPARE_PARTS.slice(0, 5).map((p) => (
                   <PartCard key={p.id} part={p} go={go} onEnquire={() => go("contact", p.id)} />
@@ -282,12 +273,12 @@ export function Catalogue({
                 onClick={() => go("spares")}
                 className="mt-8 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
               >
-                Voir toutes les pièces détachées
+                {content.catalogue.piecesApercu.bouton}
               </button>
             </Section>
           )}
           {!terms.length && (
-            <Section title="Équipements pilote" subtitle="Casques, tenues, bottes et accessoires pour le pilote." number="03 / Équipement">
+            <Section title={content.catalogue.equipementsApercu.titre} subtitle={content.catalogue.equipementsApercu.description} number={content.catalogue.equipementsApercu.numero}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
                 {[TVS_ACCESSORIES[0], TVS_ACCESSORIES[2], ...TLD.slice(0, 3)].map((p) => (
                   <PartCard key={p.id} part={p} go={go} onEnquire={p.kind === "tvs" ? () => go("contact", p.id) : undefined} />
@@ -297,7 +288,7 @@ export function Catalogue({
                 onClick={() => go("equipements", "tvs")}
                 className="mt-8 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
               >
-                Voir les équipements pilote
+                {content.catalogue.equipementsApercu.bouton}
               </button>
             </Section>
           )}
@@ -311,61 +302,42 @@ export function Catalogue({
 /*  Page ÉQUIPEMENTS                                                   */
 /* ------------------------------------------------------------------ */
 
-const GEAR_HEADING: Record<AccessoryBrandKey, { title: string; text: string }> = {
-  tld: {
-    title: "Troy Lee Designs",
-    text: "Parcourez la collection pilote, puis contactez Funbike pour vérifier les tailles et coloris disponibles.",
-  },
-  gaerne: {
-    title: "Bottes & chaussures moto Gaerne",
-    text: "Sélectionnez votre pratique et votre pointure — l'équipe Funbike confirme la disponibilité.",
-  },
-  mt: {
-    title: "Casques moto MT Helmets",
-    text: "Choisissez un usage, puis contactez Funbike pour les tailles, coloris et tarifs disponibles.",
-  },
-  tvs: {
-    title: "Équipements TVS",
-    text: "Casques, blousons et gants TVS Racing : sélection de références issues du catalogue officiel TVS Motor.",
-  },
-  bihr: { title: "", text: "" },
-};
-
 export function Equipements({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
   const validBrand = ACCESSORY_BRANDS.some((brand) => brand.key === initialBrand);
   const [tab, setTab] = useState<AccessoryBrandKey>(validBrand ? (initialBrand as AccessoryBrandKey) : "tld");
-  const [category, setCategory] = useState<"Tous" | AccessoryCategory>("Tous");
+  const [category, setCategory] = useState<typeof content.equipements.categorieToutes | AccessoryCategory>(content.equipements.categorieToutes);
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const allItems = GEAR_BY_BRAND[tab];
   const items =
-    tab === "tvs" && category !== "Tous" ? allItems.filter((item) => item.category === category) : allItems;
+    tab === "tvs" && category !== content.equipements.categorieToutes ? allItems.filter((item) => item.category === category) : allItems;
   const totalPages = Math.max(1, Math.ceil(items.length / PARTS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const visible = items.slice((safePage - 1) * PARTS_PER_PAGE, safePage * PARTS_PER_PAGE);
   const loading = useBriefLoading(`gear-${tab}-${category}-${safePage}`);
 
-  const heading = GEAR_HEADING[tab];
+  const heading = content.equipements.marques[tab];
   const isBihr = tab === "bihr";
 
   return (
     <div>
       <PageHeader
-        title="Équipements Pilote"
-        subtitle="Protection, casques, tenues et accessoires pour le pilote."
+        title={content.equipements.titre}
+        subtitle={content.equipements.description}
       />
       <Section
-        title="Choisir une marque"
-        subtitle="Touchez une marque pour afficher sa gamme et les informations utiles."
-        number="01 / Équipements"
+        title={content.equipements.sectionTitre}
+        subtitle={content.equipements.sectionDescription}
+        number={content.equipements.sectionNumero}
       >
         <div ref={gridRef}>
           <AccessoryBrandSelector
             active={tab}
+            brands={ACCESSORY_BRANDS}
             onSelect={(key) => {
               setTab(key);
-              setCategory("Tous");
+              setCategory(content.equipements.categorieToutes);
               setPage(1);
             }}
           />
@@ -384,26 +356,26 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
             {isBihr ? (
               <BrandInfoPanel
                 logo={ACCESSORY_BRANDS.find((b) => b.key === "bihr")!.logo!}
-                alt="Logo Bihr"
-                title="Équipements & accessoires Bihr"
-                text="Casques, tenues, bottes, gants et accessoires pilote Bihr : sélection et disponibilité à confirmer avec l'équipe Funbike."
-                lines={["Casques & tenues", "Bottes & gants", "Accessoires pilote"]}
+                alt={ACCESSORY_BRANDS.find((brand) => brand.key === "bihr")!.alt}
+                title={content.equipements.marques.bihr.titre}
+                text={content.equipements.marques.bihr.description}
+                lines={content.equipements.marques.bihr.lignes}
                 go={go}
               />
             ) : (
               <>
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <h3 className="font-display text-xl font-semibold tracking-[-0.04em] text-[#171816] dark:text-[#f2f0ea]">{heading.title}</h3>
-                    <p className="mt-1 max-w-2xl text-sm text-black/55 dark:text-white/55">{heading.text}</p>
+                    <h3 className="font-display text-xl font-semibold tracking-[-0.04em] text-[#171816] dark:text-[#f2f0ea]">{heading.titre}</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-black/55 dark:text-white/55">{heading.description}</p>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/40 dark:text-white/40">
-                    {items.length} références · page {safePage}/{totalPages}
+                    {items.length} {content.piecesDetachees.references} · {content.piecesDetachees.page} {safePage}/{totalPages}
                   </span>
                 </div>
 
                 {tab === "tvs" && (
-                  <div role="tablist" aria-label="Catégories des équipements TVS" className="no-scrollbar mb-5 flex gap-5 overflow-x-auto border-b border-black/15 dark:border-white/15">
+                  <div role="tablist" aria-label={content.equipements.categoriesTvsAria} className="no-scrollbar mb-5 flex gap-5 overflow-x-auto border-b border-black/15 dark:border-white/15">
                     {TVS_CATEGORIES.map((cat) => (
                       <button
                         key={cat}
@@ -436,7 +408,7 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
 
                 {tab === "tvs" && (
                   <p className="mt-4 text-xs leading-5 text-black/50 dark:text-white/50">
-                    Visuels et références du catalogue officiel TVS. Tarifs, tailles et disponibilités chez Funbike Madagascar à confirmer.
+                    {content.equipements.noteTvs}
                   </p>
                 )}
 
@@ -474,13 +446,13 @@ function SpareBrandSelector({ active, onSelect }: { active: SpareBrand; onSelect
     <div className="no-scrollbar flex overflow-x-auto border-b border-black/15 dark:border-white/15">
       {SPARE_BRAND_TABS.map((brand) => {
         const selected = active === brand.key;
-        const visual: Pick<AccessoryBrand, "logo" | "icon"> = { logo: brand.logo, icon: brand.icon };
+        const visual = { logo: brand.logo, icon: brand.icon };
         return (
           <button
             key={brand.key}
             type="button"
             aria-pressed={selected}
-            aria-controls="spare-parts-products"
+            aria-controls={content.piecesDetachees.produitsAria}
             onClick={(event) => {
               onSelect(brand.key);
               event.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
@@ -523,9 +495,9 @@ function SpareBrandSelector({ active, onSelect }: { active: SpareBrand; onSelect
 }
 
 export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
-  const requested = initialBrand ? (SPARE_ROUTE_MAP[initialBrand] ?? "Toutes") : "Toutes";
+  const requested = initialBrand ? (SPARE_ROUTE_MAP[initialBrand] ?? SPARE_BRANDS[0]) : SPARE_BRANDS[0];
   const [brand, setBrand] = useState<SpareBrand>(requested);
-  const [type, setType] = useState<SpareType>("Toutes");
+  const [type, setType] = useState<SpareType>(SPARE_TYPES[0]);
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -533,8 +505,8 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
     () =>
       SPARE_PARTS.filter(
         (part) =>
-          (brand === "Toutes" || brand === "BIHR" || part.compatibleBrand === brand) &&
-          (type === "Toutes" || part.partType === type),
+          (brand === SPARE_BRANDS[0] || brand === "BIHR" || part.compatibleBrand === brand) &&
+          (type === SPARE_TYPES[0] || part.partType === type),
       ),
     [brand, type],
   );
@@ -545,22 +517,22 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
   const loading = useBriefLoading(`spares-${brand}-${type}-${safePage}`);
 
   const isBihr = brand === "BIHR";
-  const title = brand === "Toutes" ? "Pièces détachées moto" : `Pièces détachées ${brand}`;
+  const title = brand === SPARE_BRANDS[0] ? content.piecesDetachees.titreToutes : `${content.piecesDetachees.titreMarquePrefix} ${brand}`;
   const text =
-    brand === "Toutes"
-      ? "Pneus, kits chaîne, freinage, filtration, pièces mécaniques et consommables. Contactez-nous pour confirmer la compatibilité avec votre moto."
-      : `Pièces et consommables compatibles ${brand}. Indiquez le modèle et l'année de votre moto pour vérifier les dimensions et la disponibilité.`;
+    brand === SPARE_BRANDS[0]
+      ? content.piecesDetachees.descriptionToutes
+      : `${content.piecesDetachees.descriptionMarquePrefix} ${brand}${content.piecesDetachees.descriptionMarqueSuffix}`;
 
   return (
     <div>
       <PageHeader
-        title="Pièces & Consommables"
-        subtitle="Pneus, kits chaîne, freinage, filtration et pièces mécaniques."
+        title={content.piecesDetachees.titre}
+        subtitle={content.piecesDetachees.description}
       />
       <Section
-        title="Choisir une marque"
-        subtitle="Touchez une marque pour afficher ses pièces et consommables."
-        number="01 / Pièces"
+        title={content.piecesDetachees.sectionTitre}
+        subtitle={content.piecesDetachees.sectionDescription}
+        number={content.piecesDetachees.sectionNumero}
       >
         <div ref={gridRef}>
           <SpareBrandSelector
@@ -585,10 +557,10 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
             {isBihr ? (
               <BrandInfoPanel
                 logo={BRANDS.find((b) => b.name === "Bihr")!.src}
-                alt="Logo Bihr"
-                title="Pièces & consommables Bihr"
-                text="Freinage, transmission, filtration et pièces mécaniques Bihr : compatibilité et disponibilité à confirmer avec l'équipe Funbike."
-                lines={["Freinage", "Transmission", "Filtration", "Pièces moteur"]}
+                alt={ACCESSORY_BRANDS.find((brand) => brand.key === "bihr")!.alt}
+                title={content.piecesDetachees.bihr.titre}
+                text={content.piecesDetachees.bihr.description}
+                lines={content.piecesDetachees.bihr.lignes}
                 go={go}
               />
             ) : (
@@ -599,12 +571,12 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
                     <p className="mt-1 max-w-2xl text-sm text-black/55 dark:text-white/55">{text}</p>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/40 dark:text-white/40">
-                    {items.length} références · page {safePage}/{totalPages}
+                    {items.length} {content.piecesDetachees.references} · {content.piecesDetachees.page} {safePage}/{totalPages}
                   </span>
                 </div>
 
                 {/* Filtre TYPE */}
-                <div role="tablist" aria-label="Type de pièce" className="no-scrollbar mb-5 flex gap-5 overflow-x-auto border-b border-black/15 dark:border-white/15">
+                <div role="tablist" aria-label={content.piecesDetachees.typeAria} className="no-scrollbar mb-5 flex gap-5 overflow-x-auto border-b border-black/15 dark:border-white/15">
                   {SPARE_TYPES.map((t) => (
                     <button
                       key={t}
@@ -626,7 +598,7 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
                   ))}
                 </div>
 
-                <div id="spare-parts-products" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+                <div id={content.piecesDetachees.produitsAria} className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
                   {loading
                     ? Array.from({ length: visible.length }, (_, i) => <PartCardSkeleton key={i} />)
                     : visible.map((part) => (
@@ -635,7 +607,7 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
                 </div>
 
                 <p className="mt-4 text-xs leading-5 text-black/50 dark:text-white/50">
-                  Produits simulés pour structurer le catalogue. Dimensions, compatibilité exacte et disponibilité à confirmer avec le modèle et l'année de la moto.
+                  {content.piecesDetachees.noteSimulee}
                 </p>
 
                 <Pagination

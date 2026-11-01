@@ -7,6 +7,7 @@ import { Section } from "../components/Layout";
 import { BikeCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";
 import ImageZoomViewer from "../components/ImageZoomViewer";
+import { content } from "../constants";
 
 export default function Product({
   id,
@@ -35,7 +36,7 @@ export default function Product({
           className="inline-flex min-h-11 max-w-full items-center gap-2 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-black/50 transition hover:text-[#98741b] sm:tracking-[0.14em] dark:text-white/50 dark:hover:text-[#ffd100]"
         >
           <FontAwesomeIcon icon={faArrowLeft} className="shrink-0" />
-          <span className="truncate">Retour{backLabel ? ` — ${backLabel}` : ""}</span>
+          <span className="truncate">{content.motos.fiche.retour}{backLabel ? ` — ${backLabel}` : ""}</span>
         </button>
       </div>
 
@@ -44,7 +45,7 @@ export default function Product({
           <button
             type="button"
             onClick={() => setViewerOpen(true)}
-            aria-label={`Agrandir ${bike.name}`}
+            aria-label={`${content.motos.fiche.agrandir} ${bike.name}`}
             className="glass-panel product-media-stage group relative block aspect-[4/3] w-full min-w-0 cursor-zoom-in overflow-hidden p-2 text-left sm:aspect-[16/10]"
           >
             <SmartImage
@@ -59,7 +60,7 @@ export default function Product({
             </span>
             <span className="absolute right-3 top-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-black/10 bg-white/85 px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#171816] shadow-sm backdrop-blur transition group-hover:bg-white dark:border-white/10 dark:bg-black/55 dark:text-white dark:group-hover:bg-black/75">
               <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
-              <span className="hidden sm:inline">Agrandir</span>
+              <span className="hidden sm:inline">{content.motos.fiche.agrandir}</span>
             </span>
           </button>
           {gallery.length > 1 && (
@@ -68,11 +69,11 @@ export default function Product({
                 <button
                   key={image}
                   onClick={() => setActive(index)}
-                  aria-label={`Voir la photo ${index + 1}`}
+                  aria-label={`${content.motos.fiche.voirPhoto} ${index + 1}`}
                   aria-pressed={active === index}
                   className={"shrink-0 snap-start border-b-2 bg-white p-1 transition " + (active === index ? "border-[#ffd100] opacity-100" : "border-transparent opacity-60 hover:opacity-100")}
                 >
-                  <SmartImage src={image} alt={`${bike.name}, vue ${index + 1}`} className="h-14 w-[5.25rem] sm:h-16 sm:w-24" imgClassName="object-contain p-1" />
+                  <SmartImage src={image} alt={content.motos.fiche.altPhotoVue(bike.name, index + 1)} className="h-14 w-[5.25rem] sm:h-16 sm:w-24" imgClassName="object-contain p-1" />
                 </button>
               ))}
             </div>
@@ -103,12 +104,12 @@ export default function Product({
             ))}
           </dl>
 
-          <section className="mt-6 min-w-0 border-y border-black/15 dark:border-white/15 sm:mt-8" aria-label="Prix et contact">
+          <section className="mt-6 min-w-0 border-y border-black/15 dark:border-white/15 sm:mt-8" aria-label={content.motos.fiche.prixEtContact}>
             {/* Desktop: price and CTA share one aligned row. Mobile: CTA fills the width. */}
             <div className="grid min-w-0 gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div className="min-w-0">
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
-                  Prix & disponibilité
+                  {content.motos.fiche.prixDisponibilite}
                 </p>
                 <p className="mt-1 font-display text-[clamp(1.25rem,1.1rem+0.6vw,1.65rem)] font-semibold leading-none text-[#171816] dark:text-[#f2f0ea]">
                   {bike.price}
@@ -122,7 +123,7 @@ export default function Product({
                 onClick={() => go("contact")}
                 className="fluid-btn inline-flex min-h-12 w-full min-w-0 items-center justify-between gap-4 bg-[#ffd100] px-4 py-3 text-left font-bold uppercase text-[#171816] transition hover:bg-[#ffe36b] lg:min-w-[210px] lg:w-auto lg:px-5 sm:px-4"
               >
-                Demander un devis
+                {content.motos.fiche.demanderDevis}
                 <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
               </motion.button>
             </div>
@@ -131,7 +132,7 @@ export default function Product({
             <div className="flex min-w-0 flex-col gap-3 border-t border-black/[0.07] py-4 dark:border-white/[0.07] sm:flex-row sm:items-center sm:justify-between">
               <p className="flex min-w-0 items-start gap-2 text-[11px] leading-5 text-black/50 dark:text-white/50">
                 <FontAwesomeIcon icon={faCheck} className="mt-1 shrink-0 text-[#98741b] dark:text-[#ffd100]" />
-                <span>Un conseiller confirme le modèle, le stock et les options disponibles.</span>
+                <span>{content.motos.fiche.messageConseiller}</span>
               </p>
 
               <button
@@ -140,7 +141,7 @@ export default function Product({
                 className="inline-flex min-h-10 max-w-full shrink-0 items-center gap-2 self-start border-b border-black/25 text-[10px] font-bold uppercase tracking-[0.08em] text-black/60 transition hover:border-[#98741b] hover:text-[#98741b] dark:border-white/25 dark:text-white/60 dark:hover:border-[#ffd100] dark:hover:text-[#ffd100] sm:self-auto sm:tracking-[0.1em]"
               >
                 <FontAwesomeIcon icon={faPhone} />
-                Contacter l'équipe
+                {content.motos.fiche.contacterEquipe}
               </button>
             </div>
           </section>
@@ -150,7 +151,7 @@ export default function Product({
               onClick={() => go("equipements", "tvs")}
               className="mt-4 inline-flex min-h-11 items-center gap-2 border-b border-black/20 text-[11px] font-bold uppercase tracking-[0.08em] text-black/65 transition hover:text-[#98741b] dark:border-white/20 dark:text-white/65 dark:hover:text-[#ffd100]"
             >
-              Casques, blousons et gants TVS
+              {content.motos.fiche.lienEquipementsTvs}
               <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
             </button>
           )}
@@ -158,7 +159,7 @@ export default function Product({
       </div>
 
       {related.length > 0 && (
-        <Section title="Dans le même esprit" subtitle="D'autres modèles à découvrir." number="À explorer / 02">
+        <Section title={content.motos.fiche.similairesTitre} subtitle={content.motos.fiche.similairesDescription} number={content.motos.fiche.similairesNumero}>
           <div className="grid gap-x-4 gap-y-6 sm:grid-cols-2 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
             {related.map((item) => <BikeCard key={item.id} bike={item} go={go} />)}
           </div>

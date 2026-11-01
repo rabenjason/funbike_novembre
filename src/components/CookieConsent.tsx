@@ -9,6 +9,7 @@ import {
   faSliders,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { content } from "../constants";
 
 export type Consent = { necessary: true; stats: boolean; marketing: boolean; date: string };
 
@@ -127,7 +128,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
           transition={springLayout}
           role="dialog"
           aria-modal="false"
-          aria-label="Préférences de cookies"
+          aria-label={content.cookies.aria}
           initial={{ opacity: 0, y: 40, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.92 }}
@@ -174,7 +175,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                 >
                   <FontAwesomeIcon icon={faCheck} className="text-[11px]" />
                 </motion.span>
-                <span>Préférences enregistrées</span>
+                <span>{content.cookies.preferencesEnregistrees}</span>
               </motion.div>
             ) : mode === "docked" ? (
               /* STATE 1: MINI DOCKED PILL (when scrolling or minimized) */
@@ -192,7 +193,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.94 }}
                   className="flex items-center gap-2 rounded-full py-1 pl-1.5 pr-2.5 text-left"
-                  aria-label="Ouvrir les options de cookies"
+                  aria-label={content.cookies.ouvrirOptions}
                 >
                   <motion.span
                     animate={{ rotate: [0, -12, 12, -5, 0] }}
@@ -202,7 +203,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                     <FontAwesomeIcon icon={faCookieBite} />
                   </motion.span>
                   <span className="text-[11px] font-bold tracking-tight text-[#171816] dark:text-[#f2f0ea]">
-                    Cookies
+                    {content.cookies.cookies}
                   </span>
                 </motion.button>
 
@@ -212,9 +213,9 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                   whileTap={{ scale: 0.92 }}
                   onClick={() => decide(true, true)}
                   className="rounded-full bg-[#ffd100] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#171816]"
-                  aria-label="Accepter tous les cookies"
+                  aria-label={content.cookies.accepterTousAria}
                 >
-                  OK
+                  {content.cookies.ok}
                 </motion.button>
               </motion.div>
             ) : mode === "compact" ? (
@@ -238,19 +239,19 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-display text-xs font-bold tracking-[-0.02em] text-[#171816] sm:text-sm dark:text-[#f2f0ea]">
-                        Cookies & expérience
+                        {content.cookies.barreTitre}
                       </p>
                       <button
                         type="button"
                         onClick={() => setMode("docked")}
-                        aria-label="Réduire en bulle"
+                        aria-label={content.cookies.reduire}
                         className="grid h-6 w-6 place-items-center rounded-full text-[10px] text-black/45 transition hover:bg-black/5 hover:text-black dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
                       >
                         <FontAwesomeIcon icon={faChevronDown} />
                       </button>
                     </div>
                     <p className="hidden text-[11px] leading-4 text-black/60 sm:line-clamp-2 sm:block dark:text-white/60">
-                      Essentiels & mesure d'audience pour fluidifier votre visite.
+                      {content.cookies.barreDescription}
                     </p>
                   </div>
                 </div>
@@ -262,18 +263,18 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                     onClick={() => decide(false, false)}
                     className="h-8 rounded-lg border border-black/15 px-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#171816] transition hover:border-[#ffd100] sm:px-2.5 sm:tracking-[0.08em] dark:border-white/20 dark:text-[#f2f0ea]"
                   >
-                    Refuser
+                    {content.cookies.refuser}
                   </motion.button>
 
                   <motion.button
                     type="button"
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setMode("custom")}
-                    aria-label="Options des cookies"
+                    aria-label={content.cookies.optionsAria}
                     className="inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-lg border border-black/15 text-[10px] font-bold uppercase tracking-[0.08em] text-[#171816] transition hover:border-[#ffd100] sm:w-auto sm:px-2.5 dark:border-white/20 dark:text-[#f2f0ea]"
                   >
                     <FontAwesomeIcon icon={faSliders} className="text-[10px] text-[#98741b] dark:text-[#ffd100]" />
-                    <span className="hidden sm:inline">Options</span>
+                    <span className="hidden sm:inline">{content.cookies.options}</span>
                   </motion.button>
 
                   <motion.button
@@ -283,7 +284,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                     onClick={() => decide(true, true)}
                     className="h-8 flex-1 rounded-lg bg-[#ffd100] px-2 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#171816] shadow-sm transition hover:bg-[#ffe36b] sm:px-3 sm:tracking-[0.1em]"
                   >
-                    Accepter
+                    {content.cookies.accepterCompact}
                   </motion.button>
                 </div>
               </motion.div>
@@ -302,13 +303,13 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                       <FontAwesomeIcon icon={faSliders} />
                     </span>
                     <h2 className="font-display text-sm font-bold tracking-[-0.02em] text-[#171816] dark:text-[#f2f0ea]">
-                      Personnaliser les cookies
+                      {content.cookies.titre}
                     </h2>
                   </div>
                   <button
                     type="button"
                     onClick={() => (existing ? onClose() : setMode("compact"))}
-                    aria-label="Fermer les options"
+                    aria-label={content.cookies.fermerOptions}
                     className="grid h-7 w-7 place-items-center rounded-full text-xs text-black/45 hover:text-black dark:text-white/45 dark:hover:text-white"
                   >
                     <FontAwesomeIcon icon={faXmark} />
@@ -326,22 +327,22 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                 >
                   {[
                     {
-                      title: "Essentiels",
-                      desc: "Thème, sécurité et navigation.",
+                      title: content.cookies.essentiels.titre,
+                      desc: content.cookies.essentiels.description,
                       locked: true,
                       checked: true,
                       onChange: undefined,
                     },
                     {
-                      title: "Audience",
-                      desc: "Pages consultées et performance.",
+                      title: content.cookies.audience.titre,
+                      desc: content.cookies.audience.description,
                       locked: false,
                       checked: stats,
                       onChange: setStats,
                     },
                     {
-                      title: "Marketing",
-                      desc: "Offres moto personnalisées.",
+                      title: content.cookies.marketing.titre,
+                      desc: content.cookies.marketing.description,
                       locked: false,
                       checked: marketing,
                       onChange: setMarketing,
@@ -368,7 +369,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                         checked={item.checked}
                         disabled={item.locked}
                         onChange={item.onChange}
-                        label={`Cookies ${item.title}`}
+                        label={`${content.cookies.cookiesPrefix}${item.title}`}
                       />
                     </motion.li>
                   ))}
@@ -381,7 +382,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                     onClick={() => decide(stats, marketing)}
                     className="h-9 flex-1 rounded-lg border border-black/15 px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#171816] transition hover:border-[#ffd100] dark:border-white/20 dark:text-[#f2f0ea]"
                   >
-                    Enregistrer
+                    {content.cookies.enregistrer}
                   </motion.button>
                   <motion.button
                     type="button"
@@ -390,7 +391,7 @@ export default function CookieConsent({ open, onClose }: { open: boolean; onClos
                     onClick={() => decide(true, true)}
                     className="h-9 flex-1 rounded-lg bg-[#ffd100] px-3 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#171816] transition hover:bg-[#ffe36b]"
                   >
-                    Tout accepter
+                    {content.cookies.accepterTous}
                   </motion.button>
                 </div>
               </motion.div>
