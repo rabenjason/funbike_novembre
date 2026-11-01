@@ -1,0 +1,29 @@
+# This domain reuses the shared product-detail interface and current classifications.
+#import "./accessories.graphql"
+#import "./categories.graphql"
+
+"""Valeurs du type CompatibleBrand, conservées à l'identique depuis le frontend."""
+enum CompatibleBrand {
+  Universal
+  TVS
+  Sherco
+  Fantic
+}
+
+"""
+Pièce détachée ou consommable. `partType` est le classement déjà appliqué
+aux pièces dans SPARE_PARTS; il ne crée pas de relation famille-produit.
+"""
+type SparePart implements AccessoryProduct {
+  id: ID!
+  name: String!
+  price: String!
+  image: String!
+  kind: AccessoryKind!
+  category: AccessoryCategory
+  gallery: [String!]
+  desc: String
+  specs: [ProductSpec!]
+  compatibleBrand: CompatibleBrand
+  partType: PartType
+}

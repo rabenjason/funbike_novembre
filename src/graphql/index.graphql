@@ -1,0 +1,22 @@
+# Point d'entrée SDL. Les lignes #import suivent la convention graphql-import.
+#import "./brands.graphql"
+#import "./categories.graphql"
+#import "./motorcycles.graphql"
+#import "./spare-parts.graphql"
+#import "./equipment.graphql"
+#import "./accessories.graphql"
+
+"""
+Racines de lecture correspondant aux collections frontend actuellement
+présentes dans les domaines demandés. Les résolveurs restent hors périmètre.
+"""
+type Query {
+  brands: [Brand!]!
+  categories: [Category!]!
+  bikeFamilies: [BikeFamily!]!
+  partTypes: [PartType!]!
+  motorcycles: [Motorcycle!]!
+  spareParts: [SparePart!]!
+  equipment: [Equipment!]!
+  allParts: [AccessoryProduct!]!
+}

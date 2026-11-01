@@ -1,0 +1,38 @@
+# AccessoryCategory and its existing labels are defined in categories.graphql.
+#import "./categories.graphql"
+
+"""
+Valeurs exactes du champ Part.kind déjà utilisé par le frontend.
+Les entrées restent en minuscules pour préserver les littéraux existants.
+"""
+enum AccessoryKind {
+  piece
+  tld
+  gaerne
+  mt
+  tvs
+}
+
+"""Caractéristiques facultatives d'une pièce ou d'un équipement."""
+type ProductSpec {
+  label: String!
+  value: String!
+}
+
+"""
+Vue commune correspondant à l'alias TypeScript AccessoryProduct = Part et à
+l'agrégat ALL_PARTS utilisé par les fiches détail. Il n'existe pas de collection
+Accessoires autonome dans src/data : TVS_ACCESSORIES contient des équipements
+pilote et est décrit par Equipment dans equipment.graphql.
+"""
+interface AccessoryProduct {
+  id: ID!
+  name: String!
+  price: String!
+  image: String!
+  kind: AccessoryKind!
+  category: AccessoryCategory
+  gallery: [String!]
+  desc: String
+  specs: [ProductSpec!]
+}

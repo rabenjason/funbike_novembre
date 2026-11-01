@@ -1,0 +1,45 @@
+"""
+Référentiel des marques présent dans src/data/brands.ts.
+`brand` dans les motos reste un libellé texte : les enregistrements Motorcycle
+n'ont pas de clé étrangère vers Brand dans les données actuelles.
+"""
+type Brand {
+  id: ID!
+  name: String!
+  logo: String!
+  logoAlt: String!
+  description: String
+  isActive: Boolean!
+  sections: [BrandSectionAssociation!]!
+}
+
+"""
+Rubriques associées à une marque. Les noms GraphQL sûrs correspondent aux
+valeurs frontend `motos`, `equipements`, `pieces-detachees` et `partenaires`.
+"""
+enum BrandSectionId {
+  MOTOS
+  EQUIPEMENTS
+  PIECES_DETACHEES
+  PARTENAIRES
+}
+
+"""
+Modes d'affichage actuels : `CATALOGUE` correspond à `catalogue` et `PARTNER_INFO` à `partner-info`.
+"""
+enum BrandSectionDisplayMode {
+  CATALOGUE
+  PARTNER_INFO
+}
+
+type BrandSectionAssociation {
+  section: BrandSectionId!
+  order: Int!
+  label: String
+  routeId: String
+  filterable: Boolean
+  displayMode: BrandSectionDisplayMode
+  homeFeatured: Boolean
+  footerOrder: Int
+  footerFeaturedOrder: Int
+}

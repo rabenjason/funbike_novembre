@@ -1,0 +1,29 @@
+# The source strings in Bike.family are represented by BikeFamily.
+#import "./categories.graphql"
+
+"""Caractéristique moto, telle qu'utilisée dans Bike.specs."""
+type BikeSpec {
+  label: String!
+  value: String!
+}
+
+"""
+Moto du catalogue frontend. `brand` est le nom conservé dans les données,
+pas une relation normalisée vers Brand. `price` reste une chaîne car les
+valeurs affichées incluent notamment `Sur devis`.
+"""
+type Motorcycle {
+  id: ID!
+  name: String!
+  brand: String!
+  family: BikeFamily!
+  price: String!
+  tag: String
+  alt: String!
+  image: String!
+  gallery: [String!]
+  specs: [BikeSpec!]!
+  desc: String!
+  recommendation: String
+  publishedAt: String
+}
