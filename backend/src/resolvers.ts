@@ -420,9 +420,11 @@ function optionalId(value: unknown, label: string): number | null {
 }
 
 function sortOrder(value: unknown, fallback = 0): number {
-  if (value === undefined || value === null) return fallback;
-  if (!Number.isInteger(value) || Number(value) < -100000 || Number(value) > 100000) {
-    return badInput("sortOrder must be an integer between -100000 and 100000.");
+  if (value === undefined || value === null) {
+    return Number.isInteger(fallback) && fallback >= 0 && fallback <= 100000 ? fallback : 0;
+  }
+  if (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 100000) {
+    return badInput("sortOrder must be a non-negative integer between 0 and 100000.");
   }
   return Number(value);
 }
