@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import mysql, { type RowDataPacket } from "mysql2/promise";
+import mysql from "mysql2/promise";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -17,22 +17,6 @@ try {
   const schemaPath = fileURLToPath(new URL("../database/schema.sql", import.meta.url));
   const schema = await readFile(schemaPath, "utf8");
   await connection.query(schema);
-
-  // CREATE TABLE IF NOT EXISTS does not add columns to a table created by an
-  // earlier release. Keep this migration idempotent for existing installations.
-  const [recommendationColumn] = await connection.query<RowDataPacket[]>(
-    `SELECT COLUMN_NAME
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'motorcycles'
-       AND COLUMN_NAME = 'recommendation'
-     LIMIT 1`,
-  );
-  if (recommendationColumn.length === 0) {
-    await connection.query("ALTER TABLE motorcycles ADD COLUMN recommendation TEXT NULL");
-    console.log("Database upgrade applied: motorcycles.recommendation added.");
-  }
-
   console.log("MySQL schema applied. No sample rows were inserted.");
 } finally {
   await connection.end();
