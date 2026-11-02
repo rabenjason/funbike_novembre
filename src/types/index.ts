@@ -1,9 +1,9 @@
 /**
- * Types des données dynamiques FunBike.
+ * Types des données dynamiques Funbike.
  *
- * Ces interfaces décrivent uniquement la structure des contenus susceptibles
- * d'évoluer (catalogue, marques, catégories, revendeurs, bannières, blog).
- * Elles ne créent ni API, ni backend, ni base de données.
+ * Ces interfaces décrivent les contenus échangés entre le frontend, l’API
+ * GraphQL et le tableau de bord (catalogue, marques, rubriques, revendeurs,
+ * bannières et promotions).
  */
 
 export type BrandSectionId = "motos" | "equipements" | "pieces-detachees" | "partenaires";
@@ -21,7 +21,7 @@ export interface BrandSectionAssociation {
   footerFeaturedOrder?: number;
 }
 
-/** Enregistrement de marque stable, remplaçable ultérieurement par une réponse API. */
+/** Enregistrement de marque stable, lu et administré via l’API GraphQL. */
 export interface Brand {
   id: string;
   name: string;
@@ -32,7 +32,7 @@ export interface Brand {
   sections: readonly BrandSectionAssociation[];
 }
 
-/** Diapositive héro de la page d'accueil, à terme fournie par l'API. */
+/** Diapositive héro de la page d'accueil, fournie par l’API et le tableau de bord. */
 export interface FeaturedBanner {
   id: string;
   short: string;
@@ -57,9 +57,9 @@ export interface HomepagePromotion {
   price: string;
   targetPage: string;
   targetId: string;
-  publishedAt?: string;
-  startsAt?: string;
-  endsAt?: string;
+  publishedAt?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface Category {
@@ -146,7 +146,7 @@ export interface Dealer {
   email: string;
   desc: string;
   /** Libellé localisé utilisé par l'assistant dans les réponses de recherche de point de vente. */
-  assistantLabel?: string;
+  assistantLabel?: string | null;
   lat: number;
   lon: number;
   services: string[];

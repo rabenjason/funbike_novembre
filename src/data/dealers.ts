@@ -1,4 +1,4 @@
-/** Existing dealer and service-point records. */
+/** Données locales de secours si l’API GraphQL des revendeurs est indisponible. */
 import type { Dealer } from "../types";
 
 export const DEALERS: Dealer[] = [

@@ -48,7 +48,7 @@ export default function NewArrivals({
         >
           {items.map((product) => (
             <motion.article
-              key={product.title}
+              key={product.id}
               variants={itemMotion}
               whileHover={{ y: -5 }}
               className="fb-card group flex min-w-0 flex-col p-2.5 sm:p-3"

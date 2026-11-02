@@ -22,3 +22,15 @@ type BrandSectionAssociation {
   footerOrder: Int
   footerFeaturedOrder: Int
 }
+
+input BrandSectionInput {
+  section: String!
+  order: Int
+  label: String
+  routeId: String
+  filterable: Boolean
+  displayMode: String
+  homeFeatured: Boolean
+  footerOrder: Int
+  footerFeaturedOrder: Int
+}

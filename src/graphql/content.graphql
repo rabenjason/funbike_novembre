@@ -1,0 +1,102 @@
+"""Administrable hero slide displayed on the home page."""
+type FeaturedBanner {
+  id: ID!
+  short: String!
+  brand: String!
+  tag: String!
+  image: String!
+  alt: String!
+  targetPage: String!
+  targetId: String!
+  isActive: Boolean!
+  sortOrder: Int!
+}
+
+input FeaturedBannerInput {
+  id: ID!
+  short: String!
+  brand: String!
+  tag: String!
+  image: String!
+  alt: String!
+  targetPage: String!
+  targetId: String!
+  isActive: Boolean
+  sortOrder: Int
+}
+
+"""Administrable promotional card shown in the home page's new-arrivals section."""
+type HomepagePromotion {
+  id: ID!
+  badge: String!
+  eyebrow: String!
+  title: String!
+  description: String!
+  image: String!
+  alt: String!
+  highlights: [String!]!
+  price: String!
+  targetPage: String!
+  targetId: String!
+  publishedAt: String
+  startsAt: String
+  endsAt: String
+  isActive: Boolean!
+  sortOrder: Int!
+}
+
+input HomepagePromotionInput {
+  id: ID!
+  badge: String!
+  eyebrow: String!
+  title: String!
+  description: String!
+  image: String!
+  alt: String!
+  highlights: [String!]
+  price: String!
+  targetPage: String!
+  targetId: String!
+  publishedAt: String
+  startsAt: String
+  endsAt: String
+  isActive: Boolean
+  sortOrder: Int
+}
+
+"""Administrable Funbike showroom, reseller or service point."""
+type Dealer {
+  key: ID!
+  city: String!
+  name: String!
+  kind: String!
+  address: String!
+  hours: String!
+  phone: String!
+  email: String!
+  desc: String!
+  assistantLabel: String
+  lat: Float!
+  lon: Float!
+  services: [String!]!
+  isActive: Boolean!
+  sortOrder: Int!
+}
+
+input DealerInput {
+  key: ID!
+  city: String!
+  name: String!
+  kind: String!
+  address: String!
+  hours: String!
+  phone: String!
+  email: String!
+  desc: String!
+  assistantLabel: String
+  lat: Float!
+  lon: Float!
+  services: [String!]
+  isActive: Boolean
+  sortOrder: Int
+}

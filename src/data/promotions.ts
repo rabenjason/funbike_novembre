@@ -1,4 +1,4 @@
-/** Existing home-page promotions and new arrivals. */
+/** Données locales de secours si l’API GraphQL des promotions est indisponible. */
 import type { HomepagePromotion } from "../types";
 import { BIKES } from "./motorcycles";
 

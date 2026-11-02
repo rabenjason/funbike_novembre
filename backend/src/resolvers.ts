@@ -2,11 +2,34 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { GraphQLError } from "graphql";
 import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext } from "./auth.js";
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
+import { siteContentResolvers } from "./siteContentResolvers.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
 type ProductImageInput = { url: string; alt?: string | null; isPrimary?: boolean | null; sortOrder?: number | null };
 type ProductSpecInput = { characteristicId: string; value: string; sortOrder?: number | null };
+type BrandSectionInput = {
+  section: string;
+  order?: number | null;
+  label?: string | null;
+  routeId?: string | null;
+  filterable?: boolean | null;
+  displayMode?: string | null;
+  homeFeatured?: boolean | null;
+  footerOrder?: number | null;
+  footerFeaturedOrder?: number | null;
+};
+type NormalizedBrandSection = {
+  section: string;
+  order: number;
+  label: string | null;
+  routeId: string | null;
+  filterable: boolean | null;
+  displayMode: string | null;
+  homeFeatured: boolean | null;
+  footerOrder: number | null;
+  footerFeaturedOrder: number | null;
+};
 type NormalizedProductInput = {
   kind: string;
   name: string;
@@ -455,6 +478,65 @@ function sortOrder(value: unknown, fallback = 0): number {
   return Number(value);
 }
 
+const BRAND_SECTION_IDS = new Set(["motos", "equipements", "pieces-detachees", "partenaires"]);
+
+function normalizeBrandSections(value: unknown): NormalizedBrandSection[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 20) return badInput("A brand may have at most 20 section associations.");
+  const sections = value.map((entry: BrandSectionInput, index) => {
+    const section = requiredText(entry.section, "Brand section", 80);
+    if (!BRAND_SECTION_IDS.has(section)) return badInput("Unknown brand section.");
+    const displayMode = optionalText(entry.displayMode, "Brand display mode", 80);
+    if (displayMode !== null && displayMode !== "catalogue" && displayMode !== "partner-info") {
+      return badInput("Brand display mode must be catalogue or partner-info.");
+    }
+    const nullableOrder = (order: unknown, label: string) =>
+      order === undefined || order === null ? null : sortOrder(order, index);
+    return {
+      section,
+      order: sortOrder(entry.order, index),
+      label: optionalText(entry.label, "Brand section label", 160),
+      routeId: optionalText(entry.routeId, "Brand section route ID", 160),
+      filterable: typeof entry.filterable === "boolean" ? entry.filterable : null,
+      displayMode,
+      homeFeatured: typeof entry.homeFeatured === "boolean" ? entry.homeFeatured : null,
+      footerOrder: nullableOrder(entry.footerOrder, "Brand footer order"),
+      footerFeaturedOrder: nullableOrder(entry.footerFeaturedOrder, "Brand featured footer order"),
+    };
+  });
+  if (new Set(sections.map((section) => section.section)).size !== sections.length) {
+    return badInput("A brand may only be associated with each section once.");
+  }
+  return sections;
+}
+
+async function getBrandSections(brandId: unknown): Promise<DbRow[]> {
+  return queryRows<DbRow>(
+    `SELECT section, sort_order AS \`order\`, label, route_id AS routeId,
+            filterable, display_mode AS displayMode, home_featured AS homeFeatured,
+            footer_order AS footerOrder, footer_featured_order AS footerFeaturedOrder
+     FROM brand_sections WHERE brand_id = ? ORDER BY sort_order ASC, section ASC`,
+    [numericId(brandId)],
+  );
+}
+
+async function saveBrandSections(
+  connection: import("mysql2/promise").PoolConnection,
+  brandId: number,
+  sections: NormalizedBrandSection[],
+): Promise<void> {
+  await connection.execute("DELETE FROM brand_sections WHERE brand_id = ?", [brandId]);
+  for (const section of sections) {
+    await connection.execute(
+      `INSERT INTO brand_sections
+       (brand_id, section, sort_order, label, route_id, filterable, display_mode, home_featured, footer_order, footer_featured_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [brandId, section.section, section.order, section.label, section.routeId, section.filterable,
+        section.displayMode, section.homeFeatured, section.footerOrder, section.footerFeaturedOrder],
+    );
+  }
+}
+
 function normalizeBrandInput(input: Args, current?: DbRow) {
   const slug = requiredText(input.slug, "Brand slug", 120).toLowerCase();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
@@ -468,6 +550,9 @@ function normalizeBrandInput(input: Args, current?: DbRow) {
     description: input.description === undefined ? (current?.description ?? null) : optionalText(input.description, "Brand description", 10000),
     isActive: typeof input.isActive === "boolean" ? input.isActive : Boolean(current?.isActive ?? true),
     sortOrder: sortOrder(input.sortOrder, Number(current?.sortOrder ?? 0)),
+    sections: input.sections === undefined
+      ? (current?.sections as NormalizedBrandSection[] | undefined) ?? []
+      : normalizeBrandSections(input.sections),
   };
 }
 
@@ -740,6 +825,7 @@ function productNotFound(id: unknown): never {
 
 export const resolvers: Record<string, any> = {
   Query: {
+    ...siteContentResolvers.Query,
     health: async () => ({ status: "ok", database: await databaseHealth() }),
     me: (_parent: unknown, _args: Args, context: GraphQLContext) => context.user,
     brands: () => queryRows<DbRow>(
@@ -811,6 +897,7 @@ export const resolvers: Record<string, any> = {
     },
   },
   Mutation: {
+    ...siteContentResolvers.Mutation,
     login: (_parent: unknown, args: Args) => login(args.email, args.password),
     changeMyEmail: (_parent: unknown, args: Args, context: GraphQLContext) =>
       changeEmail(context, args.currentPassword, args.newEmail),
@@ -826,6 +913,7 @@ export const resolvers: Record<string, any> = {
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [input.slug, input.name, input.logo, input.logoAlt, input.description, input.isActive, input.sortOrder],
         );
+        await saveBrandSections(connection, result.insertId, input.sections);
         return result.insertId;
       });
       const brand = await getBrand(id);
@@ -838,6 +926,7 @@ export const resolvers: Record<string, any> = {
       if (!id) return badInput("Brand ID is required.");
       const current = await getBrand(id);
       if (!current) return notFound("Brand was not found.");
+      current.sections = await getBrandSections(id);
       const input = normalizeBrandInput(args.input, current);
       await withTransaction(async (connection) => {
         await connection.execute(
@@ -845,6 +934,7 @@ export const resolvers: Record<string, any> = {
                   is_active = ?, sort_order = ? WHERE id = ?`,
           [input.slug, input.name, input.logo, input.logoAlt, input.description, input.isActive, input.sortOrder, id],
         );
+        await saveBrandSections(connection, id, input.sections);
       });
       return (await getBrand(id)) ?? notFound("Updated brand could not be loaded.");
     },
@@ -1046,6 +1136,9 @@ export const resolvers: Record<string, any> = {
       return result.affectedRows > 0;
     },
   },
+  FeaturedBanner: siteContentResolvers.FeaturedBanner,
+  HomepagePromotion: siteContentResolvers.HomepagePromotion,
+  Dealer: siteContentResolvers.Dealer,
   CatalogProduct: {
     __resolveType: gqlProductType,
     ...sharedProductResolvers,
@@ -1057,13 +1150,7 @@ export const resolvers: Record<string, any> = {
     family: (record: DbRow) => getFamily(record.familyId),
   },
   Brand: {
-    sections: (brand: DbRow) => queryRows<DbRow>(
-      `SELECT section, sort_order AS \`order\`, label, route_id AS routeId,
-              filterable, display_mode AS displayMode, home_featured AS homeFeatured,
-              footer_order AS footerOrder, footer_featured_order AS footerFeaturedOrder
-       FROM brand_sections WHERE brand_id = ? ORDER BY sort_order ASC, section ASC`,
-      [numericId(brand.id)],
-    ),
+    sections: (brand: DbRow) => getBrandSections(brand.id),
   },
   Family: {
     subfamilies: (family: DbRow) => queryRows<DbRow>(

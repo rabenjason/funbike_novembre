@@ -48,6 +48,7 @@ input BrandInput {
   description: String
   isActive: Boolean
   sortOrder: Int
+  sections: [BrandSectionInput!]
 }
 
 input LookupInput {
