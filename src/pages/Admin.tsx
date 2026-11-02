@@ -76,6 +76,10 @@ type LookupForm = { name: string; familyId: string; unit: string; applicableTo: 
 type BrandForm = { slug: string; name: string; logo: string; logoAlt: string; description: string; sortOrder: string; isActive: boolean };
 type CategoryForm = { title: string; desc: string; src: string; to: string; brand: string; sortOrder: string; isActive: boolean };
 type Tab = "products" | "classifications" | "brands" | "categories" | "security";
+type ArchiveRequest =
+  | { type: "lookup"; id: string; label: string; lookupKind: LookupKind; successMessage: string }
+  | { type: "brand"; id: string; label: string; successMessage: string }
+  | { type: "category"; id: string; label: string; successMessage: string };
 
 const LOOKUP_KINDS: Array<{ key: LookupKind; label: string }> = [
   { key: "FAMILY", label: "Familles moto" },
@@ -235,6 +239,7 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [archiveRequest, setArchiveRequest] = useState<ArchiveRequest | null>(null);
   const [tab, setTab] = useState<Tab>("products");
   const [data, setData] = useState<ReferenceData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -308,13 +313,16 @@ export default function Admin() {
   }, [token, user, tab, lookupKind, refreshKey]);
 
   useEffect(() => {
-    if (!logoutModalOpen) return;
+    if (!logoutModalOpen && !archiveRequest) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setLogoutModalOpen(false);
+      if (event.key === "Escape" && !busy) {
+        setLogoutModalOpen(false);
+        setArchiveRequest(null);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [logoutModalOpen]);
+  }, [logoutModalOpen, archiveRequest, busy]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -515,19 +523,46 @@ export default function Admin() {
     });
   }
 
-  async function archiveLookup(row: Lookup) {
-    if (!token || !window.confirm(`Archiver « ${row.name} » ? Il ne sera plus proposé aux visiteurs.`)) return;
+  function archiveLookup(row: Lookup) {
+    setArchiveRequest({
+      type: "lookup",
+      id: row.id,
+      label: row.name,
+      lookupKind,
+      successMessage: "Classification archivée.",
+    });
+  }
+
+  async function confirmArchive() {
+    if (!token || !archiveRequest) return;
+    const request = archiveRequest;
     setBusy(true);
     setError("");
     try {
-      await graphqlRequest(
-        "mutation ArchiveLookup($kind: LookupKind!, $id: ID!) { deleteLookup(kind: $kind, id: $id) }",
-        { kind: lookupKind, id: row.id }, token,
-      );
-      setNotice("Classification archivée.");
+      if (request.type === "lookup") {
+        await graphqlRequest(
+          "mutation ArchiveLookup($kind: LookupKind!, $id: ID!) { deleteLookup(kind: $kind, id: $id) }",
+          { kind: request.lookupKind, id: request.id },
+          token,
+        );
+      } else if (request.type === "brand") {
+        await graphqlRequest(
+          "mutation ArchiveBrand($id: ID!) { deleteBrand(id: $id) }",
+          { id: request.id },
+          token,
+        );
+      } else {
+        await graphqlRequest(
+          "mutation ArchiveCategory($id: ID!) { deleteCategory(id: $id) }",
+          { id: request.id },
+          token,
+        );
+      }
+      setNotice(request.successMessage);
+      setArchiveRequest(null);
       reload();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Impossible d’archiver la classification.");
+      setError(reason instanceof Error ? reason.message : "Impossible d’archiver cet élément.");
     } finally {
       setBusy(false);
     }
@@ -557,19 +592,13 @@ export default function Admin() {
     }
   }
 
-  async function archiveBrand(brand: Brand) {
-    if (!token || !window.confirm(`Archiver la marque « ${brand.name} » ?`)) return;
-    setBusy(true);
-    setError("");
-    try {
-      await graphqlRequest("mutation ArchiveBrand($id: ID!) { deleteBrand(id: $id) }", { id: brand.id }, token);
-      setNotice("Marque archivée.");
-      reload();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Impossible d’archiver la marque.");
-    } finally {
-      setBusy(false);
-    }
+  function archiveBrand(brand: Brand) {
+    setArchiveRequest({
+      type: "brand",
+      id: brand.id,
+      label: brand.name,
+      successMessage: "Marque archivée.",
+    });
   }
 
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
@@ -596,19 +625,13 @@ export default function Admin() {
     }
   }
 
-  async function archiveCategory(category: Category) {
-    if (!token || !window.confirm(`Archiver « ${category.title} » ?`)) return;
-    setBusy(true);
-    setError("");
-    try {
-      await graphqlRequest("mutation ArchiveCategory($id: ID!) { deleteCategory(id: $id) }", { id: category.id }, token);
-      setNotice("Catégorie archivée.");
-      reload();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Impossible d’archiver la catégorie.");
-    } finally {
-      setBusy(false);
-    }
+  function archiveCategory(category: Category) {
+    setArchiveRequest({
+      type: "category",
+      id: category.id,
+      label: category.title,
+      successMessage: "Catégorie archivée.",
+    });
   }
 
   async function updateEmail(event: FormEvent<HTMLFormElement>) {
@@ -876,6 +899,38 @@ export default function Admin() {
               </button>
               <button type="button" className={buttonPrimary} onClick={() => { setLogoutModalOpen(false); logout(); }}>
                 Oui, me déconnecter
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {archiveRequest && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) setArchiveRequest(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-modal-title"
+            aria-describedby="archive-modal-description"
+            className="w-full max-w-md border border-black/10 bg-white p-6 text-[#171816] shadow-2xl dark:border-white/10 dark:bg-[#1c1d1a] dark:text-[#f2f0ea] sm:p-7"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Confirmation</p>
+            <h2 id="archive-modal-title" className="mt-2 font-display text-xl font-bold">Confirmer l’archivage ?</h2>
+            <p id="archive-modal-description" className="mt-2 text-sm text-black/60 dark:text-white/60">
+              Archiver « <strong>{archiveRequest.label}</strong> » ? L’élément sera retiré des choix actifs, sans supprimer son historique.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" autoFocus className={buttonSecondary} disabled={busy} onClick={() => setArchiveRequest(null)}>
+                Non
+              </button>
+              <button type="button" className={buttonPrimary} disabled={busy} onClick={() => void confirmArchive()}>
+                {busy ? "Archivage…" : "Oui, archiver"}
               </button>
             </div>
           </section>
