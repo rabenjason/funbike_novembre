@@ -264,3 +264,18 @@ CREATE TABLE IF NOT EXISTS spare_part_compatible_brands (
   CONSTRAINT fk_spare_compatible_part FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
   CONSTRAINT fk_spare_compatible_brand FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Normalize legacy negative display orders to the neutral first position.
+UPDATE brands SET sort_order = 0 WHERE sort_order < 0;
+UPDATE brand_sections SET sort_order = 0 WHERE sort_order < 0;
+UPDATE categories SET sort_order = 0 WHERE sort_order < 0;
+UPDATE families SET sort_order = 0 WHERE sort_order < 0;
+UPDATE subfamilies SET sort_order = 0 WHERE sort_order < 0;
+UPDATE part_types SET sort_order = 0 WHERE sort_order < 0;
+UPDATE equipment_types SET sort_order = 0 WHERE sort_order < 0;
+UPDATE accessory_types SET sort_order = 0 WHERE sort_order < 0;
+UPDATE accessory_categories SET sort_order = 0 WHERE sort_order < 0;
+UPDATE product_usages SET sort_order = 0 WHERE sort_order < 0;
+UPDATE characteristic_definitions SET sort_order = 0 WHERE sort_order < 0;
+UPDATE product_images SET sort_order = 0 WHERE sort_order < 0;
+UPDATE product_characteristics SET sort_order = 0 WHERE sort_order < 0;

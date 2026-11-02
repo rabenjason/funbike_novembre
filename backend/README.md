@@ -60,7 +60,7 @@ npm run dev
 
 L’API écoute sur `http://localhost:4000/graphql`. Depuis la racine du dépôt, démarrez le frontend avec `npm run dev`. Vite relaie `/graphql` au backend via la variable serveur `API_PROXY_TARGET`; le navigateur utilise uniquement cette URL relative.
 
-Ouvrez `/admin` sur le site pour vous connecter avec l’adresse e-mail du compte initialisé. En production, configurez l’hébergement statique pour réécrire `/admin` vers `index.html` (fallback SPA). Le tableau de bord permet de créer, modifier, publier, dépublier et supprimer des produits, ainsi que d’administrer les marques, les catégories éditoriales et les classifications. Les nouveaux produits sont créés en brouillon. La modification du mot de passe révoque les jetons actifs et demande une nouvelle connexion.
+Ouvrez `/admin` sur le site pour vous connecter avec l’adresse e-mail du compte initialisé. En production, configurez l’hébergement statique pour réécrire `/admin` vers `index.html` (fallback SPA). Le tableau de bord permet de créer, modifier, publier, dépublier et supprimer des produits, ainsi que d’administrer les marques, les catégories éditoriales et les classifications. Les nouveaux produits sont créés en brouillon. Sur grand écran, les sections sont organisées dans un menu latéral; sur mobile, la navigation reste horizontale. Les champs d’ordre d’affichage acceptent uniquement des entiers de 0 à 100 000 et le backend rejette les valeurs négatives. Pour normaliser en base les valeurs négatives déjà enregistrées, réappliquez le schéma avec `npm run db:setup`; elles seront ramenées à 0. La modification du mot de passe révoque les jetons actifs et demande une nouvelle connexion.
 
 ### Importation des photos
 

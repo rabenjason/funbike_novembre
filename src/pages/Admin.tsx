@@ -171,6 +171,7 @@ const emptyLookupForm = (): LookupForm => ({ name: "", familyId: "", unit: "", a
 const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, logoAlt: "", description: "", sortOrder: "0", isActive: true });
 const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", image: null, to: "", brand: "", sortOrder: "0", isActive: true });
 
+const MAX_DISPLAY_ORDER = 100000;
 const fieldClass = "w-full border border-black/15 bg-white px-3 py-2.5 text-sm text-[#171816] outline-none transition focus:border-[#c49d00] dark:border-white/15 dark:bg-[#1c1d1a] dark:text-[#f2f0ea]";
 const buttonPrimary = "inline-flex min-h-10 items-center justify-center gap-2 bg-[#ffd100] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.1em] text-[#171816] transition hover:bg-[#ffe36b] disabled:cursor-not-allowed disabled:opacity-50";
 const buttonSecondary = "inline-flex min-h-10 items-center justify-center gap-2 border border-black/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#171816] transition hover:border-[#c49d00] dark:border-white/20 dark:text-[#f2f0ea]";
@@ -182,6 +183,37 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
       {children}
       {hint && <span className="block text-[11px] text-black/45 dark:text-white/45">{hint}</span>}
     </label>
+  );
+}
+
+function formatDisplayOrder(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_DISPLAY_ORDER
+    ? String(value)
+    : "0";
+}
+
+function parseDisplayOrder(value: string): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= MAX_DISPLAY_ORDER ? parsed : 0;
+}
+
+function DisplayOrderField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <Field label="Ordre d’affichage" hint="Entrez un nombre entier supérieur ou égal à zéro.">
+      <input
+        className={fieldClass}
+        type="number"
+        min={0}
+        max={MAX_DISPLAY_ORDER}
+        step={1}
+        inputMode="numeric"
+        value={value}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          if (nextValue === "" || (/^\d+$/.test(nextValue) && Number(nextValue) <= MAX_DISPLAY_ORDER)) onChange(nextValue);
+        }}
+      />
+    </Field>
   );
 }
 
@@ -529,7 +561,7 @@ export default function Admin() {
         unit: lookupKind === "CHARACTERISTIC" ? lookupForm.unit || null : null,
         applicableTo: lookupKind === "CHARACTERISTIC" ? lookupForm.applicableTo || null : null,
         isActive: lookupForm.isActive,
-        sortOrder: Number(lookupForm.sortOrder) || 0,
+        sortOrder: parseDisplayOrder(lookupForm.sortOrder),
       };
       if (editingLookupId) {
         await graphqlRequest(
@@ -561,7 +593,7 @@ export default function Admin() {
       familyId: row.family?.id ?? "",
       unit: row.unit ?? "",
       applicableTo: row.applicableTo ?? "",
-      sortOrder: String(row.sortOrder ?? 0),
+      sortOrder: formatDisplayOrder(row.sortOrder),
       isActive: row.isActive,
     });
   }
@@ -628,7 +660,7 @@ export default function Admin() {
         logo: logoUrls[0] ?? null,
         logoAlt: brandForm.logoAlt || null,
         description: brandForm.description || null,
-        sortOrder: Number(brandForm.sortOrder) || 0,
+        sortOrder: parseDisplayOrder(brandForm.sortOrder),
         isActive: brandForm.isActive,
       };
       if (editingBrandId) {
@@ -680,7 +712,7 @@ export default function Admin() {
         src: imageUrls[0]!,
         to: categoryForm.to,
         brand: categoryForm.brand || null,
-        sortOrder: Number(categoryForm.sortOrder) || 0,
+        sortOrder: parseDisplayOrder(categoryForm.sortOrder),
         isActive: categoryForm.isActive,
       };
       if (editingCategoryId) {
@@ -757,6 +789,12 @@ export default function Admin() {
     }
   }
 
+  function selectTab(nextTab: Tab) {
+    setTab(nextTab);
+    setError("");
+    setNotice("");
+  }
+
   const filteredProducts = (data?.products ?? []).filter((product) => {
     const term = search.trim().toLowerCase();
     return !term || `${product.name} ${product.reference ?? ""} ${product.brand?.name ?? ""}`.toLowerCase().includes(term);
@@ -787,13 +825,24 @@ export default function Admin() {
     );
   }
 
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: "products", label: "Produits" },
-    { id: "classifications", label: "Classifications" },
-    { id: "brands", label: "Marques" },
-    { id: "categories", label: "Catégories" },
-    { id: "security", label: "Sécurité" },
+  const navigationGroups: Array<{ label: string; items: Array<{ id: Tab; label: string }> }> = [
+    {
+      label: "Catalogue",
+      items: [
+        { id: "products", label: "Produits" },
+        { id: "classifications", label: "Classifications" },
+      ],
+    },
+    {
+      label: "Contenu du site",
+      items: [
+        { id: "brands", label: "Marques" },
+        { id: "categories", label: "Catégories" },
+      ],
+    },
+    { label: "Compte", items: [{ id: "security", label: "Sécurité" }] },
   ];
+  const tabs = navigationGroups.flatMap((group) => group.items);
 
   return (
     <main className="min-h-screen bg-[#f7f6f1] text-[#171816] dark:bg-[#141513] dark:text-[#f2f0ea]">
@@ -808,22 +857,59 @@ export default function Admin() {
             <button className={buttonSecondary} onClick={() => setLogoutModalOpen(true)}>Déconnexion</button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8" aria-label="Sections d’administration">
-          {tabs.map((item) => (
-            <button key={item.id} onClick={() => { setTab(item.id); setError(""); setNotice(""); }} className={`min-h-11 shrink-0 border-b-2 px-3 text-xs font-bold uppercase tracking-[0.08em] transition sm:px-4 ${tab === item.id ? "border-[#d2a900] text-[#171816] dark:text-white" : "border-transparent text-black/45 hover:text-black dark:text-white/45 dark:hover:text-white"}`}>
-              {item.label}
-            </button>
-          ))}
-        </nav>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {(error || notice) && (
-          <div className={`mb-5 border-l-2 px-4 py-3 text-sm ${error ? "border-red-500 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200" : "border-[#c49d00] bg-yellow-50 text-[#5f4b00] dark:bg-yellow-950/20 dark:text-yellow-100"}`} role={error ? "alert" : "status"}>
-            {error || notice}
-          </div>
-        )}
-        {loading && <p className="mb-4 text-xs text-black/45 dark:text-white/45">Chargement des données…</p>}
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8 lg:flex-row lg:items-start lg:gap-8 lg:px-8">
+        <aside className="hidden w-60 shrink-0 lg:block">
+          <nav className="sticky top-24 border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#1c1d1a]" aria-label="Navigation d’administration">
+            <div className="border-b border-black/10 px-2 pb-3 dark:border-white/10">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#8c6d00] dark:text-[#ffd100]">Espace admin</p>
+              <p className="mt-1 text-xs text-black/45 dark:text-white/45">Navigation principale</p>
+            </div>
+            <div className="mt-4 space-y-5">
+              {navigationGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-black/40 dark:text-white/40">{group.label}</p>
+                  <div className="mt-1 space-y-1">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-current={tab === item.id ? "page" : undefined}
+                        onClick={() => selectTab(item.id)}
+                        className={`flex min-h-10 w-full items-center justify-between border-l-2 px-3 py-2 text-left text-xs font-bold transition ${tab === item.id ? "border-[#d2a900] bg-yellow-50 text-[#171816] dark:bg-yellow-400/10 dark:text-white" : "border-transparent text-black/55 hover:bg-black/[0.03] hover:text-black dark:text-white/55 dark:hover:bg-white/[0.04] dark:hover:text-white"}`}
+                      >
+                        <span>{item.label}</span>
+                        {tab === item.id && <span className="text-[#8c6d00] dark:text-[#ffd100]" aria-hidden="true">›</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </nav>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-black/10 lg:hidden dark:border-white/10" aria-label="Sections d’administration">
+            {tabs.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={tab === item.id ? "page" : undefined}
+                onClick={() => selectTab(item.id)}
+                className={`min-h-11 shrink-0 border-b-2 px-3 text-xs font-bold uppercase tracking-[0.08em] transition ${tab === item.id ? "border-[#d2a900] text-[#171816] dark:text-white" : "border-transparent text-black/45 hover:text-black dark:text-white/45 dark:hover:text-white"}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          {(error || notice) && (
+            <div className={`mb-5 border-l-2 px-4 py-3 text-sm ${error ? "border-red-500 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200" : "border-[#c49d00] bg-yellow-50 text-[#5f4b00] dark:bg-yellow-950/20 dark:text-yellow-100"}`} role={error ? "alert" : "status"}>
+              {error || notice}
+            </div>
+          )}
+          {loading && <p className="mb-4 text-xs text-black/45 dark:text-white/45">Chargement des données…</p>}
 
         {tab === "products" && (
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(330px,0.95fr)]">
@@ -898,20 +984,20 @@ export default function Admin() {
             <div className="space-y-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Référentiels</p><h2 className="mt-1 font-display text-2xl font-bold">Classifications</h2></div><Field label="Type"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
               {LOOKUP_KINDS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
             </select></Field><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-2 p-3"><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="text-xs text-red-600 dark:text-red-300" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveLookup} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingLookupId ? "Modification" : "Nouvelle valeur"}</p><h3 className="mt-1 font-display text-xl font-bold">{LOOKUP_KINDS.find((item) => item.key === lookupKind)?.label}</h3></div><Field label="Nom"><input className={fieldClass} required maxLength={160} value={lookupForm.name} onChange={(event) => setLookupForm({ ...lookupForm, name: event.target.value })} /></Field>{lookupKind === "SUBFAMILY" && <Field label="Famille parente"><select required className={fieldClass} value={lookupForm.familyId} onChange={(event) => setLookupForm({ ...lookupForm, familyId: event.target.value })}><option value="">Choisir…</option>{(data?.families ?? []).map((family) => <option key={family.id} value={family.id}>{family.name}</option>)}</select></Field>}{lookupKind === "CHARACTERISTIC" && <div className="grid gap-3 sm:grid-cols-2"><Field label="Unité"><input className={fieldClass} value={lookupForm.unit} onChange={(event) => setLookupForm({ ...lookupForm, unit: event.target.value })} placeholder="cm³, mm, kg…" /></Field><Field label="Applicable à"><input className={fieldClass} value={lookupForm.applicableTo} onChange={(event) => setLookupForm({ ...lookupForm, applicableTo: event.target.value })} placeholder="Moto, pièce…" /></Field></div>}<div className="grid gap-3 sm:grid-cols-2"><Field label="Ordre d’affichage"><input className={fieldClass} type="number" value={lookupForm.sortOrder} onChange={(event) => setLookupForm({ ...lookupForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(lookupForm.isActive)} onChange={(event) => setLookupForm({ ...lookupForm, isActive: event.target.value === "true" })}><option value="true">Actif</option><option value="false">Archivé</option></select></Field></div><div className="flex gap-2">{editingLookupId && <button type="button" className={buttonSecondary} onClick={() => { setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingLookupId ? "Enregistrer" : "Créer"}</button></div></form>
+            <form onSubmit={saveLookup} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingLookupId ? "Modification" : "Nouvelle valeur"}</p><h3 className="mt-1 font-display text-xl font-bold">{LOOKUP_KINDS.find((item) => item.key === lookupKind)?.label}</h3></div><Field label="Nom"><input className={fieldClass} required maxLength={160} value={lookupForm.name} onChange={(event) => setLookupForm({ ...lookupForm, name: event.target.value })} /></Field>{lookupKind === "SUBFAMILY" && <Field label="Famille parente"><select required className={fieldClass} value={lookupForm.familyId} onChange={(event) => setLookupForm({ ...lookupForm, familyId: event.target.value })}><option value="">Choisir…</option>{(data?.families ?? []).map((family) => <option key={family.id} value={family.id}>{family.name}</option>)}</select></Field>}{lookupKind === "CHARACTERISTIC" && <div className="grid gap-3 sm:grid-cols-2"><Field label="Unité"><input className={fieldClass} value={lookupForm.unit} onChange={(event) => setLookupForm({ ...lookupForm, unit: event.target.value })} placeholder="cm³, mm, kg…" /></Field><Field label="Applicable à"><input className={fieldClass} value={lookupForm.applicableTo} onChange={(event) => setLookupForm({ ...lookupForm, applicableTo: event.target.value })} placeholder="Moto, pièce…" /></Field></div>}<div className="grid gap-3 sm:grid-cols-2"><DisplayOrderField value={lookupForm.sortOrder} onChange={(sortOrder) => setLookupForm({ ...lookupForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(lookupForm.isActive)} onChange={(event) => setLookupForm({ ...lookupForm, isActive: event.target.value === "true" })}><option value="true">Actif</option><option value="false">Archivé</option></select></Field></div><div className="flex gap-2">{editingLookupId && <button type="button" className={buttonSecondary} onClick={() => { setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingLookupId ? "Enregistrer" : "Créer"}</button></div></form>
             <aside className="border border-black/10 bg-white p-5 text-sm leading-relaxed text-black/60 dark:border-white/10 dark:bg-[#1c1d1a] dark:text-white/60"><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Valeurs administrables</h3><p className="mt-2">Les classifications sont stockées comme des enregistrements en base de données. Vous pouvez créer de nouvelles familles, types, catégories, usages ou caractéristiques sans modifier le code.</p><p className="mt-3">L’archivage masque une valeur des choix publics sans supprimer les associations historiques des produits.</p></aside>
           </section>
         )}
 
         {tab === "brands" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Fabricants</p><h2 className="mt-1 font-display text-2xl font-bold">Marques</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.slug} · {brand.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: String(brand.sortOrder ?? 0), isActive: brand.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveBrand} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nom"><input className={fieldClass} required value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Identifiant URL (slug)"><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="ex. yamaha-motor" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Texte alternatif du logo"><input className={fieldClass} value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Description"><textarea className={`${fieldClass} min-h-24`} value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label="Ordre"><input className={fieldClass} type="number" value={brandForm.sortOrder} onChange={(event) => setBrandForm({ ...brandForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
+          <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Fabricants</p><h2 className="mt-1 font-display text-2xl font-bold">Marques</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.slug} · {brand.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: formatDisplayOrder(brand.sortOrder), isActive: brand.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveBrand} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nom"><input className={fieldClass} required value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Identifiant URL (slug)"><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="ex. yamaha-motor" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Texte alternatif du logo"><input className={fieldClass} value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Description"><textarea className={`${fieldClass} min-h-24`} value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><DisplayOrderField value={brandForm.sortOrder} onChange={(sortOrder) => setBrandForm({ ...brandForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
           </section>
         )}
 
         {tab === "categories" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-2xl font-bold">Catégories éditoriales</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: String(category.sortOrder ?? 0), isActive: category.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveCategory} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p><h3 className="mt-1 font-display text-xl font-bold">Lien éditorial</h3></div><Field label="Titre"><input className={fieldClass} required value={categoryForm.title} onChange={(event) => setCategoryForm({ ...categoryForm, title: event.target.value })} /></Field><Field label="Description"><textarea className={`${fieldClass} min-h-20`} required value={categoryForm.desc} onChange={(event) => setCategoryForm({ ...categoryForm, desc: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><div className="sm:col-span-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photo de la catégorie</p><ImageFilePicker images={categoryForm.image ? [categoryForm.image] : []} onChange={(images) => setCategoryForm({ ...categoryForm, image: images[0] ?? null })} disabled={busy} /></div><Field label="Route"><input className={fieldClass} required placeholder="/motos" value={categoryForm.to} onChange={(event) => setCategoryForm({ ...categoryForm, to: event.target.value })} /></Field><Field label="Marque (facultatif)"><input className={fieldClass} value={categoryForm.brand} onChange={(event) => setCategoryForm({ ...categoryForm, brand: event.target.value })} /></Field><Field label="Ordre"><input className={fieldClass} type="number" value={categoryForm.sortOrder} onChange={(event) => setCategoryForm({ ...categoryForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(categoryForm.isActive)} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button></div></form>
+          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-2xl font-bold">Catégories éditoriales</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: formatDisplayOrder(category.sortOrder), isActive: category.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveCategory} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p><h3 className="mt-1 font-display text-xl font-bold">Lien éditorial</h3></div><Field label="Titre"><input className={fieldClass} required value={categoryForm.title} onChange={(event) => setCategoryForm({ ...categoryForm, title: event.target.value })} /></Field><Field label="Description"><textarea className={`${fieldClass} min-h-20`} required value={categoryForm.desc} onChange={(event) => setCategoryForm({ ...categoryForm, desc: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><div className="sm:col-span-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photo de la catégorie</p><ImageFilePicker images={categoryForm.image ? [categoryForm.image] : []} onChange={(images) => setCategoryForm({ ...categoryForm, image: images[0] ?? null })} disabled={busy} /></div><Field label="Route"><input className={fieldClass} required placeholder="/motos" value={categoryForm.to} onChange={(event) => setCategoryForm({ ...categoryForm, to: event.target.value })} /></Field><Field label="Marque (facultatif)"><input className={fieldClass} value={categoryForm.brand} onChange={(event) => setCategoryForm({ ...categoryForm, brand: event.target.value })} /></Field><DisplayOrderField value={categoryForm.sortOrder} onChange={(sortOrder) => setCategoryForm({ ...categoryForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(categoryForm.isActive)} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button></div></form>
           </section>
         )}
 
@@ -967,6 +1053,7 @@ export default function Admin() {
             </div>
           </section>
         )}
+        </div>
       </div>
       <footer className="border-t border-black/10 px-4 py-6 text-center text-[11px] text-black/40 dark:border-white/10 dark:text-white/40">Funbike · Interface d’administration protégée</footer>
 
