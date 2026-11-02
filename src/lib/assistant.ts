@@ -1,4 +1,7 @@
-import type { Bike, Dealer, Part } from "../types";
+import { BIKES } from "../data/motorcycles";
+import { TLD } from "../data/equipment/tld";
+import { TVS_PARTS } from "../data/spare-parts/tvs";
+import type { Bike, Part } from "../types";
 import { assistantCopy, content } from "../constants";
 import { runRecommender, isSpecificModelRequest, detectBrandText, type NeedProfile } from "./recommender";
 
@@ -68,7 +71,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLower
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 
-const byId = (id: string, bikes: Bike[] = []) => bikes.find((bike) => bike.id === id);
+const byId = (id: string, bikes: Bike[] = BIKES) => bikes.find((bike) => bike.id === id);
 
 /* ------------------------------------------------------------------ */
 /*  Shop facts (single source of truth for the assistant)              */
@@ -140,7 +143,7 @@ function detectFamily(t: string): Bike["family"] | undefined {
   return (Object.keys(FAMILY_WORDS) as Bike["family"][]).find((f) => hasAny(t, FAMILY_WORDS[f]));
 }
 
-function detectBrand(t: string, bikes: Bike[] = []): string | undefined {
+function detectBrand(t: string, bikes: Bike[] = BIKES): string | undefined {
   return detectBrandText(t, bikes);
 }
 
@@ -149,7 +152,7 @@ const STOP = new Set(["moto", "motos", "pour", "avec", "vous", "avez", "est", "q
 /** Scores every bike against the question, best match first. */
 const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
 
-export function searchBikes(t: string, bikes: Bike[] = []): Bike[] {
+export function searchBikes(t: string, bikes: Bike[] = BIKES): Bike[] {
   const family = detectFamily(t);
   const brand = detectBrand(t, bikes);
   // "250", "125cc", "300 cm3"…
@@ -183,7 +186,7 @@ export function searchBikes(t: string, bikes: Bike[] = []): Bike[] {
 }
 
 /** "la première", "la 2e", "celle-ci" … resolved against the last answer. */
-function resolveReference(t: string, mem: Memory, bikes: Bike[] = []): Bike | undefined {
+function resolveReference(t: string, mem: Memory, bikes: Bike[] = BIKES): Bike | undefined {
   if (!mem.lastIds.length) return undefined;
   const ordinals: [RegExp, number][] = [
     [/\b(premiere|1ere|1re|premier|1er)\b/, 0],
@@ -274,7 +277,7 @@ function withBikes(reply: BotReply, bikes: Bike[], mem: Memory, max = 4): BotRep
   return { ...reply, productIds: list.map((b) => b.id) };
 }
 
-export function respond(raw: string, memIn: Memory, bikes: Bike[] = [], parts: Part[] = [], dealers: Dealer[] = []): { reply: BotReply; memory: Memory } {
+export function respond(raw: string, memIn: Memory, bikes: Bike[] = BIKES, parts?: Part[]): { reply: BotReply; memory: Memory } {
   const mem: Memory = { ...memIn, lastIds: [...memIn.lastIds] };
   const t = norm(raw);
   const ws = wordsOf(t);
@@ -285,9 +288,9 @@ export function respond(raw: string, memIn: Memory, bikes: Bike[] = [], parts: P
     return { reply, memory: mem };
   };
   const equipmentBrandId = (name: string, fallback: string) =>
-    parts.find((part) => part.kind !== "piece" && part.brandName?.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"))?.kind ?? fallback;
+    parts?.find((part) => part.kind !== "piece" && part.brandName?.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"))?.kind ?? fallback;
   const spareBrandId = (name: string, fallback: string) => {
-    const part = parts.find((item) => item.kind === "piece" && item.compatibleBrands?.some((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")));
+    const part = parts?.find((item) => item.kind === "piece" && item.compatibleBrands?.some((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")));
     return part?.compatibleBrandSlugs?.[part.compatibleBrands?.findIndex((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")) ?? -1] ?? fallback;
   };
 
@@ -327,29 +330,29 @@ export function respond(raw: string, memIn: Memory, bikes: Bike[] = [], parts: P
 
   /* --- Dealers ----------------------------------------------------- */
   if (hasAny(t, I.dealers)) {
-    const cityAliases: Record<string, string[]> = {
-      antananarivo: ["antananarivo", "tana"],
-      toamasina: ["toamasina", "tamatave"],
-      mahajanga: ["mahajanga", "majunga"],
-      fianarantsoa: ["fianarantsoa", "fianar"],
+    const cityHit: Record<string, string> = {
+      toamasina: "toamasina",
+      tamatave: "toamasina",
+      mahajanga: "mahajanga",
+      majunga: "mahajanga",
+      fianar: "fianarantsoa",
+      antsirabe: "fianarantsoa",
+      diego: "mahajanga",
+      tulear: "fianarantsoa",
+      tana: "antananarivo",
+      antananarivo: "antananarivo",
     };
-    const requestedCity = Object.entries(cityAliases).find(([, aliases]) => aliases.some((alias) => hasAny(t, [alias])))?.[0];
-    const dealer = dealers.find((item) =>
-      (requestedCity !== undefined && (norm(item.key) === requestedCity || norm(item.city) === requestedCity)) ||
-      hasAny(t, [norm(item.city)]),
-    );
-    const dealerList = dealers.map((item) => `**${item.city}**`).join(", ");
+    const hitKey = Object.keys(cityHit).find((c) => hasAny(t, [c]));
+    const hit = hitKey ? cityHit[hitKey] : undefined;
     return done({
-      text: dealers.length === 0
-        ? assistantCopy.dealers.unavailable
-        : dealer
-          ? assistantCopy.dealers.selected(dealer.assistantLabel?.trim() || `${dealer.city} (${dealer.kind})`)
-          : assistantCopy.dealers.overview(dealers.length, dealerList),
+      text: hit
+        ? assistantCopy.dealers.selected(assistantCopy.dealers.locations[hit as keyof typeof assistantCopy.dealers.locations])
+        : assistantCopy.dealers.overview(Object.keys(assistantCopy.dealers.locations).length, assistantCopy.dealers.overviewLocations),
       actions: [
         {
           label: assistantCopy.dealers.seeDealers,
           page: "revendeurs",
-          ...(dealer ? { id: dealer.key } : {}),
+          ...(hit ? { id: hit } : {}),
           icon: "contact",
         },
       ],
@@ -513,7 +516,7 @@ export function respond(raw: string, memIn: Memory, bikes: Bike[] = [], parts: P
     const boots = hasAny(t, ["botte", "gaerne", "chaussure"]);
     const mt = hasAny(t, ["mt helmet", "mt$"]);
     return done({
-      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(parts.filter((part) => part.kind !== "piece").length),
+      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(parts?.filter((part) => part.kind !== "piece").length ?? TLD.length),
       actions: [
         { label: boots ? assistantCopy.gear.seeGaerne : mt ? assistantCopy.gear.seeMt : assistantCopy.gear.seeTroyLee, page: "equipements", id: boots ? equipmentBrandId("Gaerne", "gaerne") : mt ? equipmentBrandId("MT", "mt") : equipmentBrandId("TLD", "tld"), icon: "gear" },
         ...(boots ? [] : [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" as const }]),
@@ -527,7 +530,7 @@ export function respond(raw: string, memIn: Memory, bikes: Bike[] = [], parts: P
     const requestedBrand = detectBrandText(t, bikes);
     if (requestedBrand === "TVS") {
       return done({
-        text: assistantCopy.parts.tvs(parts.filter((part) => part.kind === "piece" && (part.brandName?.toLocaleLowerCase("fr") === "tvs" || part.universalCompatibility || part.compatibleBrandSlugs?.includes("tvs") || part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === "tvs"))).length),
+        text: assistantCopy.parts.tvs(parts?.filter((part) => part.kind === "piece" && (part.brandName?.toLocaleLowerCase("fr") === "tvs" || part.universalCompatibility || part.compatibleBrandSlugs?.includes("tvs") || part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === "tvs"))).length ?? TVS_PARTS.length),
         actions: [{ label: assistantCopy.parts.seeTvs, page: "spares", id: spareBrandId("TVS", "spare-tvs"), icon: "parts" }],
         quick: [...assistantCopy.quick.partsTvs],
       });

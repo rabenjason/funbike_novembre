@@ -9,6 +9,8 @@ export const equipements = {
     page: "page",
     categorieToutes: "Tous",
     categoriesTvsAria: "Catégories des équipements TVS",
+    noteTvs:
+      "Visuels et références du catalogue officiel TVS. Tarifs, tailles et disponibilités chez Funbike Madagascar à confirmer.",
     marques: {
       tld: {
         titre: "Troy Lee Designs",

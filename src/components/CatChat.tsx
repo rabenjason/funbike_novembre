@@ -19,6 +19,8 @@ import {
   faXmark,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
+import { BIKES } from "../data/motorcycles";
+import { ALL_PARTS } from "../data/index";
 import type { Bike } from "../types";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { liveBikes, liveParts } from "../lib/catalogAdapters";
@@ -128,8 +130,7 @@ type Msg = {
 
 type Stored = { messages: Msg[]; memory: Memory; quick: string[] };
 
-// Invalidate old persisted answers that could contain products from the local demo catalogue.
-const STORE_KEY = "fb_chat_v3";
+const STORE_KEY = "fb_chat_v2";
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const botMsg = (reply: BotReply): Msg => ({
@@ -398,9 +399,8 @@ export default function CatChat({
 }) {
   const { catalog, status: catalogStatus } = usePublicCatalog();
   const usingApi = catalogStatus === "ready" && catalog !== null;
-  const bikes = useMemo(() => usingApi ? liveBikes(catalog.products) : [], [usingApi, catalog]);
-  const parts = useMemo(() => usingApi ? liveParts(catalog.products) : [], [usingApi, catalog]);
-  const dealers = useMemo(() => usingApi ? catalog.dealers.filter((dealer) => dealer.isActive) : [], [usingApi, catalog]);
+  const bikes = useMemo(() => usingApi ? liveBikes(catalog.products) : BIKES, [usingApi, catalog]);
+  const parts = useMemo(() => usingApi ? liveParts(catalog.products) : ALL_PARTS, [usingApi, catalog]);
   const [stored] = useState(loadStored);
   const [messages, setMessages] = useState<Msg[]>(() => stored?.messages ?? [greetMsg()]);
   const [memory, setMemory] = useState<Memory>(() => stored?.memory ?? EMPTY_MEMORY);
@@ -486,7 +486,7 @@ export default function CatChat({
     setQuick([]);
     window.requestAnimationFrame(autoSize);
 
-    const { reply, memory: next } = respond(value, memoryRef.current, bikes, parts, dealers);
+    const { reply, memory: next } = respond(value, memoryRef.current, bikes, parts);
     memoryRef.current = next;
     setMemory(next);
 

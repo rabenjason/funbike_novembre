@@ -58,7 +58,13 @@ export const assistantCopy = {
     openSheet: "Ouvrir la fiche",
   },
   dealers: {
-    unavailable: "Les informations sur les points de vente ne sont pas disponibles pour le moment.",
+    locations: {
+      antananarivo: "Antananarivo (showroom principal, Ambodivona)",
+      toamasina: "Toamasina (Funbike Est, boulevard Joffre)",
+      mahajanga: "Mahajanga (Funbike Nord-Ouest, avenue de France)",
+      fianarantsoa: "Fianarantsoa (atelier partenaire, RN7)",
+    },
+    overviewLocations: "**Antananarivo** (showroom principal), **Toamasina**, **Mahajanga** et **Fianarantsoa**",
     selected: (location: string) => `Oui, retrouvez-nous à **${location}** ! Voici la carte, les horaires et les contacts du point de vente.`,
     overview: (count: number, list: string) => `Nous avons **${count} points de vente** à Madagascar : ${list}. Voici la carte et toutes les adresses.`,
     seeDealers: "Voir nos revendeurs",

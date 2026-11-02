@@ -7,7 +7,6 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "test": "node --import tsx --test test/*.test.ts",
-    "prestart": "npm run build",
     "start": "node dist/server.js",
     "db:setup": "tsx src/setupDb.ts",
     "admin:create": "tsx src/createAdmin.ts"
