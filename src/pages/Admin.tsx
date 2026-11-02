@@ -234,6 +234,7 @@ export default function Admin() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("products");
   const [data, setData] = useState<ReferenceData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -305,6 +306,15 @@ export default function Admin() {
       .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Impossible de charger les classifications."); });
     return () => { cancelled = true; };
   }, [token, user, tab, lookupKind, refreshKey]);
+
+  useEffect(() => {
+    if (!logoutModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLogoutModalOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [logoutModalOpen]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -695,7 +705,7 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-black/55 dark:text-white/55 sm:block">{user.email}</span>
-            <button className={buttonSecondary} onClick={() => logout()}>Déconnexion</button>
+            <button className={buttonSecondary} onClick={() => setLogoutModalOpen(true)}>Déconnexion</button>
           </div>
         </div>
         <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8" aria-label="Sections d’administration">
@@ -841,6 +851,36 @@ export default function Admin() {
         )}
       </div>
       <footer className="border-t border-black/10 px-4 py-6 text-center text-[11px] text-black/40 dark:border-white/10 dark:text-white/40">Funbike · Interface d’administration protégée</footer>
+
+      {logoutModalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setLogoutModalOpen(false); }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-modal-title"
+            aria-describedby="logout-modal-description"
+            className="w-full max-w-md border border-black/10 bg-white p-6 text-[#171816] shadow-2xl dark:border-white/10 dark:bg-[#1c1d1a] dark:text-[#f2f0ea] sm:p-7"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Confirmation</p>
+            <h2 id="logout-modal-title" className="mt-2 font-display text-xl font-bold">Se déconnecter ?</h2>
+            <p id="logout-modal-description" className="mt-2 text-sm text-black/60 dark:text-white/60">
+              Voulez-vous vraiment quitter votre session administrateur ?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" autoFocus className={buttonSecondary} onClick={() => setLogoutModalOpen(false)}>
+                Non
+              </button>
+              <button type="button" className={buttonPrimary} onClick={() => { setLogoutModalOpen(false); logout(); }}>
+                Oui, me déconnecter
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
