@@ -435,7 +435,7 @@ textarea.chat-composer:focus-visible {
    -50% always lands on an exact loop boundary. */
 .fb-partner-track {
   will-change: transform;
-  animation: fb-partners-left 22s linear infinite;
+  animation: fb-partners-left var(--fb-partner-duration, 22s) linear infinite;
 }
 
 .group\/marquee:hover .fb-partner-track {
@@ -445,6 +445,10 @@ textarea.chat-composer:focus-visible {
 @keyframes fb-partners-left {
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-partner-track { animation: none; }
 }
 
 @keyframes fb-shimmer {

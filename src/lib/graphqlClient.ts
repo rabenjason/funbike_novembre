@@ -126,6 +126,36 @@ export type PublicFeaturedBanner = {
   sortOrder: number;
 };
 
+export type PublicHomepageHeroCopy = {
+  id: string;
+  localisation: string;
+  titleLine1: string;
+  titleLine2: string;
+  description: string;
+  sloganPrefix: string;
+  usages: string[];
+  catalogButton: string;
+  featuredLabel: string;
+  year: string;
+  chooseModelLabel: string;
+  displayModelLabel: string;
+};
+
+export type PublicHomepageEditorialBanner = {
+  id: string;
+  eyebrow: string;
+  titleLine1: string;
+  titleLine2: string;
+  description: string;
+  image: string;
+  alt: string;
+  buttonText: string;
+  targetPage: string;
+  targetId: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
 export type PublicHomepagePromotion = {
   id: string;
   badge: string;
@@ -196,6 +226,9 @@ export type PublicCatalog = {
   brands: PublicBrand[];
   categories: PublicCategory[];
   featuredBanners: PublicFeaturedBanner[];
+  homepageHeroCopy: PublicHomepageHeroCopy | null;
+  homepageEditorialBanners: PublicHomepageEditorialBanner[];
+  homepageEditorialBannersConfigured: boolean;
   homepagePromotions: PublicHomepagePromotion[];
   dealers: PublicDealer[];
   families: PublicLookup[];
@@ -259,6 +292,15 @@ const PUBLIC_CATALOG_REFERENCE_QUERY = `
     }
     categories { id title desc src to brand isActive sortOrder }
     featuredBanners { id short brand tag image alt targetPage targetId isActive sortOrder }
+    homepageHeroCopy {
+      id localisation titleLine1 titleLine2 description sloganPrefix usages
+      catalogButton featuredLabel year chooseModelLabel displayModelLabel
+    }
+    homepageEditorialBanners {
+      id eyebrow titleLine1 titleLine2 description image alt buttonText
+      targetPage targetId isActive sortOrder
+    }
+    homepageEditorialBannersConfigured
     homepagePromotions {
       id badge eyebrow title description image alt highlights price targetPage targetId
       publishedAt startsAt endsAt isActive sortOrder

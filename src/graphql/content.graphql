@@ -25,6 +25,67 @@ input FeaturedBannerInput {
   sortOrder: Int
 }
 
+"""Configurable copy for the primary home-page hero. One record is saved for the main hero."""
+type HomepageHeroCopy {
+  id: ID!
+  localisation: String!
+  titleLine1: String!
+  titleLine2: String!
+  description: String!
+  sloganPrefix: String!
+  usages: [String!]!
+  catalogButton: String!
+  featuredLabel: String!
+  year: String!
+  chooseModelLabel: String!
+  displayModelLabel: String!
+}
+
+input HomepageHeroCopyInput {
+  localisation: String!
+  titleLine1: String!
+  titleLine2: String!
+  description: String!
+  sloganPrefix: String!
+  usages: [String!]!
+  catalogButton: String!
+  featuredLabel: String!
+  year: String!
+  chooseModelLabel: String!
+  displayModelLabel: String!
+}
+
+"""Additional full-width editorial hero on the home page."""
+type HomepageEditorialBanner {
+  id: ID!
+  eyebrow: String!
+  titleLine1: String!
+  titleLine2: String!
+  description: String!
+  image: String!
+  alt: String!
+  buttonText: String!
+  targetPage: String!
+  targetId: String!
+  isActive: Boolean!
+  sortOrder: Int!
+}
+
+input HomepageEditorialBannerInput {
+  id: ID!
+  eyebrow: String!
+  titleLine1: String!
+  titleLine2: String!
+  description: String!
+  image: String!
+  alt: String!
+  buttonText: String!
+  targetPage: String!
+  targetId: String!
+  isActive: Boolean
+  sortOrder: Int
+}
+
 """Administrable promotional card shown in the home page's new-arrivals section."""
 type HomepagePromotion {
   id: ID!

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,6 +12,7 @@ import {
 import { BIKES } from "../data/motorcycles";
 import { CATEGORIES } from "../data/categories";
 import { FEATURED_BANNERS } from "../data/banners";
+import { HOME_EDITORIAL_BANNERS } from "../data/editorialBanners";
 import { HOME_PROMOTIONS } from "../data/promotions";
 import { TVS_ACCESSORIES } from "../data/equipment/tvs";
 import { TVS_PARTS } from "../data/spare-parts/tvs";
@@ -19,7 +20,7 @@ import { getBrandsForSection, getHomeFeaturedBrands, getHomePartnerBrands } from
 import { Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { AccessoryBrandQuickLinks } from "../components/AccessoryBrands";
-import ShercoBanner from "../components/ShercoBanner";
+import HomepageEditorialBanner from "../components/ShercoBanner";
 import BrandExclusif from "../components/BrandExclusif";
 import NewArrivals from "../components/NewArrivals";
 import TypedText from "../components/TypedText";
@@ -65,6 +66,27 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
   const partnerBrands = usingApi ? sectionBrands("partenaires") : fallback ? HOME_PARTNER_BRANDS : [];
   const homePromotions = usingApi ? catalog.homepagePromotions : fallback ? HOME_PROMOTIONS : [];
   const heroBanners = usingApi ? catalog.featuredBanners : fallback ? FEATURED_BANNERS : [];
+  const editorialBanners = usingApi
+    ? catalog.homepageEditorialBannersConfigured ? catalog.homepageEditorialBanners : HOME_EDITORIAL_BANNERS
+    : fallback ? HOME_EDITORIAL_BANNERS : [];
+  const heroCopy = usingApi && catalog.homepageHeroCopy
+    ? {
+        localisation: catalog.homepageHeroCopy.localisation,
+        titreLigne1: catalog.homepageHeroCopy.titleLine1,
+        titreLigne2: catalog.homepageHeroCopy.titleLine2,
+        description: catalog.homepageHeroCopy.description,
+        sloganPrefix: catalog.homepageHeroCopy.sloganPrefix,
+        usages: catalog.homepageHeroCopy.usages,
+        boutonCatalogue: catalog.homepageHeroCopy.catalogButton,
+        aLaUne: catalog.homepageHeroCopy.featuredLabel,
+        annee: catalog.homepageHeroCopy.year,
+        choisirModele: catalog.homepageHeroCopy.chooseModelLabel,
+        afficherModele: catalog.homepageHeroCopy.displayModelLabel,
+      }
+    : content.accueil.hero;
+  // 22 seconds corresponds to the current nine-logo reference set. Scale time
+  // with the number of logos so the ticker keeps a consistent perceived speed.
+  const partnerScrollDuration = Math.max(1, (22 / HOME_PARTNER_BRANDS.length) * partnerBrands.length);
 
   const [activeHero, setActiveHero] = useState(0);
   const safeHeroIndex = heroBanners.length ? activeHero % heroBanners.length : 0;
@@ -110,18 +132,18 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
           >
             <p className="fluid-eyebrow flex items-center gap-2 font-bold uppercase leading-snug text-white/75">
               <FontAwesomeIcon icon={faLocationDot} className="shrink-0 text-[#ffd100]" />
-              <span>{content.accueil.hero.localisation}</span>
+              <span>{heroCopy.localisation}</span>
             </p>
             <h1 className="fluid-hero mt-4 max-w-xl text-balance font-display font-semibold text-white sm:mt-7">
-              {content.accueil.hero.titreLigne1}
-              <br className="hidden sm:inline" /> {content.accueil.hero.titreLigne2}
+              {heroCopy.titreLigne1}
+              <br className="hidden sm:inline" /> {heroCopy.titreLigne2}
             </h1>
             <p className="fluid-body mt-3.5 max-w-md text-pretty text-white/80 sm:mt-4">
-              {content.accueil.hero.description}
+              {heroCopy.description}
             </p>
             <p className="fluid-body mt-3 flex items-center text-white/90">
-              {content.accueil.hero.sloganPrefix}&nbsp;
-              <TypedText strings={[...content.accueil.hero.usages]} className="font-semibold text-[#ffd100]" />
+              {heroCopy.sloganPrefix}&nbsp;
+              <TypedText strings={[...heroCopy.usages]} className="font-semibold text-[#ffd100]" />
             </p>
           </motion.div>
 
@@ -137,7 +159,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               onClick={() => go("catalogue")}
               className="fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 bg-[#ffd100] px-5 py-3 text-center font-bold uppercase text-[#171816] transition active:scale-[0.98] hover:bg-white sm:min-h-11 sm:w-auto"
             >
-              {content.accueil.hero.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
+              {heroCopy.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
             </button>
             <button
               onClick={() => go(current.targetPage, current.targetId)}
@@ -158,9 +180,9 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">{content.accueil.hero.aLaUne} / {current.brand}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">{heroCopy.aLaUne} / {current.brand}</p>
                   <p className="mt-0.5 truncate font-display text-sm font-semibold sm:mt-1 sm:text-base">
-                    {current.short} · {content.accueil.hero.annee}
+                    {current.short} · {heroCopy.annee}
                   </p>
                 </motion.div>
               </AnimatePresence>
@@ -169,12 +191,12 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               <span className="font-display text-[11px] font-semibold text-white/70 sm:mr-1 sm:text-xs">
                 {String(safeHeroIndex + 1).padStart(2, "0")}
               </span>
-              <div className="flex items-center" aria-label={content.accueil.hero.choisirModele}>
+              <div className="flex items-center" aria-label={heroCopy.choisirModele}>
                 {heroBanners.map((item, index) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveHero(index)}
-                    aria-label={`${content.accueil.hero.afficherModele} ${item.short}`}
+                    aria-label={`${heroCopy.afficherModele} ${item.short}`}
                     aria-pressed={activeHero === index}
                     className="group grid h-11 w-8 place-items-center px-1.5 sm:h-9"
                   >
@@ -223,7 +245,9 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
         </div>
       </section>
 
-      <ShercoBanner go={go} />
+      {editorialBanners.map((banner) => (
+        <HomepageEditorialBanner key={banner.id} banner={banner} go={go} />
+      ))}
 
       {featuredBrands.length > 0 && <BrandExclusif go={go} brands={featuredBrands} />}
 
@@ -295,7 +319,10 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent sm:w-24 dark:from-[#141513]"
             />
 
-            <div className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10">
+            <div
+              className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10"
+              style={{ "--fb-partner-duration": `${partnerScrollDuration}s` } as CSSProperties}
+            >
               {[...partnerBrands, ...partnerBrands].map((brand, index) => (
                 <motion.div
                   key={`${brand.name}-${index}`}

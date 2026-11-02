@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { motion, useInView, type Variants } from "framer-motion";
 import { useRef } from "react";
-import { content } from "../constants";
+import type { PublicHomepageEditorialBanner } from "../lib/graphqlClient";
 
 /** Parent: reveals its children one after the other when scrolled into view */
 const group: Variants = {
@@ -23,7 +23,12 @@ const fromLeft: Variants = {
   },
 };
 
-export default function ShercoBanner({ go }: { go: (page: string, id?: string) => void }) {
+type HomepageEditorialBannerProps = {
+  banner: PublicHomepageEditorialBanner;
+  go: (page: string, id?: string) => void;
+};
+
+export default function HomepageEditorialBanner({ banner, go }: HomepageEditorialBannerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const contentVisible = useInView(contentRef, {
     once: false,
@@ -34,8 +39,8 @@ export default function ShercoBanner({ go }: { go: (page: string, id?: string) =
   return (
     <section className="relative isolate min-h-[330px] overflow-hidden bg-[#1a1b18] sm:min-h-[440px]">
       <motion.img
-        src="https://www.sherco.com/wp-content/uploads/SHERCO50ccV2-32.jpg"
-        alt={content.accueil.sherco.imageAlt}
+        src={banner.image}
+        alt={banner.alt}
         loading="lazy"
         initial={{ scale: 1.035 }}
         whileInView={{ scale: 1 }}
@@ -56,25 +61,25 @@ export default function ShercoBanner({ go }: { go: (page: string, id?: string) =
           className="max-w-xl"
         >
           <motion.p variants={fromLeft} className="fluid-eyebrow font-bold uppercase text-[#ffd100]">
-            {content.accueil.sherco.surTitre}
+            {banner.eyebrow}
           </motion.p>
 
           <motion.h2 variants={fromLeft} className="fluid-h1 mt-3 font-display font-semibold text-white">
-            {content.accueil.sherco.titreLigne1}
+            {banner.titleLine1}
             <br />
-            {content.accueil.sherco.titreLigne2}
+            {banner.titleLine2}
           </motion.h2>
 
           <motion.p variants={fromLeft} className="fluid-body mt-3 max-w-md text-white/80">
-            {content.accueil.sherco.description}
+            {banner.description}
           </motion.p>
 
           <motion.button
             variants={fromLeft}
-            onClick={() => go("motos")}
+            onClick={() => go(banner.targetPage, banner.targetId)}
             className="fluid-btn mt-5 inline-flex items-center gap-3 border-b border-[#ffd100] pb-2 font-bold uppercase text-white transition hover:text-[#ffd100]"
           >
-            {content.accueil.sherco.bouton} <FontAwesomeIcon icon={faArrowRight} />
+            {banner.buttonText} <FontAwesomeIcon icon={faArrowRight} />
           </motion.button>
         </motion.div>
       </div>
