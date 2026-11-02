@@ -72,6 +72,7 @@ type ProductForm = {
   compatibleBrandIds: string[];
   usageIds: string[];
   imageSelections: ImageSelection[];
+  primaryImageId: string | null;
   specs: Array<{ characteristicId: string; value: string }>;
 };
 type LookupForm = { name: string; familyId: string; unit: string; applicableTo: string; sortOrder: string; isActive: boolean };
@@ -162,6 +163,7 @@ const emptyProductForm = (): ProductForm => ({
   compatibleBrandIds: [],
   usageIds: [],
   imageSelections: [],
+  primaryImageId: null,
   specs: [],
 });
 
@@ -232,6 +234,8 @@ function cleanupImages(urls: string[], accessToken: string): void {
 }
 
 function formFromProduct(product: AdminProduct): ProductForm {
+  const imageSelections = (product.gallery?.length ? product.gallery : product.image ? [product.image] : [])
+    .map((url, index) => imageFromStoredUrl(url, `product-${product.id}-${index}`));
   return {
     ...emptyProductForm(),
     id: product.id,
@@ -256,8 +260,8 @@ function formFromProduct(product: AdminProduct): ProductForm {
       : String(product.universalCompatibility),
     compatibleBrandIds: product.compatibleBrands?.map((brand) => brand.id) ?? [],
     usageIds: product.usages?.map((usage) => usage.id) ?? [],
-    imageSelections: (product.gallery?.length ? product.gallery : product.image ? [product.image] : [])
-      .map((url, index) => imageFromStoredUrl(url, `product-${product.id}-${index}`)),
+    imageSelections,
+    primaryImageId: imageSelections.find((image) => image.url === product.image)?.id ?? imageSelections[0]?.id ?? null,
     specs: (product.specs ?? []).map((spec) => ({ characteristicId: spec.characteristic?.id ?? "", value: spec.value })),
   };
 }
@@ -414,10 +418,10 @@ export default function Admin() {
     try {
       if (productForm.imageSelections.some((image) => image.file)) setNotice("Importation des photos en cours…");
       const imageUrls = await resolveImageSelections(productForm.imageSelections, token, newlyUploadedUrls);
-      const images = imageUrls.map((url, index) => ({
-        url,
+      const images = productForm.imageSelections.map((selection, index) => ({
+        url: imageUrls[index]!,
         alt: productForm.alt.trim() || null,
-        isPrimary: index === 0,
+        isPrimary: selection.id === productForm.primaryImageId,
         sortOrder: index,
       }));
       const specs = productForm.specs.filter((spec) => spec.characteristicId && spec.value.trim()).map((spec, index) => ({
@@ -870,10 +874,18 @@ export default function Admin() {
                   multiple
                   maxImages={30}
                   images={productForm.imageSelections}
-                  onChange={(imageSelections) => setProductForm({ ...productForm, imageSelections })}
+                  onChange={(imageSelections) => setProductForm((current) => ({
+                    ...current,
+                    imageSelections,
+                    primaryImageId: imageSelections.some((image) => image.id === current.primaryImageId)
+                      ? current.primaryImageId
+                      : imageSelections[0]?.id ?? null,
+                  }))}
+                  primaryImageId={productForm.primaryImageId}
+                  onSetPrimary={(primaryImageId) => setProductForm((current) => ({ ...current, primaryImageId }))}
                   disabled={busy}
                 />
-                <p className="text-[11px] text-black/45 dark:text-white/45">La première photo devient l’image principale. Vous pouvez sélectionner plusieurs fichiers à la fois.</p>
+                <p className="text-[11px] text-black/45 dark:text-white/45">La première photo est principale par défaut. Cliquez sur « Définir comme principale » pour en choisir une autre. Vous pouvez sélectionner plusieurs fichiers à la fois.</p>
               </div>
               <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Spécifications</span><button type="button" className="text-xs font-bold text-[#806300] underline underline-offset-2 dark:text-[#ffd100]" onClick={() => setProductForm({ ...productForm, specs: [...productForm.specs, { characteristicId: "", value: "" }] })}>+ Ajouter</button></div>{productForm.specs.map((spec, index) => <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select aria-label="Caractéristique" className={fieldClass} value={spec.characteristicId} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, characteristicId: event.target.value } : row) })}><option value="">Caractéristique…</option>{(data?.characteristicDefinitions ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ""}</option>)}</select><input aria-label="Valeur" className={fieldClass} placeholder="Valeur" value={spec.value} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row) })} /><button type="button" aria-label="Retirer la spécification" className="px-2 text-red-600" onClick={() => setProductForm({ ...productForm, specs: productForm.specs.filter((_, rowIndex) => rowIndex !== index) })}>×</button></div>)}</div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4 dark:border-white/10"><p className="text-[11px] text-black/45 dark:text-white/45">Les nouveaux produits restent en brouillon jusqu’à publication.</p><button type="submit" className={buttonPrimary} disabled={busy}>{busy ? "Enregistrement…" : productForm.id ? "Enregistrer" : "Créer le produit"}</button></div>

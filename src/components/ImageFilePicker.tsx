@@ -15,6 +15,8 @@ type ImageFilePickerProps = {
   multiple?: boolean;
   maxImages?: number;
   disabled?: boolean;
+  primaryImageId?: string | null;
+  onSetPrimary?: (imageId: string) => void;
 };
 
 const secondaryButton = "inline-flex min-h-10 items-center justify-center border border-black/15 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#171816] transition hover:border-[#c49d00] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:text-[#f2f0ea]";
@@ -25,6 +27,8 @@ export default function ImageFilePicker({
   multiple = false,
   maxImages = 1,
   disabled = false,
+  primaryImageId = null,
+  onSetPrimary,
 }: ImageFilePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previousImages = useRef(images);
@@ -129,8 +133,8 @@ export default function ImageFilePicker({
                 />
               </div>
               <div className="flex min-w-0 items-center justify-between gap-2 p-2">
-                <span className="min-w-0 truncate text-[10px] text-black/55 dark:text-white/55" title={image.file?.name}>
-                  {image.file?.name ?? `Photo actuelle ${index + 1}`}
+                <span className="min-w-0 truncate text-[10px] text-black/55 dark:text-white/55" title={`Photo ${index + 1} · ${image.file?.name ?? "actuelle"}`}>
+                  Photo {index + 1} · {image.file?.name ?? "actuelle"}
                 </span>
                 <button
                   type="button"
@@ -142,6 +146,24 @@ export default function ImageFilePicker({
                   Supprimer
                 </button>
               </div>
+              {onSetPrimary && (
+                <div className="px-2 pb-2">
+                  {primaryImageId === image.id ? (
+                    <span className="inline-flex bg-[#ffd100] px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[#171816]">
+                      Image principale
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[9px] font-bold uppercase tracking-wide text-black/55 underline underline-offset-2 hover:text-[#806300] disabled:opacity-50 dark:text-white/55 dark:hover:text-[#ffd100]"
+                      disabled={disabled}
+                      onClick={() => onSetPrimary(image.id)}
+                    >
+                      Définir comme principale
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
