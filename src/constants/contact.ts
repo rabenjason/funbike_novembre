@@ -1,4 +1,4 @@
-/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
+/** Libellés fixes du formulaire ; les coordonnées publiques sont chargées via GraphQL. */
 export const contact = {
     titre: "On prend la route ?",
     description: "Une question, un essai ou un devis ? L'équipe Funbike vous répond et vous aide à trouver la bonne configuration.",
@@ -18,15 +18,6 @@ export const contact = {
       "Nous vous contactons par WhatsApp uniquement pour vous informer de la disponibilité d'une pièce ou de l'avancée de votre demande. Aucun message publicitaire.",
     sujet: "Sujet",
     choisirSujet: "Choisissez un sujet",
-    sujets: [
-      { value: "tvs", label: "Informations TVS" },
-      { value: "tvs-accessoires", label: "Équipements TVS (casques, blousons, gants)" },
-      { value: "tuktuk-tvs", label: "Informations TukTuk TVS" },
-      { value: "fantic", label: "Informations Fantic" },
-      { value: "sherco", label: "Informations Sherco" },
-      { value: "pieces", label: "Pièces détachées" },
-      { value: "autres", label: "Autres" },
-    ],
     message: "Votre message",
     envoyer: "Envoyer la demande",
     confirmation: "Votre messagerie va s'ouvrir. Vérifiez puis envoyez l'e-mail pour nous contacter.",
@@ -40,10 +31,4 @@ export const contact = {
     whatsappNonRenseigne: "WhatsApp : non renseigné",
     demandePiecePrefix: "Bonjour, je souhaiterais connaître le prix, la disponibilité et la compatibilité de : ",
     demandePieceSuffix: ".",
-    infos: [
-      { label: "Showroom & atelier", value: "Antananarivo, Madagascar" },
-      { label: "Horaires", value: "Lun - sam · 8h00 - 17h30" },
-      { label: "Téléphone", value: "+261 34 00 000 00" },
-      { label: "Email", value: "contact@funbike.mg" },
-    ],
   } as const;

@@ -11,20 +11,15 @@ import AccessoryDetail from "./pages/AccessoryDetail";
 import Contact from "./pages/Contact";
 import Dealers from "./pages/Dealers";
 import Admin from "./pages/Admin";
-import { BIKES } from "./data/motorcycles";
-import { FEATURED_BANNERS } from "./data/banners";
-import { findPart } from "./data/index";
 import { content } from "./constants";
 import { getApiHealth, type PublicProduct } from "./lib/graphqlClient";
 import { usePublicCatalog } from "./contexts/PublicCatalogContext";
-
-const FIRST_HERO = FEATURED_BANNERS[0].image;
 
 function sameRoute(a: Route, b: Route) {
   return a.page === b.page && (a.id ?? "") === (b.id ?? "");
 }
 
-function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
+function routeLabel(route: Route, publicProducts: PublicProduct[] = []): string {
   switch (route.page) {
     case "home":
       return content.navigation.accueil;
@@ -36,20 +31,10 @@ function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
       return content.navigation.equipements;
     case "spares":
       return content.navigation.piecesDetachees;
-    case "product": {
-      if (publicProducts !== undefined) {
-        return publicProducts.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
-      }
-      const bike = BIKES.find((item) => item.id === route.id);
-      return bike ? bike.name : content.motos.fiche.titreDefaut;
-    }
-    case "accessory": {
-      if (publicProducts !== undefined) {
-        return publicProducts.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
-      }
-      const part = findPart(route.id);
-      return part ? part.name : content.accessoires.fiche.titreDefaut;
-    }
+    case "product":
+      return publicProducts.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
+    case "accessory":
+      return publicProducts.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
     case "revendeurs":
       return content.navigation.revendeurs;
     case "contact":
@@ -60,7 +45,7 @@ function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
 }
 
 export default function App() {
-  const { catalog } = usePublicCatalog();
+  const { catalog, status: catalogStatus, refresh: refreshCatalog } = usePublicCatalog();
   const [dark, setDark] = useState(
     () => localStorage.getItem("fb-theme-v2") !== "light",
   );
@@ -74,7 +59,7 @@ export default function App() {
   const canGoBack = history.length > 1;
   const previousRoute = canGoBack ? history[history.length - 2] : null;
   const backLabel = useMemo(
-    () => (previousRoute ? routeLabel(previousRoute, catalog?.products) : content.navigation.accueil),
+    () => (previousRoute ? routeLabel(previousRoute, catalog?.products ?? []) : content.navigation.accueil),
     [previousRoute?.page, previousRoute?.id, catalog],
   );
 
@@ -91,29 +76,15 @@ export default function App() {
         console.info(`[Funbike API] ${health.status}; MySQL ${health.database}.`);
       })
       .catch((error: unknown) => {
-        console.warn("[Funbike API] Backend unavailable; local display remains usable.", error);
+        const reason = error instanceof Error ? error.name : "UnknownError";
+        console.warn(`[Funbike API] Health check failed (${reason}).`);
       });
   }, []);
 
-  // Fast splash: wait for the first hero photo (min 650 ms, max 1.6 s)
+  // Keep the short brand intro independent of product images from the backend.
   useEffect(() => {
-    let done = false;
-    const start = performance.now();
-    const finish = () => {
-      if (done) return;
-      done = true;
-      const wait = Math.max(0, 650 - (performance.now() - start));
-      window.setTimeout(() => setBooting(false), wait);
-    };
-    const img = new Image();
-    img.onload = finish;
-    img.onerror = finish;
-    img.src = FIRST_HERO;
-    const cap = window.setTimeout(finish, 1600);
-    return () => {
-      done = true;
-      window.clearTimeout(cap);
-    };
+    const timer = window.setTimeout(() => setBooting(false), 650);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Cookie banner appears once the splash is gone, only if no choice was saved
@@ -182,6 +153,22 @@ export default function App() {
 
       <div className="min-h-screen bg-white text-[#171816] transition-colors duration-300 dark:bg-[#141513] dark:text-[#f2f0ea]">
         <Header route={route} go={go} dark={dark} toggle={() => setDark((d) => !d)} />
+        {catalogStatus === "error" && (
+          <div role="alert" className="border-b border-amber-400/50 bg-amber-50 px-4 py-3 text-[#171816] dark:bg-[#2a2413] dark:text-[#f2f0ea]">
+            <div className="mx-auto flex w-full max-w-(--container-site) flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5">
+                Impossible de récupérer le catalogue depuis le backend GraphQL. Les données locales ne sont pas utilisées.
+              </p>
+              <button
+                type="button"
+                onClick={refreshCatalog}
+                className="min-h-10 shrink-0 self-start border-b border-current text-[10px] font-bold uppercase tracking-[0.12em] sm:self-auto"
+              >
+                Réessayer
+              </button>
+            </div>
+          </div>
+        )}
         <main>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

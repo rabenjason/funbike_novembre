@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faCheck, faMagnifyingGlassPlus, faPhone } from "@fortawesome/free-solid-svg-icons";
-import { BIKES } from "../data/motorcycles";
 import { Section } from "../components/Layout";
 import { BikeCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";
@@ -26,8 +25,8 @@ export default function Product({
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
   const bikes = useMemo(
-    () => usingApi ? liveBikes(catalog.products) : status === "error" ? BIKES : [],
-    [usingApi, status, catalog],
+    () => usingApi ? liveBikes(catalog.products) : [],
+    [usingApi, catalog],
   );
   const bike = bikes.find((item) => item.id === id);
   const gallery = bike?.gallery ?? (bike ? [bike.image] : []);
@@ -42,17 +41,21 @@ export default function Product({
   if (!bike) {
     return (
       <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">Moto introuvable</h1>
-        <p className="mt-3 text-sm text-black/55 dark:text-white/55">Ce modèle n’est plus disponible ou n’existe pas dans le catalogue.</p>
+        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">{status === "error" ? "Catalogue indisponible" : "Moto introuvable"}</h1>
+        <p className="mt-3 text-sm text-black/55 dark:text-white/55">
+          {status === "error"
+            ? "Impossible de charger les informations de cette moto depuis le catalogue. Réessayez dans quelques instants."
+            : "Ce modèle n’est plus disponible ou n’existe pas dans le catalogue."}
+        </p>
         <button type="button" onClick={() => back()} className="mt-6 min-h-11 border-b border-current text-xs font-bold uppercase tracking-[0.12em] text-black/70 dark:text-white/70">Retour au catalogue</button>
       </div>
     );
   }
 
-  const equipmentBrandSlug = bike.brandSlug ?? (bike.brand.toLocaleLowerCase("fr") === "tvs" ? "tvs" : undefined);
-  const canShowEquipmentLink = status === "error"
-    ? bike.brand.toLocaleLowerCase("fr") === "tvs"
-    : Boolean(catalog?.brands.some((brand) => brand.slug === equipmentBrandSlug && brand.sections?.some((section) => section.section === "equipements")));
+  const equipmentBrandSlug = bike.brandSlug;
+  const canShowEquipmentLink = Boolean(
+    catalog?.brands.some((brand) => brand.slug === equipmentBrandSlug && brand.sections?.some((section) => section.section === "equipements")),
+  );
 
   return (
     <div className="overflow-x-hidden bg-white dark:bg-[#141513]">

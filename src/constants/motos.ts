@@ -1,9 +1,7 @@
-import { BIKE_FAMILIES } from "../data/families";
-
-/** Textes fixes de l’interface FunBike ; les collections restent dans src/data. */
+/** Textes fixes de l’interface FunBike ; les valeurs de classification viennent du catalogue GraphQL. */
 export const catalogue = {
     titreComplet: "Tout le Catalogue",
-    descriptionComplete: "Découvrez nos motos, pièces et équipements officiels.",
+    descriptionComplete: "Découvrez les motos, pièces et équipements enregistrés dans le catalogue Funbike.",
     titreMotos: "Catalogue Motos",
     descriptionMotos: "Performance, Aventure et Mobilité Urbaine.",
     vehicules: "Véhicules",
@@ -11,7 +9,7 @@ export const catalogue = {
     modelesDisponibles: "modèle(s) disponible(s)",
     pageSur: "page",
     sur: "sur",
-    filtres: ["Tous", ...BIKE_FAMILIES],
+    filtres: ["Tous"],
     rechercheMotosPlaceholder: "Rechercher une moto ou une marque",
     rechercheGlobalePlaceholder: "Motos, casques, blousons, pièces...",
     rechercheAria: "Rechercher dans le catalogue",
@@ -20,13 +18,13 @@ export const catalogue = {
     numeroResultats: "02 / Résultats",
     piecesApercu: {
       titre: "Pièces & Consommables",
-      description: "Pneus, kits chaîne, freinage, filtration et pièces mécaniques.",
+      description: "Consultez les pièces détachées et consommables publiés dans le catalogue.",
       numero: "02 / Atelier",
       bouton: "Voir toutes les pièces détachées",
     },
     equipementsApercu: {
       titre: "Équipements pilote",
-      description: "Casques, tenues, bottes et accessoires pour le pilote.",
+      description: "Consultez les équipements pilote publiés dans le catalogue.",
       numero: "03 / Équipement",
       bouton: "Voir les équipements pilote",
     },
@@ -45,7 +43,7 @@ export const motos = {
       demanderDevis: "Demander un devis",
       messageConseiller: "Un conseiller confirme le modèle, le stock et les options disponibles.",
       contacterEquipe: "Contacter l'équipe",
-      lienEquipementsTvs: "Casques, blousons et gants TVS",
+      lienEquipementsTvs: "Voir les équipements de cette marque",
       similairesTitre: "Dans le même esprit",
       similairesDescription: "D'autres modèles à découvrir.",
       similairesNumero: "À explorer / 02",

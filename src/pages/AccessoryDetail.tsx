@@ -8,7 +8,6 @@ import {
   faMagnifyingGlassPlus,
   faPhone,
 } from "@fortawesome/free-solid-svg-icons";
-import { ALL_PARTS } from "../data/index";
 import type { Part } from "../types";
 import { partBrandLabel, partFamily } from "../utils/catalogLabels";
 import { Section, type Route } from "../components/Layout";
@@ -84,8 +83,8 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
   const products = useMemo(
-    () => usingApi ? liveParts(catalog.products) : status === "error" ? ALL_PARTS : [],
-    [usingApi, status, catalog],
+    () => usingApi ? liveParts(catalog.products) : [],
+    [usingApi, catalog],
   );
   const part = products.find((item) => item.id === id);
   const [active, setActive] = useState(0);
@@ -110,8 +109,12 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
   if (!part) {
     return (
       <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">Produit introuvable</h1>
-        <p className="mt-3 text-sm text-black/55 dark:text-white/55">Ce produit n’est plus disponible ou n’existe pas dans le catalogue.</p>
+        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">{status === "error" ? "Catalogue indisponible" : "Produit introuvable"}</h1>
+        <p className="mt-3 text-sm text-black/55 dark:text-white/55">
+          {status === "error"
+            ? "Impossible de charger ce produit depuis le catalogue. Réessayez dans quelques instants."
+            : "Ce produit n’est plus disponible ou n’existe pas dans le catalogue."}
+        </p>
         <button type="button" onClick={() => back()} className="mt-6 min-h-11 border-b border-current text-xs font-bold uppercase tracking-[0.12em] text-black/70 dark:text-white/70">Retour au catalogue</button>
       </div>
     );
