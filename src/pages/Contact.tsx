@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faClock, faEnvelope, faLocationDot, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { PageHeader } from "../components/Layout";
+import { PARTS, TVS_PARTS, SHERCO_PARTS, FANTIC_PARTS } from "../data/spare-parts";
+import { TVS_ACCESSORIES } from "../data/equipment/tvs";
 import { content } from "../constants";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { liveParts } from "../lib/catalogAdapters";
@@ -16,10 +18,13 @@ const CONTACT_INFO = content.contact.infos.map((item, index) => ({
 }));
 
 export default function Contact({ inquiryId }: { inquiryId?: string }) {
-  const { catalog } = usePublicCatalog();
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
   const parts = useMemo(
-    () => catalog ? liveParts(catalog.products) : [],
-    [catalog],
+    () => usingApi
+      ? liveParts(catalog.products)
+      : status === "error" ? [...TVS_ACCESSORIES, ...PARTS, ...TVS_PARTS, ...SHERCO_PARTS, ...FANTIC_PARTS] : [],
+    [usingApi, status, catalog],
   );
   const [sent, setSent] = useState(false);
   const accessory = parts.find((item) => item.id === inquiryId);

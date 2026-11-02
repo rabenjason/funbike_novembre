@@ -4,7 +4,6 @@ import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext }
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 import { siteContentResolvers } from "./siteContentResolvers.js";
 import { placeIdAtPosition } from "./listOrdering.js";
-import { filterProductsBySearch, normalizeProductSearchTerms, searchAndPaginateProducts } from "./productSearch.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
@@ -150,6 +149,19 @@ function productConditions(
     values.push(usageId);
   }
 
+  const search = typeof args.search === "string" ? args.search.trim().slice(0, 160) : "";
+  const searchTerms = search.split(/\s+/).filter(Boolean).slice(0, 8);
+  for (const term of searchTerms) {
+    conditions.push(`(
+      CONCAT_WS(' ', p.name, p.reference, p.description, m.recommendation, b.name, f.name, sf.name, pt.name, et.name, acc_type.name, cat.name) LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM spare_part_compatible_brands scb_search
+        JOIN brands cb ON cb.id = scb_search.brand_id
+        WHERE scb_search.product_id = p.id AND cb.name LIKE ?
+      )
+    )`);
+    values.push(`%${term}%`, `%${term}%`);
+  }
   return { conditions, values };
 }
 
@@ -167,30 +179,14 @@ const productJoins = `
      LEFT JOIN accessory_categories cat
        ON cat.id = COALESCE(sp.category_id, e.category_id, a.category_id)`;
 
-type ProductPagination = { limit: number; offset: number };
-
-async function queryProducts(
+async function getProducts(
   kind: string | string[] | undefined,
-  args: Args,
-  includeDrafts: boolean,
-  pagination?: ProductPagination,
-  includeSearchMetadata = false,
+  args: Args = {},
+  includeDrafts = false,
 ): Promise<DbRow[]> {
   const { conditions, values } = productConditions(kind, args, includeDrafts);
-  const searchMetadataColumns = includeSearchMetadata ? `,
-       b.name AS searchBrandName,
-       f.name AS searchFamilyName,
-       sf.name AS searchSubfamilyName,
-       pt.name AS searchPartTypeName,
-       et.name AS searchEquipmentTypeName,
-       acc_type.name AS searchAccessoryTypeName,
-       cat.name AS searchCategoryName,
-       (SELECT GROUP_CONCAT(DISTINCT cb_search.name SEPARATOR ' ')
-        FROM spare_part_compatible_brands scb_search
-        JOIN brands cb_search ON cb_search.id = scb_search.brand_id
-        WHERE scb_search.product_id = p.id) AS searchCompatibleBrandNames` : "";
-  const paginationClause = pagination ? "\n     LIMIT ? OFFSET ?" : "";
-  if (pagination) values.push(pagination.limit, pagination.offset);
+  const { limit, offset } = pageArgs(args);
+  values.push(limit, offset);
 
   return queryRows<DbRow>(
     `SELECT
@@ -217,26 +213,14 @@ async function queryProducts(
        e.source_url AS equipmentSourceUrl,
        a.accessory_type_id AS accessoryTypeId,
        a.category_id AS accessoryCategoryId,
-       a.source_url AS accessorySourceUrl${searchMetadataColumns}
+       a.source_url AS accessorySourceUrl
      FROM products p
      ${productJoins}
      WHERE ${conditions.join(" AND ")}
-     ORDER BY p.created_at DESC, p.id DESC${paginationClause}`,
+     ORDER BY p.created_at DESC, p.id DESC
+     LIMIT ? OFFSET ?`,
     values,
   );
-}
-
-async function getProducts(
-  kind: string | string[] | undefined,
-  args: Args = {},
-  includeDrafts = false,
-): Promise<DbRow[]> {
-  const { limit, offset } = pageArgs(args);
-  if (normalizeProductSearchTerms(args.search).length > 0) {
-    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
-    return searchAndPaginateProducts(rows, args.search, { limit, offset }).items;
-  }
-  return queryProducts(kind, args, includeDrafts, { limit, offset });
 }
 
 async function getProductCount(
@@ -244,11 +228,6 @@ async function getProductCount(
   args: Args = {},
   includeDrafts = false,
 ): Promise<number> {
-  if (normalizeProductSearchTerms(args.search).length > 0) {
-    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
-    return filterProductsBySearch(rows, args.search).length;
-  }
-
   const { conditions, values } = productConditions(kind, args, includeDrafts);
   const rows = await queryRows<DbRow>(
     `SELECT COUNT(DISTINCT p.id) AS totalCount
@@ -265,12 +244,6 @@ async function getProductPage(
   args: Args,
   includeDrafts: boolean,
 ): Promise<{ items: DbRow[]; totalCount: number }> {
-  if (normalizeProductSearchTerms(args.search).length > 0) {
-    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
-    const { limit, offset } = pageArgs(args);
-    return searchAndPaginateProducts(rows, args.search, { limit, offset });
-  }
-
   const [items, totalCount] = await Promise.all([
     getProducts(kind, args, includeDrafts),
     getProductCount(kind, args, includeDrafts),
@@ -880,27 +853,6 @@ function productNotFound(id: unknown): never {
   return notFound(`Product ${String(id)} was not found.`);
 }
 
-function logAdminProductPageError(error: unknown, args: Args, context: GraphQLContext): void {
-  const errorRecord = typeof error === "object" && error !== null
-    ? error as Record<string, unknown>
-    : {};
-  const normalizedError = error instanceof Error ? error : new Error(String(error));
-  console.error("[adminProductPage] catalogue query failed", {
-    requestId: context.requestId ?? "unavailable",
-    kind: args.kind ?? "ALL",
-    status: args.status ?? "ALL",
-    hasSearch: typeof args.search === "string" && args.search.trim().length > 0,
-    error: {
-      name: normalizedError.name,
-      message: normalizedError.message,
-      code: typeof errorRecord.code === "string" ? errorRecord.code : undefined,
-      errno: typeof errorRecord.errno === "number" ? errorRecord.errno : undefined,
-      sqlState: typeof errorRecord.sqlState === "string" ? errorRecord.sqlState : undefined,
-      stack: normalizedError.stack,
-    },
-  });
-}
-
 export const resolvers: Record<string, any> = {
   Query: {
     ...siteContentResolvers.Query,
@@ -969,15 +921,9 @@ export const resolvers: Record<string, any> = {
       requireAdmin(context);
       return getProducts(args.kind, args, true);
     },
-    adminProductPage: async (_: unknown, args: Args, context: GraphQLContext) => {
+    adminProductPage: (_: unknown, args: Args, context: GraphQLContext) => {
       requireAdmin(context);
-      try {
-        return await getProductPage(args.kind, args, true);
-      } catch (error) {
-        // Do not include search text, credentials, or SQL parameters in logs.
-        logAdminProductPageError(error, args, context);
-        throw error;
-      }
+      return getProductPage(args.kind, args, true);
     },
   },
   Mutation: {

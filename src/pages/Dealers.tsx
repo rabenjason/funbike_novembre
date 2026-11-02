@@ -13,6 +13,7 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 
+import { DEALERS } from "../data/dealers";
 import type { Dealer } from "../types";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { content } from "../constants";
@@ -30,7 +31,9 @@ const LABEL = "text-[10px] font-semibold uppercase tracking-[0.1em] text-black/4
 
 export default function Dealers({ go, initialCity }: { go: (p: string, id?: string) => void; initialCity?: string }) {
   const { catalog, status } = usePublicCatalog();
-  const dealers: Dealer[] = catalog?.dealers ?? [];
+  const usingApi = status === "ready" && catalog !== null;
+  const fallback = status === "error";
+  const dealers: Dealer[] = usingApi ? catalog.dealers : fallback ? DEALERS : [];
   const [activeKey, setActiveKey] = useState(initialCity ?? "");
   const [zoom, setZoom] = useState(1);
   const [mapReady, setMapReady] = useState(false);
@@ -65,11 +68,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
       <main className="mx-auto min-h-[50vh] w-full max-w-(--container-site) px-4 py-10 sm:px-7 lg:px-10">
         <h1 className="font-display text-2xl font-semibold tracking-[-0.04em]">{content.revendeurs.titre}</h1>
         <p className="mt-3 text-sm text-black/60 dark:text-white/60">
-          {status === "loading"
-            ? "Chargement des revendeurs…"
-            : status === "error"
-              ? "Les informations des revendeurs sont momentanément indisponibles."
-              : "Aucun revendeur disponible pour le moment."}
+          {status === "loading" ? "Chargement des revendeurs…" : "Aucun revendeur disponible pour le moment."}
         </p>
       </main>
     );
