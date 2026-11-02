@@ -4,6 +4,7 @@ import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext }
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 import { siteContentResolvers } from "./siteContentResolvers.js";
 import { placeIdAtPosition } from "./listOrdering.js";
+import { buildProductSearchConditions } from "./productSearch.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
@@ -149,19 +150,9 @@ function productConditions(
     values.push(usageId);
   }
 
-  const search = typeof args.search === "string" ? args.search.trim().slice(0, 160) : "";
-  const searchTerms = search.split(/\s+/).filter(Boolean).slice(0, 8);
-  for (const term of searchTerms) {
-    conditions.push(`(
-      CONCAT_WS(' ', p.name, p.reference, p.description, m.recommendation, b.name, f.name, sf.name, pt.name, et.name, acc_type.name, cat.name) LIKE ?
-      OR EXISTS (
-        SELECT 1 FROM spare_part_compatible_brands scb_search
-        JOIN brands cb ON cb.id = scb_search.brand_id
-        WHERE scb_search.product_id = p.id AND cb.name LIKE ?
-      )
-    )`);
-    values.push(`%${term}%`, `%${term}%`);
-  }
+  const search = buildProductSearchConditions(args.search);
+  conditions.push(...search.conditions);
+  values.push(...search.values);
   return { conditions, values };
 }
 
