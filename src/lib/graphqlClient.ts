@@ -23,11 +23,15 @@ export async function graphqlRequest<T>(
     cache: "no-store",
   });
 
+  const contentType = response.headers.get("content-type") ?? "unknown content type";
   let result: GraphQLResponse<T>;
   try {
-    result = (await response.json()) as GraphQLResponse<T>;
+    result = JSON.parse(await response.text()) as GraphQLResponse<T>;
   } catch {
-    throw new Error(`The GraphQL API returned an invalid response (${response.status}).`);
+    const hint = response.status >= 500
+      ? "Vérifiez que le backend GraphQL fonctionne et que le proxy /graphql pointe vers lui (API_PROXY_TARGET)."
+      : "Vérifiez que l’hébergement relaie bien /graphql vers le backend.";
+    throw new Error(`Réponse non JSON de l’API GraphQL (HTTP ${response.status}, ${contentType}). ${hint}`);
   }
 
   if (!response.ok || result.errors?.length || !result.data) {
