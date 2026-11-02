@@ -2,11 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGears, faMagnifyingGlass, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import { BIKES } from "../data/motorcycles";
-import { SPARE_PARTS } from "../data/spare-parts";
-import { GEAR_ITEMS } from "../data/equipment";
-import type { Brand, Part } from "../types";
-import { getBrandLabel, getBrandSection, getBrandsForSection } from "../data/brands";
+import type { Bike, Brand, Part } from "../types";
+import { getBrandLabel, getBrandSection } from "../data/brands";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { liveBikes, liveParts, toBrand } from "../lib/catalogAdapters";
 import type { PublicBrand } from "../lib/graphqlClient";
@@ -25,16 +22,12 @@ import { AccessoryBrandSelector, BrandVisual } from "../components/AccessoryBran
 const FAMILIES = content.catalogue.filtres;
 const BIKES_PER_PAGE = 6;
 const PARTS_PER_PAGE = 8;
-const EQUIPMENT_BRANDS = getBrandsForSection("equipements");
-const SPARE_BRANDS = getBrandsForSection("pieces-detachees", { filterableOnly: true });
 const SPARE_ALL_BRAND_ID = "all";
 
 type SpareBrandTab = { key: string; name: string; logo?: string; icon?: IconDefinition; routeId?: string };
 
-const SPARE_TYPES = content.piecesDetachees.typesFiltres;
+const SPARE_TYPE_ALL = content.piecesDetachees.typesFiltres[0];
 type SpareType = string;
-
-const ALL_ITEMS = [...SPARE_PARTS, ...GEAR_ITEMS];
 
 const normalizeSearch = (value: string) =>
   value.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -44,7 +37,7 @@ const containsAll = (text: string, terms: string[]) => {
   return terms.every((term) => normalized.includes(term));
 };
 
-const bikeSearchText = (bike: (typeof BIKES)[number]) =>
+const bikeSearchText = (bike: Bike) =>
   `${bike.name} ${bike.brand} ${bike.desc} ${bike.family} ${bike.recommendation ?? ""}`;
 
 const itemLabel = (part: Part) =>
@@ -143,18 +136,17 @@ export function Catalogue({
 }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
-  const fallback = status === "error";
   const bikes = useMemo(
-    () => usingApi ? liveBikes(catalog.products) : fallback ? BIKES : [],
-    [usingApi, fallback, catalog],
+    () => usingApi ? liveBikes(catalog.products) : [],
+    [usingApi, catalog],
   );
   const parts = useMemo(
-    () => usingApi ? liveParts(catalog.products) : fallback ? ALL_ITEMS : [],
-    [usingApi, fallback, catalog],
+    () => usingApi ? liveParts(catalog.products) : [],
+    [usingApi, catalog],
   );
   const familyFilters: readonly string[] = usingApi
     ? [FAMILIES[0], ...catalog.families.map((item) => item.name)]
-    : fallback ? FAMILIES : [FAMILIES[0]];
+    : [FAMILIES[0]];
   const [family, setFamily] = useState<string>(FAMILIES[0]);
   const [query, setQuery] = useState(initialQuery ?? "");
   const [page, setPage] = useState(1);
@@ -247,7 +239,9 @@ export function Catalogue({
         </div>
         {!loading && bikeList.length === 0 && (
           <p className="py-12 text-center text-sm text-black/50 dark:text-white/50">
-            {partList.length > 0 ? content.messages.aucunModeleRecherche : content.messages.aucunResultatRecherche}
+            {status === "error"
+              ? "Le catalogue est momentanément indisponible."
+              : partList.length > 0 ? content.messages.aucunModeleRecherche : content.messages.aucunResultatRecherche}
           </p>
         )}
 
@@ -304,12 +298,11 @@ export function Catalogue({
 export function Equipements({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
-  const fallback = status === "error";
   const allEquipmentItems = useMemo(
     () => usingApi
       ? liveParts(catalog.products).filter((part) => part.kind !== "piece")
-      : fallback ? GEAR_ITEMS : [],
-    [usingApi, fallback, catalog],
+      : [],
+    [usingApi, catalog],
   );
   const equipmentSlugs = new Set(allEquipmentItems.map((part) => part.kind));
   const unbrandedEquipment = allEquipmentItems.filter((part) => !part.brandName);
@@ -318,7 +311,7 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
         ...brandsForProducts(catalog.brands, equipmentSlugs, "equipements"),
         ...(unbrandedEquipment.length > 0 ? [{ id: "unbranded", name: "Autres articles", logo: "", logoAlt: "", isActive: true, sections: [] }] : []),
       ]
-    : fallback ? EQUIPMENT_BRANDS : [];
+    : [];
   const [tab, setTab] = useState(initialBrand ?? "");
   const [category, setCategory] = useState<string>(content.equipements.categorieToutes);
   const [query, setQuery] = useState("");
@@ -451,11 +444,9 @@ export function Equipements({ go, initialBrand }: { go: (p: string, id?: string)
                         <PartCard key={part.id} part={part} go={go} onEnquire={() => go("contact", part.id)} />
                       ))}
                 </div>
-                {!loading && filteredItems.length === 0 && <p className="py-10 text-center text-sm text-black/50 dark:text-white/50">Aucun équipement publié dans cette sélection.</p>}
-
-                {fallback && tab === "tvs" && (
-                  <p className="mt-4 text-xs leading-5 text-black/50 dark:text-white/50">
-                    {content.equipements.noteTvs}
+                {!loading && filteredItems.length === 0 && (
+                  <p className="py-10 text-center text-sm text-black/50 dark:text-white/50">
+                    {status === "error" ? "Le catalogue est momentanément indisponible." : "Aucun équipement publié dans cette sélection."}
                   </p>
                 )}
 
@@ -537,12 +528,11 @@ function SpareBrandSelector({ active, brands, onSelect }: { active: string; bran
 export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => void; initialBrand?: string }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
-  const fallback = status === "error";
   const spareItems = useMemo(
     () => usingApi
       ? liveParts(catalog.products).filter((part) => part.kind === "piece")
-      : fallback ? SPARE_PARTS : [],
-    [usingApi, fallback, catalog],
+      : [],
+    [usingApi, catalog],
   );
   const compatibleSlugs = new Set(spareItems.flatMap((part) => part.compatibleBrandSlugs ?? []));
   const spareBrands = usingApi
@@ -550,7 +540,7 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
         const association = getBrandSection(brand, "pieces-detachees");
         return compatibleSlugs.has(brand.id) || association?.filterable !== false;
       })
-    : fallback ? SPARE_BRANDS : [];
+    : [];
   const brandTabs: SpareBrandTab[] = [
     { key: SPARE_ALL_BRAND_ID, name: content.piecesDetachees.marqueToutes, icon: faGears },
     ...spareBrands.map((item) => ({
@@ -561,7 +551,7 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
     })),
   ];
   const [brand, setBrand] = useState<string>(initialBrand ?? SPARE_ALL_BRAND_ID);
-  const [type, setType] = useState<SpareType>(SPARE_TYPES[0]);
+  const [type, setType] = useState<SpareType>(SPARE_TYPE_ALL);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -584,14 +574,12 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
     part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === selectedBrand.name.toLocaleLowerCase("fr"))
   ) : [];
   const isPartnerInfo = selectedBrandSection?.displayMode === "partner-info" && brandSpecificItems.length === 0;
-  const typeNames = usingApi
-    ? catalog.partTypes.map((item) => item.name)
-    : fallback ? SPARE_TYPES.slice(1) : [];
+  const typeNames = usingApi ? catalog.partTypes.map((item) => item.name) : [];
   const availableTypes = Array.from(new Set([
     ...typeNames,
     ...spareItems.map((part) => part.partType).filter((value): value is string => Boolean(value)),
   ]));
-  const typeOptions = [SPARE_TYPES[0], ...availableTypes];
+  const typeOptions = [SPARE_TYPE_ALL, ...availableTypes];
   const terms = useMemo(() => normalizeSearch(query).trim().split(/\s+/).filter(Boolean), [query]);
 
   const items = useMemo(() => spareItems.filter((part) => {
@@ -600,12 +588,12 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
         part.compatibleBrandSlugs?.includes(selectedBrand.id) ||
         part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === selectedBrand.name.toLocaleLowerCase("fr"))
       ));
-    const matchingType = type === SPARE_TYPES[0] || part.partType === type;
+    const matchingType = type === SPARE_TYPE_ALL || part.partType === type;
     return compatible && matchingType && containsAll(itemLabel(part), terms);
   }), [spareItems, isAllBrands, isPartnerInfo, selectedBrand?.id, selectedBrand?.name, type, terms]);
 
   useEffect(() => {
-    if (!typeOptions.includes(type)) setType(SPARE_TYPES[0]);
+    if (!typeOptions.includes(type)) setType(SPARE_TYPE_ALL);
   }, [typeOptions.join("|"), type]);
 
   const totalPages = Math.max(1, Math.ceil(items.length / PARTS_PER_PAGE));
@@ -714,9 +702,11 @@ export function Spares({ go, initialBrand }: { go: (p: string, id?: string) => v
                         <PartCard key={part.id} part={part} go={go} onEnquire={() => go("contact", part.id)} />
                       ))}
                 </div>
-                {!loading && items.length === 0 && <p className="py-10 text-center text-sm text-black/50 dark:text-white/50">Aucune pièce ne correspond à cette sélection.</p>}
-
-                {fallback && <p className="mt-4 text-xs leading-5 text-black/50 dark:text-white/50">{content.piecesDetachees.noteSimulee}</p>}
+                {!loading && items.length === 0 && (
+                  <p className="py-10 text-center text-sm text-black/50 dark:text-white/50">
+                    {status === "error" ? "Le catalogue est momentanément indisponible." : "Aucune pièce ne correspond à cette sélection."}
+                  </p>
+                )}
 
                 <Pagination
                   id={`spares-${brand}-${type}`}
