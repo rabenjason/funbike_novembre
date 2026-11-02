@@ -52,7 +52,7 @@ function routeLabel(route: Route): string {
 
 export default function App() {
   const [dark, setDark] = useState(
-    () => localStorage.getItem("fb-theme") !== "light",
+    () => localStorage.getItem("fb-theme-v2") !== "light",
   );
   const [history, setHistory] = useState<Route[]>([{ page: "home" }]);
   const [booting, setBooting] = useState(true);
@@ -69,7 +69,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("fb-theme", dark ? "dark" : "light");
+    localStorage.setItem("fb-theme-v2", dark ? "dark" : "light");
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", dark ? "#141513" : "#ffffff");
   }, [dark]);
 
