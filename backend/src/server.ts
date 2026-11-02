@@ -6,6 +6,7 @@ import { authenticateRequest } from "./auth.js";
 import { closeDatabase, databaseHealth } from "./db.js";
 import { resolvers } from "./resolvers.js";
 import { loadGraphqlTypeDefs } from "./schemaLoader.js";
+import { handleUploadRequest } from "./uploads.js";
 
 const schema = makeExecutableSchema({
   typeDefs: loadGraphqlTypeDefs(),
@@ -22,7 +23,20 @@ const yoga = createYoga({
 });
 
 const port = Number(process.env.API_PORT ?? 4000);
-const server = createServer(yoga);
+const server = createServer((request, response) => {
+  void handleUploadRequest(request, response)
+    .then((handled) => {
+      if (!handled) void yoga(request, response);
+    })
+    .catch((error: unknown) => {
+      console.error("Request handler failed:", error);
+      if (response.headersSent) response.destroy();
+      else {
+        response.writeHead(500, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+        response.end(JSON.stringify({ error: "Internal server error." }));
+      }
+    });
+});
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Funbike GraphQL API listening on http://0.0.0.0:${port}/graphql`);

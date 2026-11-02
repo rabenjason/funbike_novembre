@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import ImageFilePicker, { type ImageSelection } from "../components/ImageFilePicker";
+import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
 import { graphqlRequest } from "../lib/graphqlClient";
 
 type AdminUser = { id: string; email: string; role: string };
@@ -69,12 +71,12 @@ type ProductForm = {
   universalCompatibility: string;
   compatibleBrandIds: string[];
   usageIds: string[];
-  imageUrls: string;
+  imageSelections: ImageSelection[];
   specs: Array<{ characteristicId: string; value: string }>;
 };
 type LookupForm = { name: string; familyId: string; unit: string; applicableTo: string; sortOrder: string; isActive: boolean };
-type BrandForm = { slug: string; name: string; logo: string; logoAlt: string; description: string; sortOrder: string; isActive: boolean };
-type CategoryForm = { title: string; desc: string; src: string; to: string; brand: string; sortOrder: string; isActive: boolean };
+type BrandForm = { slug: string; name: string; logoImage: ImageSelection | null; logoAlt: string; description: string; sortOrder: string; isActive: boolean };
+type CategoryForm = { title: string; desc: string; image: ImageSelection | null; to: string; brand: string; sortOrder: string; isActive: boolean };
 type Tab = "products" | "classifications" | "brands" | "categories" | "security";
 type ArchiveRequest =
   | { type: "lookup"; id: string; label: string; lookupKind: LookupKind; successMessage: string }
@@ -159,13 +161,13 @@ const emptyProductForm = (): ProductForm => ({
   universalCompatibility: "",
   compatibleBrandIds: [],
   usageIds: [],
-  imageUrls: "",
+  imageSelections: [],
   specs: [],
 });
 
 const emptyLookupForm = (): LookupForm => ({ name: "", familyId: "", unit: "", applicableTo: "", sortOrder: "0", isActive: true });
-const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logo: "", logoAlt: "", description: "", sortOrder: "0", isActive: true });
-const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", src: "", to: "", brand: "", sortOrder: "0", isActive: true });
+const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, logoAlt: "", description: "", sortOrder: "0", isActive: true });
+const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", image: null, to: "", brand: "", sortOrder: "0", isActive: true });
 
 const fieldClass = "w-full border border-black/15 bg-white px-3 py-2.5 text-sm text-[#171816] outline-none transition focus:border-[#c49d00] dark:border-white/15 dark:bg-[#1c1d1a] dark:text-[#f2f0ea]";
 const buttonPrimary = "inline-flex min-h-10 items-center justify-center gap-2 bg-[#ffd100] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.1em] text-[#171816] transition hover:bg-[#ffe36b] disabled:cursor-not-allowed disabled:opacity-50";
@@ -199,6 +201,36 @@ function kindFromTypename(name: AdminProduct["__typename"]): ProductKind {
   return kinds[name];
 }
 
+function imageFromStoredUrl(url: string, id: string): ImageSelection {
+  return { id, url, previewUrl: url, name: "Photo actuelle" };
+}
+
+async function resolveImageSelections(
+  selections: ImageSelection[],
+  accessToken: string,
+  newlyUploadedUrls: string[],
+): Promise<string[]> {
+  const urls: string[] = [];
+  for (const selection of selections) {
+    if (selection.file) {
+      const url = await uploadImage(selection.file, accessToken);
+      newlyUploadedUrls.push(url);
+      urls.push(url);
+    } else if (selection.url) {
+      urls.push(selection.url);
+    }
+  }
+  return urls;
+}
+
+function uploadedImagesRemoved(previousUrls: string[], nextUrls: string[]): string[] {
+  return previousUrls.filter((url) => url.startsWith("/uploads/") && !nextUrls.includes(url));
+}
+
+function cleanupImages(urls: string[], accessToken: string): void {
+  if (urls.length > 0) void deleteUploadedImages(urls, accessToken).catch(() => undefined);
+}
+
 function formFromProduct(product: AdminProduct): ProductForm {
   return {
     ...emptyProductForm(),
@@ -224,7 +256,8 @@ function formFromProduct(product: AdminProduct): ProductForm {
       : String(product.universalCompatibility),
     compatibleBrandIds: product.compatibleBrands?.map((brand) => brand.id) ?? [],
     usageIds: product.usages?.map((usage) => usage.id) ?? [],
-    imageUrls: (product.gallery?.length ? product.gallery : product.image ? [product.image] : []).join("\n"),
+    imageSelections: (product.gallery?.length ? product.gallery : product.image ? [product.image] : [])
+      .map((url, index) => imageFromStoredUrl(url, `product-${product.id}-${index}`)),
     specs: (product.specs ?? []).map((spec) => ({ characteristicId: spec.characteristic?.id ?? "", value: spec.value })),
   };
 }
@@ -376,43 +409,47 @@ export default function Admin() {
     setBusy(true);
     setError("");
     setNotice("");
-    const images = productForm.imageUrls.split(/\r?\n/).map((url) => url.trim()).filter(Boolean).map((url, index) => ({
-      url,
-      alt: productForm.alt.trim() || null,
-      isPrimary: index === 0,
-      sortOrder: index,
-    }));
-    const specs = productForm.specs.filter((spec) => spec.characteristicId && spec.value.trim()).map((spec, index) => ({
-      characteristicId: spec.characteristicId,
-      value: spec.value.trim(),
-      sortOrder: index,
-    }));
-    const input = {
-      kind: productForm.kind,
-      name: productForm.name,
-      reference: productForm.reference || null,
-      brandId: productForm.brandId || null,
-      subfamilyId: productForm.subfamilyId || null,
-      price: productForm.price || null,
-      desc: productForm.desc || null,
-      familyId: productForm.kind === "MOTORCYCLE" ? productForm.familyId || null : null,
-      tag: productForm.kind === "MOTORCYCLE" ? productForm.tag || null : null,
-      alt: productForm.kind === "MOTORCYCLE" ? productForm.alt || null : null,
-      recommendation: productForm.kind === "MOTORCYCLE" ? productForm.recommendation || null : null,
-      partTypeId: productForm.kind === "SPARE_PART" ? productForm.partTypeId || null : null,
-      equipmentTypeId: productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId || null : null,
-      accessoryTypeId: productForm.kind === "ACCESSORY" ? productForm.accessoryTypeId || null : null,
-      categoryId: productForm.kind === "MOTORCYCLE" ? null : productForm.categoryId || null,
-      sourceUrl: productForm.kind === "MOTORCYCLE" ? null : productForm.sourceUrl || null,
-      compatibleBrandIds: productForm.kind === "SPARE_PART" ? productForm.compatibleBrandIds : [],
-      universalCompatibility: productForm.kind === "SPARE_PART" && productForm.universalCompatibility !== ""
-        ? productForm.universalCompatibility === "true"
-        : null,
-      usageIds: productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY" ? productForm.usageIds : [],
-      images,
-      specs,
-    };
+    const previousImageUrls = productForm.imageSelections.flatMap((image) => image.url ? [image.url] : []);
+    const newlyUploadedUrls: string[] = [];
     try {
+      if (productForm.imageSelections.some((image) => image.file)) setNotice("Importation des photos en cours…");
+      const imageUrls = await resolveImageSelections(productForm.imageSelections, token, newlyUploadedUrls);
+      const images = imageUrls.map((url, index) => ({
+        url,
+        alt: productForm.alt.trim() || null,
+        isPrimary: index === 0,
+        sortOrder: index,
+      }));
+      const specs = productForm.specs.filter((spec) => spec.characteristicId && spec.value.trim()).map((spec, index) => ({
+        characteristicId: spec.characteristicId,
+        value: spec.value.trim(),
+        sortOrder: index,
+      }));
+      const input = {
+        kind: productForm.kind,
+        name: productForm.name,
+        reference: productForm.reference || null,
+        brandId: productForm.brandId || null,
+        subfamilyId: productForm.subfamilyId || null,
+        price: productForm.price || null,
+        desc: productForm.desc || null,
+        familyId: productForm.kind === "MOTORCYCLE" ? productForm.familyId || null : null,
+        tag: productForm.kind === "MOTORCYCLE" ? productForm.tag || null : null,
+        alt: productForm.kind === "MOTORCYCLE" ? productForm.alt || null : null,
+        recommendation: productForm.kind === "MOTORCYCLE" ? productForm.recommendation || null : null,
+        partTypeId: productForm.kind === "SPARE_PART" ? productForm.partTypeId || null : null,
+        equipmentTypeId: productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId || null : null,
+        accessoryTypeId: productForm.kind === "ACCESSORY" ? productForm.accessoryTypeId || null : null,
+        categoryId: productForm.kind === "MOTORCYCLE" ? null : productForm.categoryId || null,
+        sourceUrl: productForm.kind === "MOTORCYCLE" ? null : productForm.sourceUrl || null,
+        compatibleBrandIds: productForm.kind === "SPARE_PART" ? productForm.compatibleBrandIds : [],
+        universalCompatibility: productForm.kind === "SPARE_PART" && productForm.universalCompatibility !== ""
+          ? productForm.universalCompatibility === "true"
+          : null,
+        usageIds: productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY" ? productForm.usageIds : [],
+        images,
+        specs,
+      };
       if (productForm.id) {
         await graphqlRequest(
           "mutation UpdateProduct($id: ID!, $input: ProductInput!) { updateProduct(id: $id, input: $input) { id name status } }",
@@ -428,9 +465,11 @@ export default function Admin() {
         );
         setNotice("Produit créé en brouillon. Publiez-le lorsqu’il est prêt.");
       }
+      cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
       setProductForm(emptyProductForm());
       reload();
     } catch (reason) {
+      cleanupImages(newlyUploadedUrls, token);
       setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer le produit.");
     } finally {
       setBusy(false);
@@ -573,8 +612,21 @@ export default function Admin() {
     if (!token) return;
     setBusy(true);
     setError("");
+    setNotice("");
+    const previousImageUrls = brandForm.logoImage?.url ? [brandForm.logoImage.url] : [];
+    const newlyUploadedUrls: string[] = [];
     try {
-      const input = { ...brandForm, sortOrder: Number(brandForm.sortOrder) || 0, logo: brandForm.logo || null, logoAlt: brandForm.logoAlt || null, description: brandForm.description || null };
+      if (brandForm.logoImage?.file) setNotice("Importation du logo en cours…");
+      const logoUrls = await resolveImageSelections(brandForm.logoImage ? [brandForm.logoImage] : [], token, newlyUploadedUrls);
+      const input = {
+        slug: brandForm.slug,
+        name: brandForm.name,
+        logo: logoUrls[0] ?? null,
+        logoAlt: brandForm.logoAlt || null,
+        description: brandForm.description || null,
+        sortOrder: Number(brandForm.sortOrder) || 0,
+        isActive: brandForm.isActive,
+      };
       if (editingBrandId) {
         await graphqlRequest("mutation UpdateBrand($id: ID!, $input: BrandInput!) { updateBrand(id: $id, input: $input) { id name } }", { id: editingBrandId, input }, token);
         setNotice("Marque mise à jour.");
@@ -582,10 +634,12 @@ export default function Admin() {
         await graphqlRequest("mutation CreateBrand($input: BrandInput!) { createBrand(input: $input) { id name } }", { input }, token);
         setNotice("Marque créée.");
       }
+      cleanupImages(uploadedImagesRemoved(previousImageUrls, logoUrls), token);
       setEditingBrandId(null);
       setBrandForm(emptyBrandForm());
       reload();
     } catch (reason) {
+      cleanupImages(newlyUploadedUrls, token);
       setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer la marque.");
     } finally {
       setBusy(false);
@@ -604,10 +658,27 @@ export default function Admin() {
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
+    if (!categoryForm.image) {
+      setError("Sélectionnez une photo pour cette catégorie.");
+      return;
+    }
     setBusy(true);
     setError("");
+    setNotice("");
+    const previousImageUrls = categoryForm.image.url ? [categoryForm.image.url] : [];
+    const newlyUploadedUrls: string[] = [];
     try {
-      const input = { ...categoryForm, brand: categoryForm.brand || null, sortOrder: Number(categoryForm.sortOrder) || 0 };
+      if (categoryForm.image.file) setNotice("Importation de la photo en cours…");
+      const imageUrls = await resolveImageSelections([categoryForm.image], token, newlyUploadedUrls);
+      const input = {
+        title: categoryForm.title,
+        desc: categoryForm.desc,
+        src: imageUrls[0]!,
+        to: categoryForm.to,
+        brand: categoryForm.brand || null,
+        sortOrder: Number(categoryForm.sortOrder) || 0,
+        isActive: categoryForm.isActive,
+      };
       if (editingCategoryId) {
         await graphqlRequest("mutation UpdateCategory($id: ID!, $input: CategoryInput!) { updateCategory(id: $id, input: $input) { id title } }", { id: editingCategoryId, input }, token);
         setNotice("Catégorie mise à jour.");
@@ -615,10 +686,12 @@ export default function Admin() {
         await graphqlRequest("mutation CreateCategory($input: CategoryInput!) { createCategory(input: $input) { id title } }", { input }, token);
         setNotice("Catégorie créée.");
       }
+      cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
       setEditingCategoryId(null);
       setCategoryForm(emptyCategoryForm());
       reload();
     } catch (reason) {
+      cleanupImages(newlyUploadedUrls, token);
       setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer la catégorie.");
     } finally {
       setBusy(false);
@@ -791,7 +864,17 @@ export default function Admin() {
               {productForm.kind === "SPARE_PART" && <div className="grid gap-3 sm:grid-cols-2"><Field label="Type de pièce"><select className={fieldClass} value={productForm.partTypeId} onChange={(event) => setProductForm({ ...productForm, partTypeId: event.target.value })}><option value="">Aucun</option>{(data?.partTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Catégorie catalogue"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Aucune</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Compatibilité universelle"><select className={fieldClass} value={productForm.universalCompatibility} onChange={(event) => setProductForm({ ...productForm, universalCompatibility: event.target.value })}><option value="">Non renseignée</option><option value="true">Oui</option><option value="false">Non</option></select></Field><Field label="Marques compatibles"><select multiple className={`${fieldClass} min-h-24`} value={productForm.compatibleBrandIds} onChange={(event) => setProductForm({ ...productForm, compatibleBrandIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })}>{(data?.brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></Field><div className="sm:col-span-2"><Field label="URL source"><input className={fieldClass} value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field></div></div>}
               {(productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY") && <div className="grid gap-3 sm:grid-cols-2"><Field label={productForm.kind === "EQUIPMENT" ? "Type d’équipement" : "Type d’accessoire"}><select className={fieldClass} value={productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId : productForm.accessoryTypeId} onChange={(event) => setProductForm({ ...productForm, [productForm.kind === "EQUIPMENT" ? "equipmentTypeId" : "accessoryTypeId"]: event.target.value })}><option value="">Aucun</option>{(productForm.kind === "EQUIPMENT" ? data?.equipmentTypes ?? [] : data?.accessoryTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Catégorie catalogue"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Aucune</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Usages"><select multiple className={`${fieldClass} min-h-24`} value={productForm.usageIds} onChange={(event) => setProductForm({ ...productForm, usageIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })}>{(data?.productUsages ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="URL source"><input className={fieldClass} value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field></div>}
               <Field label="Description"><textarea className={`${fieldClass} min-h-24 resize-y`} value={productForm.desc} onChange={(event) => setProductForm({ ...productForm, desc: event.target.value })} /></Field>
-              <Field label="Images · une URL par ligne" hint="La première image devient l’image principale."><textarea className={`${fieldClass} min-h-20 resize-y`} value={productForm.imageUrls} onChange={(event) => setProductForm({ ...productForm, imageUrls: event.target.value })} /></Field>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photos du produit</p>
+                <ImageFilePicker
+                  multiple
+                  maxImages={30}
+                  images={productForm.imageSelections}
+                  onChange={(imageSelections) => setProductForm({ ...productForm, imageSelections })}
+                  disabled={busy}
+                />
+                <p className="text-[11px] text-black/45 dark:text-white/45">La première photo devient l’image principale. Vous pouvez sélectionner plusieurs fichiers à la fois.</p>
+              </div>
               <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Spécifications</span><button type="button" className="text-xs font-bold text-[#806300] underline underline-offset-2 dark:text-[#ffd100]" onClick={() => setProductForm({ ...productForm, specs: [...productForm.specs, { characteristicId: "", value: "" }] })}>+ Ajouter</button></div>{productForm.specs.map((spec, index) => <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select aria-label="Caractéristique" className={fieldClass} value={spec.characteristicId} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, characteristicId: event.target.value } : row) })}><option value="">Caractéristique…</option>{(data?.characteristicDefinitions ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ""}</option>)}</select><input aria-label="Valeur" className={fieldClass} placeholder="Valeur" value={spec.value} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row) })} /><button type="button" aria-label="Retirer la spécification" className="px-2 text-red-600" onClick={() => setProductForm({ ...productForm, specs: productForm.specs.filter((_, rowIndex) => rowIndex !== index) })}>×</button></div>)}</div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4 dark:border-white/10"><p className="text-[11px] text-black/45 dark:text-white/45">Les nouveaux produits restent en brouillon jusqu’à publication.</p><button type="submit" className={buttonPrimary} disabled={busy}>{busy ? "Enregistrement…" : productForm.id ? "Enregistrer" : "Créer le produit"}</button></div>
             </form>
@@ -809,14 +892,14 @@ export default function Admin() {
         )}
 
         {tab === "brands" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Fabricants</p><h2 className="mt-1 font-display text-2xl font-bold">Marques</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.slug} · {brand.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logo: brand.logo ?? "", logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: String(brand.sortOrder ?? 0), isActive: brand.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveBrand} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nom"><input className={fieldClass} required value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Identifiant URL (slug)"><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="ex. yamaha-motor" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Logo · URL"><input className={fieldClass} value={brandForm.logo} onChange={(event) => setBrandForm({ ...brandForm, logo: event.target.value })} /></Field><Field label="Texte alternatif du logo"><input className={fieldClass} value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><Field label="Description"><textarea className={`${fieldClass} min-h-24`} value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label="Ordre"><input className={fieldClass} type="number" value={brandForm.sortOrder} onChange={(event) => setBrandForm({ ...brandForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
+          <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Fabricants</p><h2 className="mt-1 font-display text-2xl font-bold">Marques</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.slug} · {brand.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: String(brand.sortOrder ?? 0), isActive: brand.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveBrand} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nom"><input className={fieldClass} required value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Identifiant URL (slug)"><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="ex. yamaha-motor" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Texte alternatif du logo"><input className={fieldClass} value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Description"><textarea className={`${fieldClass} min-h-24`} value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label="Ordre"><input className={fieldClass} type="number" value={brandForm.sortOrder} onChange={(event) => setBrandForm({ ...brandForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
           </section>
         )}
 
         {tab === "categories" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-2xl font-bold">Catégories éditoriales</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, src: category.src, to: category.to, brand: category.brand ?? "", sortOrder: String(category.sortOrder ?? 0), isActive: category.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveCategory} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p><h3 className="mt-1 font-display text-xl font-bold">Lien éditorial</h3></div><Field label="Titre"><input className={fieldClass} required value={categoryForm.title} onChange={(event) => setCategoryForm({ ...categoryForm, title: event.target.value })} /></Field><Field label="Description"><textarea className={`${fieldClass} min-h-20`} required value={categoryForm.desc} onChange={(event) => setCategoryForm({ ...categoryForm, desc: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label="Image · URL"><input className={fieldClass} required value={categoryForm.src} onChange={(event) => setCategoryForm({ ...categoryForm, src: event.target.value })} /></Field><Field label="Route"><input className={fieldClass} required placeholder="/motos" value={categoryForm.to} onChange={(event) => setCategoryForm({ ...categoryForm, to: event.target.value })} /></Field><Field label="Marque (facultatif)"><input className={fieldClass} value={categoryForm.brand} onChange={(event) => setCategoryForm({ ...categoryForm, brand: event.target.value })} /></Field><Field label="Ordre"><input className={fieldClass} type="number" value={categoryForm.sortOrder} onChange={(event) => setCategoryForm({ ...categoryForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(categoryForm.isActive)} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button></div></form>
+          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-2xl font-bold">Catégories éditoriales</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: String(category.sortOrder ?? 0), isActive: category.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveCategory} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p><h3 className="mt-1 font-display text-xl font-bold">Lien éditorial</h3></div><Field label="Titre"><input className={fieldClass} required value={categoryForm.title} onChange={(event) => setCategoryForm({ ...categoryForm, title: event.target.value })} /></Field><Field label="Description"><textarea className={`${fieldClass} min-h-20`} required value={categoryForm.desc} onChange={(event) => setCategoryForm({ ...categoryForm, desc: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><div className="sm:col-span-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photo de la catégorie</p><ImageFilePicker images={categoryForm.image ? [categoryForm.image] : []} onChange={(images) => setCategoryForm({ ...categoryForm, image: images[0] ?? null })} disabled={busy} /></div><Field label="Route"><input className={fieldClass} required placeholder="/motos" value={categoryForm.to} onChange={(event) => setCategoryForm({ ...categoryForm, to: event.target.value })} /></Field><Field label="Marque (facultatif)"><input className={fieldClass} value={categoryForm.brand} onChange={(event) => setCategoryForm({ ...categoryForm, brand: event.target.value })} /></Field><Field label="Ordre"><input className={fieldClass} type="number" value={categoryForm.sortOrder} onChange={(event) => setCategoryForm({ ...categoryForm, sortOrder: event.target.value })} /></Field><Field label="Statut"><select className={fieldClass} value={String(categoryForm.isActive)} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button></div></form>
           </section>
         )}
 
