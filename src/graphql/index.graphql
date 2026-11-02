@@ -50,6 +50,7 @@ type Query {
 
 type Mutation {
   login(email: String!, password: String!): AuthPayload!
+  changeMyEmail(currentPassword: String!, newEmail: String!): Boolean!
   changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
 
   createBrand(input: BrandInput!): Brand!

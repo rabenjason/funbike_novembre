@@ -248,6 +248,8 @@ export default function Admin() {
   const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [newAccountEmail, setNewAccountEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -330,6 +332,12 @@ export default function Admin() {
     setToken(null);
     setUser(null);
     setData(null);
+    setPassword("");
+    setNewAccountEmail("");
+    setEmailCurrentPassword("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
     setNotice(message);
     setError("");
   }
@@ -593,6 +601,27 @@ export default function Admin() {
     }
   }
 
+  async function updateEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) return;
+    setBusy(true);
+    setError("");
+    try {
+      await graphqlRequest(
+        "mutation ChangeMyEmail($currentPassword: String!, $newEmail: String!) { changeMyEmail(currentPassword: $currentPassword, newEmail: $newEmail) }",
+        { currentPassword: emailCurrentPassword, newEmail: newAccountEmail },
+        token,
+      );
+      setNewAccountEmail("");
+      setEmailCurrentPassword("");
+      logout("Adresse e-mail modifiée. Reconnectez-vous avec la nouvelle adresse.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Impossible de modifier l’adresse e-mail.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updatePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
@@ -759,7 +788,56 @@ export default function Admin() {
         )}
 
         {tab === "security" && (
-          <section className="mx-auto max-w-2xl space-y-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Compte administrateur</p><h2 className="mt-1 font-display text-2xl font-bold">Sécurité</h2><p className="mt-2 text-sm text-black/55 dark:text-white/55">Connecté en tant que {user.email}. La modification du mot de passe révoque immédiatement les sessions en cours.</p></div><form onSubmit={updatePassword} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><Field label="Mot de passe actuel"><input className={fieldClass} type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></Field><Field label="Nouveau mot de passe" hint="Au moins 12 caractères, 72 octets maximum."><input className={fieldClass} type="password" autoComplete="new-password" minLength={12} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></Field><Field label="Confirmer le nouveau mot de passe"><input className={fieldClass} type="password" autoComplete="new-password" minLength={12} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></Field><button className={buttonPrimary} type="submit" disabled={busy}>{busy ? "Mise à jour…" : "Changer le mot de passe"}</button></form><div className="border border-black/10 bg-white p-5 text-sm leading-relaxed text-black/55 dark:border-white/10 dark:bg-[#1c1d1a] dark:text-white/55"><h3 className="font-bold text-[#171816] dark:text-white">Conseils</h3><ul className="mt-2 list-disc space-y-1 pl-5"><li>Choisissez un mot de passe unique et ne le partagez pas.</li><li>Le jeton de connexion est conservé uniquement dans l’onglet de navigateur courant.</li><li>Pour réinitialiser un compte perdu, faites-le directement sur la base MySQL avec un hash bcrypt.</li></ul></div></section>
+          <section className="mx-auto max-w-2xl space-y-6">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Compte administrateur</p>
+              <h2 className="mt-1 font-display text-2xl font-bold">Sécurité</h2>
+              <p className="mt-2 text-sm text-black/55 dark:text-white/55">
+                Connecté en tant que <strong>{user.email}</strong>. Chaque changement vérifie le mot de passe actuel,
+                révoque les sessions actives et vous demande de vous reconnecter.
+              </p>
+            </div>
+
+            <form onSubmit={updateEmail} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Identifiant</p>
+                <h3 className="mt-1 font-display text-xl font-bold">Modifier l’adresse e-mail</h3>
+              </div>
+              <Field label="Nouvelle adresse e-mail">
+                <input className={fieldClass} type="email" autoComplete="email" required maxLength={254} value={newAccountEmail} onChange={(event) => setNewAccountEmail(event.target.value)} />
+              </Field>
+              <Field label="Mot de passe actuel">
+                <input className={fieldClass} type="password" autoComplete="current-password" required value={emailCurrentPassword} onChange={(event) => setEmailCurrentPassword(event.target.value)} />
+              </Field>
+              <button className={buttonPrimary} type="submit" disabled={busy}>{busy ? "Mise à jour…" : "Changer l’e-mail"}</button>
+            </form>
+
+            <form onSubmit={updatePassword} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Authentification</p>
+                <h3 className="mt-1 font-display text-xl font-bold">Modifier le mot de passe</h3>
+              </div>
+              <Field label="Mot de passe actuel">
+                <input className={fieldClass} type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+              </Field>
+              <Field label="Nouveau mot de passe" hint="Au moins 12 caractères, 72 octets maximum.">
+                <input className={fieldClass} type="password" autoComplete="new-password" minLength={12} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+              </Field>
+              <Field label="Confirmer le nouveau mot de passe">
+                <input className={fieldClass} type="password" autoComplete="new-password" minLength={12} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+              </Field>
+              <button className={buttonPrimary} type="submit" disabled={busy}>{busy ? "Mise à jour…" : "Changer le mot de passe"}</button>
+            </form>
+
+            <div className="border border-black/10 bg-white p-5 text-sm leading-relaxed text-black/55 dark:border-white/10 dark:bg-[#1c1d1a] dark:text-white/55">
+              <h3 className="font-bold text-[#171816] dark:text-white">Conseils</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                <li>Choisissez un mot de passe unique et ne le partagez pas.</li>
+                <li>Le jeton de connexion est conservé uniquement dans l’onglet de navigateur courant.</li>
+                <li>La modification d’e-mail change l’identifiant utilisé lors de la prochaine connexion.</li>
+              </ul>
+            </div>
+          </section>
         )}
       </div>
       <footer className="border-t border-black/10 px-4 py-6 text-center text-[11px] text-black/40 dark:border-white/10 dark:text-white/40">Funbike · Interface d’administration protégée</footer>
