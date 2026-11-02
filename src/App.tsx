@@ -11,14 +11,9 @@ import AccessoryDetail from "./pages/AccessoryDetail";
 import Contact from "./pages/Contact";
 import Dealers from "./pages/Dealers";
 import Admin from "./pages/Admin";
-import { BIKES } from "./data/motorcycles";
-import { FEATURED_BANNERS } from "./data/banners";
-import { findPart } from "./data/index";
 import { content } from "./constants";
 import { getApiHealth, type PublicProduct } from "./lib/graphqlClient";
 import { usePublicCatalog } from "./contexts/PublicCatalogContext";
-
-const FIRST_HERO = FEATURED_BANNERS[0].image;
 
 function sameRoute(a: Route, b: Route) {
   return a.page === b.page && (a.id ?? "") === (b.id ?? "");
@@ -36,20 +31,10 @@ function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
       return content.navigation.equipements;
     case "spares":
       return content.navigation.piecesDetachees;
-    case "product": {
-      if (publicProducts !== undefined) {
-        return publicProducts.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
-      }
-      const bike = BIKES.find((item) => item.id === route.id);
-      return bike ? bike.name : content.motos.fiche.titreDefaut;
-    }
-    case "accessory": {
-      if (publicProducts !== undefined) {
-        return publicProducts.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
-      }
-      const part = findPart(route.id);
-      return part ? part.name : content.accessoires.fiche.titreDefaut;
-    }
+    case "product":
+      return publicProducts?.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
+    case "accessory":
+      return publicProducts?.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
     case "revendeurs":
       return content.navigation.revendeurs;
     case "contact":
@@ -60,7 +45,7 @@ function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
 }
 
 export default function App() {
-  const { catalog } = usePublicCatalog();
+  const { catalog, status } = usePublicCatalog();
   const [dark, setDark] = useState(
     () => localStorage.getItem("fb-theme-v2") !== "light",
   );
@@ -91,29 +76,15 @@ export default function App() {
         console.info(`[Funbike API] ${health.status}; MySQL ${health.database}.`);
       })
       .catch((error: unknown) => {
-        console.warn("[Funbike API] Backend unavailable; local display remains usable.", error);
+        const reason = error instanceof Error ? error.name : "UnknownError";
+        console.warn(`[Funbike API] Health check failed (${reason}); local catalogue data is not used as fallback.`);
       });
   }, []);
 
-  // Fast splash: wait for the first hero photo (min 650 ms, max 1.6 s)
+  // Keep the branded splash short without preloading an unconfigured sample banner.
   useEffect(() => {
-    let done = false;
-    const start = performance.now();
-    const finish = () => {
-      if (done) return;
-      done = true;
-      const wait = Math.max(0, 650 - (performance.now() - start));
-      window.setTimeout(() => setBooting(false), wait);
-    };
-    const img = new Image();
-    img.onload = finish;
-    img.onerror = finish;
-    img.src = FIRST_HERO;
-    const cap = window.setTimeout(finish, 1600);
-    return () => {
-      done = true;
-      window.clearTimeout(cap);
-    };
+    const timer = window.setTimeout(() => setBooting(false), 650);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Cookie banner appears once the splash is gone, only if no choice was saved
@@ -182,6 +153,11 @@ export default function App() {
 
       <div className="min-h-screen bg-white text-[#171816] transition-colors duration-300 dark:bg-[#141513] dark:text-[#f2f0ea]">
         <Header route={route} go={go} dark={dark} toggle={() => setDark((d) => !d)} />
+        {status === "error" && (
+          <div role="status" className="border-b border-[#a27b17]/20 bg-[#fff9df] px-4 py-3 text-center text-xs text-[#6d5211] dark:border-white/10 dark:bg-[#1c1d19] dark:text-[#ffd100]">
+            Le catalogue est temporairement indisponible. Les produits ne peuvent pas être affichés pour le moment.
+          </div>
+        )}
         <main>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

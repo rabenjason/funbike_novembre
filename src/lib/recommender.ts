@@ -1,4 +1,3 @@
-import { BIKES } from "../data/motorcycles";
 import type { Bike } from "../types";
 import { recommendationCopy } from "../constants";
 import type { ChatAction } from "./assistant";
@@ -87,7 +86,7 @@ const BRAND_WORDS: Record<string, string[]> = {
   Funbike: ["edition speciale", "serie limitee"],
 };
 
-export function detectBrandText(t: string, bikes: Bike[] = BIKES): string | undefined {
+export function detectBrandText(t: string, bikes: Bike[] = []): string | undefined {
   const dynamicBrand = [...new Set(bikes.map((bike) => bike.brand).filter(Boolean))]
     .sort((left, right) => right.length - left.length)
     .find((brand) => {
@@ -99,7 +98,7 @@ export function detectBrandText(t: string, bikes: Bike[] = BIKES): string | unde
 
 const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
 
-export function isSpecificModelRequest(t: string, bikes: Bike[] = BIKES): boolean {
+export function isSpecificModelRequest(t: string, bikes: Bike[] = []): boolean {
   const brand = detectBrandText(t, bikes);
   if (!brand) return false;
   const hasModel = MODEL_WORDS.some((kw) => hasAny(t, [kw]));
@@ -368,7 +367,7 @@ function scoreBike(bike: Bike, p: NeedProfile): number {
   return score;
 }
 
-export function recommend(p: NeedProfile, brand?: string, bikes: Bike[] = BIKES): Match[] {
+export function recommend(p: NeedProfile, brand?: string, bikes: Bike[] = []): Match[] {
   let pool = [...bikes];
   if (brand) pool = pool.filter((bike) => bike.brand.toLocaleLowerCase("fr").includes(brand.toLocaleLowerCase("fr")) || bike.brand === "Funbike");
 
@@ -395,7 +394,7 @@ function introText(p: NeedProfile): string {
 /*  Orchestration                                                      */
 /* ------------------------------------------------------------------ */
 
-export function runRecommender(t: string, mem: MemoryLike, bikes: Bike[] = BIKES): { reply: ReplyLike; memory: MemoryLike } {
+export function runRecommender(t: string, mem: MemoryLike, bikes: Bike[] = []): { reply: ReplyLike; memory: MemoryLike } {
   const profile = mem.need && !mem.needComplete ? { ...mem.need } : emptyNeed();
   mergeNeed(profile, extractNeed(t));
   inferTerrain(profile);
