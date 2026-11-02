@@ -75,12 +75,14 @@ export interface BikeSpec {
   value: string;
 }
 
-export type BikeFamily = "Off-road" | "Urbain" | "3 roues";
+export type BikeFamily = string;
 
 export interface Bike {
   id: string;
   name: string;
   brand: string;
+  brandSlug?: string;
+  reference?: string;
   family: BikeFamily;
   price: string;
   tag?: string;
@@ -97,10 +99,10 @@ export interface Bike {
 /** Alias explicite pour les futurs usages métier. */
 export type Motorcycle = Bike;
 
-export type AccessoryCategory = "Casques" | "Blousons" | "Gants" | "Bottes" | "Pièces";
-export type PartType = "Pneus" | "Freinage" | "Transmission" | "Filtration" | "Pièces moteur" | "Consommables";
-export type AccessoryKind = "piece" | "tld" | "gaerne" | "mt" | "tvs";
-export type CompatibleBrand = "Universal" | "TVS" | "Sherco" | "Fantic";
+export type AccessoryCategory = string;
+export type PartType = string;
+export type AccessoryKind = string;
+export type CompatibleBrand = string;
 
 export interface Part {
   id: string;
@@ -108,9 +110,19 @@ export interface Part {
   price: string;
   image: string;
   kind: AccessoryKind;
+  /** Nom commercial de la marque qui fabrique ou distribue l’article. */
+  brandName?: string;
+  /** Référence commerciale saisie par l’administrateur, jamais déduite de l’ID technique. */
+  reference?: string;
   category?: AccessoryCategory;
   compatibleBrand?: CompatibleBrand;
+  compatibleBrands?: string[];
+  compatibleBrandSlugs?: string[];
+  usages?: string[];
+  universalCompatibility?: boolean | null;
   partType?: PartType;
+  productType?: string;
+  family?: string;
   sourceUrl?: string;
   /** Galerie optionnelle — si absente, la fiche détail utilise [image]. */
   gallery?: string[];

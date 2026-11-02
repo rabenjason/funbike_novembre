@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import type { Brand } from "../types";
 import { getBrandLabel } from "../data/brands";
 
-type BrandVisualData = { logo?: string; icon?: IconDefinition };
+type BrandVisualData = { logo?: string; icon?: IconDefinition; name?: string };
 
 /** Brand mark in one fixed-size slot so every selector logo has the same footprint. */
 export function BrandVisual({ brand }: { brand: BrandVisualData }) {
@@ -18,7 +18,13 @@ export function BrandVisual({ brand }: { brand: BrandVisualData }) {
 
   return (
     <span className="brand-logo-slot">
-      <img src={brand.logo} alt="" className="partner-logo" />
+      {brand.logo ? (
+        <img src={brand.logo} alt="" className="partner-logo" />
+      ) : (
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-black/[0.06] text-[10px] font-bold text-black/55 dark:bg-white/[0.08] dark:text-white/70">
+          {brand.name?.slice(0, 2).toUpperCase() ?? "FB"}
+        </span>
+      )}
     </span>
   );
 }

@@ -43,9 +43,12 @@ type Query {
   equipment(brandId: ID, categoryId: ID, usageId: ID, search: String, limit: Int, offset: Int): [Equipment!]!
   gearItems(brandId: ID, categoryId: ID, usageId: ID, search: String, limit: Int, offset: Int): [Equipment!]!
   accessories(brandId: ID, categoryId: ID, search: String, limit: Int, offset: Int): [Accessory!]!
+  product(id: ID!): CatalogProduct
   products(search: String, limit: Int, offset: Int): [CatalogProduct!]!
+  catalogProductPage(limit: Int, offset: Int): CatalogProductPage!
   allParts(search: String, limit: Int, offset: Int): [ProductDetail!]!
   adminProducts(status: ProductStatus, kind: ProductKind, search: String, limit: Int, offset: Int): [CatalogProduct!]!
+  adminProductPage(status: ProductStatus, kind: ProductKind, brandId: ID, search: String, limit: Int, offset: Int): CatalogProductPage!
 }
 
 type Mutation {

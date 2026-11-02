@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -24,6 +24,8 @@ import BrandExclusif from "../components/BrandExclusif";
 import NewArrivals from "../components/NewArrivals";
 import TypedText from "../components/TypedText";
 import { content } from "../constants";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { liveBikes, liveParts, toBrand } from "../lib/catalogAdapters";
 
 const CATEGORY_ICONS = [faMotorcycle, faHelmetSafety, faGears, faShirt];
 const HOME_EQUIPMENT_BRANDS = getBrandsForSection("equipements");
@@ -31,8 +33,85 @@ const HOME_FEATURED_BRANDS = getHomeFeaturedBrands();
 const HOME_PARTNER_BRANDS = getHomePartnerBrands();
 
 export default function Home({ go }: { go: (p: string, id?: string) => void }) {
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+  const fallback = status === "error";
+  const motorcycles = useMemo(
+    () => usingApi ? liveBikes(catalog.products) : fallback ? BIKES : [],
+    [usingApi, fallback, catalog],
+  );
+  const categories = usingApi ? catalog.categories : fallback ? CATEGORIES : [];
+  const homeParts = useMemo(() => {
+    if (!usingApi) return fallback ? [TVS_PARTS[0], TVS_PARTS[2], TVS_ACCESSORIES[0], TVS_ACCESSORIES[2]] : [];
+    const parts = liveParts(catalog.products);
+    return [
+      ...parts.filter((part) => part.kind === "piece").slice(0, 2),
+      ...parts.filter((part) => part.kind !== "piece").slice(0, 2),
+    ];
+  }, [usingApi, fallback, catalog]);
+  const equipmentBrands = useMemo(() => {
+    if (!usingApi) return fallback ? HOME_EQUIPMENT_BRANDS : [];
+    const slugs = new Set(catalog.products
+      .filter((product) => product.__typename === "Equipment" || product.__typename === "Accessory")
+      .map((product) => product.brand?.slug)
+      .filter((slug): slug is string => Boolean(slug)));
+    return catalog.brands.filter((brand) => slugs.has(brand.slug)).map(toBrand);
+  }, [usingApi, fallback, catalog]);
+  const featuredBrands = useMemo(() => {
+    if (!usingApi) return fallback ? HOME_FEATURED_BRANDS : [];
+    const slugs = new Set(catalog.products
+      .filter((product) => product.__typename === "Motorcycle")
+      .map((product) => product.brand?.slug)
+      .filter((slug): slug is string => Boolean(slug)));
+    return catalog.brands.filter((brand) => slugs.has(brand.slug)).map(toBrand);
+  }, [usingApi, fallback, catalog]);
+  const partnerBrands = usingApi ? catalog.brands.map(toBrand) : fallback ? HOME_PARTNER_BRANDS : [];
+  const homePromotions = useMemo(() => {
+    if (!usingApi) return fallback ? HOME_PROMOTIONS : [];
+    return HOME_PROMOTIONS.flatMap((promotion) => {
+      if (promotion.targetPage === "product") {
+        const liveBike = motorcycles.find((bike) => bike.name.toLocaleLowerCase("fr").includes(promotion.title.toLocaleLowerCase("fr")));
+        return liveBike ? [{
+          ...promotion,
+          id: liveBike.id,
+          title: liveBike.name,
+          eyebrow: `${liveBike.brand} / ${liveBike.family}`,
+          description: liveBike.desc || promotion.description,
+          image: liveBike.image || promotion.image,
+          alt: liveBike.alt || promotion.alt,
+          price: liveBike.price,
+          targetPage: "product",
+          targetId: liveBike.id,
+        }] : [];
+      }
+      const liveGear = catalog.products.find((product) =>
+        (product.__typename === "Equipment" || product.__typename === "Accessory") && product.brand?.slug === promotion.targetId,
+      );
+      if (!liveGear) return [];
+      return [{
+        ...promotion,
+        id: liveGear.id,
+        title: liveGear.name,
+        eyebrow: `${liveGear.brand?.name ?? promotion.eyebrow.split(" /")[0]} / ${liveGear.category?.name ?? promotion.eyebrow.split("/").slice(-1)[0]?.trim() ?? "Équipement"}`,
+        description: liveGear.desc || promotion.description,
+        image: liveGear.image ?? promotion.image,
+        alt: liveGear.name,
+        price: liveGear.price ?? promotion.price,
+        targetPage: "accessory",
+        targetId: liveGear.id,
+      }];
+    });
+  }, [usingApi, fallback, catalog, motorcycles]);
+
   const [activeHero, setActiveHero] = useState(0);
   const current = FEATURED_BANNERS[activeHero];
+  const heroBike = usingApi ? motorcycles.find((bike) =>
+    bike.brand.toLocaleLowerCase("fr") === current.brand.toLocaleLowerCase("fr") &&
+    bike.name.toLocaleLowerCase("fr").includes(current.short.toLocaleLowerCase("fr"))
+  ) : undefined;
+  const heroTarget = !usingApi
+    ? { page: current.targetPage, id: current.targetId }
+    : heroBike ? { page: "product", id: heroBike.id } : { page: "motos", id: current.brand };
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -101,7 +180,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               {content.accueil.hero.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
             </button>
             <button
-              onClick={() => go(current.targetPage, current.targetId)}
+              onClick={() => go(heroTarget.page, heroTarget.id)}
               className="glass-panel fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 border-white/40 bg-white/10 px-5 py-3 text-center font-bold uppercase text-white transition active:scale-[0.98] hover:border-[#ffd100] hover:text-[#ffd100] sm:min-h-11 sm:w-auto"
             >
               <span className="truncate">{current.short}</span>
@@ -161,16 +240,21 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
             </h2>
           </div>
             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            {CATEGORIES.map((category, index) => (
+            {categories.map((category, index) => (
               <motion.button
-                key={category.title}
-                onClick={() => go(category.to, category.brand)}
+                key={`${category.title}-${index}`}
+                onClick={() => go(category.to, category.brand ?? undefined)}
                 whileHover={{ x: 4 }}
+                aria-label={`${category.title} — ${category.desc}`}
                 className="group flex min-h-14 items-center gap-3 border-b border-black/10 px-2 py-3 text-left transition hover:bg-white/65 hover:backdrop-blur-xl dark:border-white/15 dark:hover:bg-white/[0.035]"
               >
-                <span className="w-7 font-display text-[10px] text-black/40 dark:text-white/40">0{index + 1}</span>
-                <FontAwesomeIcon icon={CATEGORY_ICONS[index]} className="w-4 text-[12px] text-[#98741b] dark:text-[#ffd100]" />
-                <span className="flex-1 font-display text-sm font-semibold text-[#171816] dark:text-[#f2f0ea]">{category.title}</span>
+                <span className="w-7 font-display text-[10px] text-black/40 dark:text-white/40">{String(index + 1).padStart(2, "0")}</span>
+                {category.src ? (
+                  <img src={category.src} alt="" loading="lazy" className="h-9 w-12 shrink-0 object-cover" />
+                ) : (
+                  <FontAwesomeIcon icon={CATEGORY_ICONS[index % CATEGORY_ICONS.length]} className="w-4 text-[12px] text-[#98741b] dark:text-[#ffd100]" />
+                )}
+                <span className="flex-1 text-[#171816] dark:text-[#f2f0ea]"><span className="block font-display text-sm font-semibold">{category.title}</span><span className="mt-0.5 block text-[10px] leading-4 text-black/45 dark:text-white/45">{category.desc}</span></span>
                 <FontAwesomeIcon icon={faArrowRight} className="text-[10px] text-black/40 transition group-hover:translate-x-1 group-hover:text-[#98741b] dark:text-white/40 dark:group-hover:text-[#ffd100]" />
               </motion.button>
             ))}
@@ -180,9 +264,9 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
       <ShercoBanner go={go} />
 
-      <BrandExclusif go={go} brands={HOME_FEATURED_BRANDS} />
+      {featuredBrands.length > 0 && <BrandExclusif go={go} brands={featuredBrands} />}
 
-      <NewArrivals go={go} items={HOME_PROMOTIONS} />
+      {homePromotions.length > 0 && <NewArrivals go={go} items={homePromotions} />}
 
       <Section
         title={content.accueil.motos.titre}
@@ -190,11 +274,9 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
         number={content.accueil.motos.numero}
       >
         <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8">
-          {FEATURED_BANNERS.map((featured) => {
-            const model = BIKES.find((item) => item.id === featured.id);
-            return model ? <BikeCard key={model.id} bike={model} go={go} /> : null;
-          })}
+          {motorcycles.slice(0, 3).map((bike) => <BikeCard key={bike.id} bike={bike} go={go} />)}
         </div>
+        {motorcycles.length === 0 && <p className="py-8 text-sm text-black/50 dark:text-white/50">{status === "loading" ? "Chargement du catalogue…" : "Aucune moto publiée pour le moment."}</p>}
         <button
           onClick={() => go("motos")}
           className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
@@ -218,18 +300,14 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
           </div>
 
           <div className="mb-6">
-            <AccessoryBrandQuickLinks brands={HOME_EQUIPMENT_BRANDS} onSelect={(brand) => go("equipements", brand)} />
+            {equipmentBrands.length > 0 && <AccessoryBrandQuickLinks brands={equipmentBrands} onSelect={(brand) => go("equipements", brand)} />}
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 lg:gap-x-5">
-            {[TVS_PARTS[0], TVS_PARTS[2], TVS_ACCESSORIES[0], TVS_ACCESSORIES[2]].map((part) => (
-              <PartCard
-                key={part.id}
-                part={part}
-                go={go}
-                onEnquire={() => go("contact", part.id)}
-              />
+            {homeParts.map((part) => (
+              <PartCard key={part.id} part={part} go={go} onEnquire={() => go("contact", part.id)} />
             ))}
           </div>
+          {homeParts.length === 0 && <p className="py-8 text-sm text-black/50 dark:text-white/50">{status === "loading" ? "Chargement du catalogue…" : "Aucun équipement ou pièce publié pour le moment."}</p>}
           <button
             onClick={() => go("equipements")}
           className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
@@ -257,19 +335,23 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
             />
 
             <div className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10">
-              {[...HOME_PARTNER_BRANDS, ...HOME_PARTNER_BRANDS].map((brand, index) => (
+              {[...partnerBrands, ...partnerBrands].map((brand, index) => (
                 <motion.div
                   key={`${brand.name}-${index}`}
                   whileHover={{ scale: 1.08 }}
                   transition={{ type: "spring", stiffness: 320, damping: 20 }}
                   className="brand-logo-tile shrink-0"
                 >
-                  <img
-                    src={brand.logo}
-                    alt={`${content.accueil.partenaires.logoPrefix} ${brand.name}`}
-                    loading="lazy"
-                    className="partner-logo h-full w-full object-contain transition-opacity hover:opacity-100"
-                  />
+                  {brand.logo ? (
+                    <img
+                      src={brand.logo}
+                      alt={`${content.accueil.partenaires.logoPrefix} ${brand.name}`}
+                      loading="lazy"
+                      className="partner-logo h-full w-full object-contain transition-opacity hover:opacity-100"
+                    />
+                  ) : (
+                    <span className="grid h-full place-items-center px-5 text-xs font-bold uppercase text-black/55 dark:text-white/70">{brand.name}</span>
+                  )}
                 </motion.div>
               ))}
             </div>

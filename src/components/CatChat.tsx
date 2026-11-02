@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, animate, motion, useMotionValue } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -20,7 +20,10 @@ import {
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { BIKES } from "../data/motorcycles";
+import { ALL_PARTS } from "../data/index";
 import type { Bike } from "../types";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { liveBikes, liveParts } from "../lib/catalogAdapters";
 import { content } from "../constants";
 import SmartImage from "./SmartImage";
 import {
@@ -156,8 +159,6 @@ function loadStored(): Stored | null {
 }
 
 const clock = (time: number) => new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(time);
-const bikeById = (id: string) => BIKES.find((b) => b.id === id);
-
 const ACTION_ICONS: Record<ChatActionIcon, IconDefinition> = {
   catalog: faLayerGroup,
   contact: faEnvelope,
@@ -203,14 +204,16 @@ function Avatar({ size = "h-8 w-8" }: { size?: string }) {
 /** Horizontal slide carousel: keeps the chat layout intact while browsing bikes. */
 function ProductStrip({
   ids,
+  bikes: catalogueBikes,
   reasons,
   onOpen,
 }: {
   ids: string[];
+  bikes: Bike[];
   reasons?: Record<string, string>;
   onOpen: (bike: Bike) => void;
 }) {
-  const bikes = ids.map(bikeById).filter((b): b is Bike => Boolean(b));
+  const bikes = ids.map((id) => catalogueBikes.find((bike) => bike.id === id)).filter((bike): bike is Bike => Boolean(bike));
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
 
@@ -342,9 +345,9 @@ function ProductStrip({
   );
 }
 
-function CompareTable({ ids }: { ids: [string, string] }) {
-  const a = bikeById(ids[0]);
-  const b = bikeById(ids[1]);
+function CompareTable({ ids, bikes }: { ids: [string, string]; bikes: Bike[] }) {
+  const a = bikes.find((bike) => bike.id === ids[0]);
+  const b = bikes.find((bike) => bike.id === ids[1]);
   if (!a || !b) return null;
   const labels = Array.from(new Set([...a.specs, ...b.specs].map((s) => s.label)));
   const value = (bike: Bike, label: string) => bike.specs.find((s) => s.label === label)?.value ?? "—";
@@ -394,6 +397,10 @@ export default function CatChat({
   go: (page: string, id?: string) => void;
   hiddenOnMobile?: boolean;
 }) {
+  const { catalog, status: catalogStatus } = usePublicCatalog();
+  const usingApi = catalogStatus === "ready" && catalog !== null;
+  const bikes = useMemo(() => usingApi ? liveBikes(catalog.products) : BIKES, [usingApi, catalog]);
+  const parts = useMemo(() => usingApi ? liveParts(catalog.products) : ALL_PARTS, [usingApi, catalog]);
   const [stored] = useState(loadStored);
   const [messages, setMessages] = useState<Msg[]>(() => stored?.messages ?? [greetMsg()]);
   const [memory, setMemory] = useState<Memory>(() => stored?.memory ?? EMPTY_MEMORY);
@@ -479,7 +486,7 @@ export default function CatChat({
     setQuick([]);
     window.requestAnimationFrame(autoSize);
 
-    const { reply, memory: next } = respond(value, memoryRef.current);
+    const { reply, memory: next } = respond(value, memoryRef.current, bikes, parts);
     memoryRef.current = next;
     setMemory(next);
 
@@ -644,9 +651,9 @@ export default function CatChat({
                           <RichText text={m.text} />
                         </div>
 
-                        {m.compare && <CompareTable ids={m.compare} />}
+                        {m.compare && <CompareTable ids={m.compare} bikes={bikes} />}
                         {m.productIds && (
-                          <ProductStrip ids={m.productIds} reasons={m.reasons} onOpen={(bike) => runAction({ label: bike.name, page: "product", id: bike.id })} />
+                          <ProductStrip ids={m.productIds} bikes={bikes} reasons={m.reasons} onOpen={(bike) => runAction({ label: bike.name, page: "product", id: bike.id })} />
                         )}
 
                         {m.actions && m.actions.length > 0 && (

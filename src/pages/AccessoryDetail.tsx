@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -8,7 +8,7 @@ import {
   faMagnifyingGlassPlus,
   faPhone,
 } from "@fortawesome/free-solid-svg-icons";
-import { ALL_PARTS, findPart } from "../data/index";
+import { ALL_PARTS } from "../data/index";
 import type { Part } from "../types";
 import { partBrandLabel, partFamily } from "../utils/catalogLabels";
 import { Section, type Route } from "../components/Layout";
@@ -16,6 +16,8 @@ import { PartCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";
 import ImageZoomViewer from "../components/ImageZoomViewer";
 import { content } from "../constants";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { liveParts } from "../lib/catalogAdapters";
 
 type Props = {
   id?: string;
@@ -25,20 +27,33 @@ type Props = {
   backLabel: string;
 };
 
+function safeExternalUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function autoDesc(part: Part): string {
   if (part.desc) return part.desc;
   const copy = content.accessoires.fiche;
   const brand = partBrandLabel(part);
   if (part.kind === "piece") {
-    const compatible = part.compatibleBrand && part.compatibleBrand !== "Universal";
+    const compatible = part.universalCompatibility
+      ? copy.toutesMotos
+      : part.compatibleBrands?.join(", ") ?? part.compatibleBrand;
     const type = part.partType ? ` — ${part.partType.toLowerCase()}` : "";
     const title = compatible
-      ? `${copy.pieceCompatiblePrefix} ${part.compatibleBrand}${type}`
+      ? `${copy.pieceCompatiblePrefix} ${compatible}${type}`
       : `${copy.piecePrefix}${type}`;
     return `${title}${copy.pieceGeneriqueSuffix}`;
   }
   const category = part.category ? ` — ${part.category.toLowerCase()}` : "";
-  return `${copy.equipementPrefix} ${brand}${category}${copy.equipementSuffix}`;
+  const usages = part.usages?.length ? ` — ${part.usages.join(", ").toLowerCase()}` : "";
+  return `${copy.equipementPrefix} ${brand}${category}${usages}${copy.equipementSuffix}`;
 }
 
 function autoSpecs(part: Part): { label: string; value: string }[] {
@@ -46,34 +61,63 @@ function autoSpecs(part: Part): { label: string; value: string }[] {
   const copy = content.accessoires.fiche;
   const specs: { label: string; value: string }[] = [{ label: copy.marque, value: partBrandLabel(part) }];
   if (part.kind === "piece") {
-    if (part.partType) specs.push({ label: copy.type, value: part.partType });
-    specs.push({
-      label: copy.compatibilite,
-      value: part.compatibleBrand && part.compatibleBrand !== "Universal" ? part.compatibleBrand : copy.toutesMotos,
-    });
+    if (part.productType ?? part.partType) specs.push({ label: copy.type, value: part.productType ?? part.partType! });
+    const compatible = part.universalCompatibility
+      ? copy.toutesMotos
+      : part.compatibleBrands?.join(", ") ?? part.compatibleBrand ?? "";
+    if (compatible) specs.push({ label: copy.compatibilite, value: compatible });
   } else {
+    if (part.productType) specs.push({ label: copy.type, value: part.productType });
     if (part.category) specs.push({ label: copy.categorie, value: part.category });
-    specs.push({ label: copy.usage, value: copy.usagePilote });
+    if (part.usages?.length) specs.push({ label: copy.usage, value: part.usages.join(", ") });
   }
-  specs.push({ label: copy.reference, value: part.id });
-  return specs.slice(0, 5);
+  if (part.reference) specs.push({ label: copy.reference, value: part.reference });
+  for (const spec of part.specs ?? []) {
+    if (!specs.some((existing) => existing.label.toLocaleLowerCase("fr") === spec.label.toLocaleLowerCase("fr"))) {
+      specs.push(spec);
+    }
+  }
+  return specs;
 }
 
 export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
-  const part = findPart(id) ?? ALL_PARTS[0];
-  const gallery = part.gallery && part.gallery.length ? part.gallery : [part.image];
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+  const products = useMemo(
+    () => usingApi ? liveParts(catalog.products) : status === "error" ? ALL_PARTS : [],
+    [usingApi, status, catalog],
+  );
+  const part = products.find((item) => item.id === id);
   const [active, setActive] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const specs = autoSpecs(part);
-  const desc = autoDesc(part);
-  const eyebrow = `${partBrandLabel(part)} / ${partFamily(part)}`.toUpperCase();
+  const gallery = part ? (part.gallery?.length ? part.gallery : [part.image]) : [];
+  const specs = part ? autoSpecs(part) : [];
+  const desc = part ? autoDesc(part) : "";
+  const eyebrow = part ? `${partBrandLabel(part)} / ${partFamily(part)}`.toUpperCase() : "";
 
-  const related = ALL_PARTS.filter((p) => {
-    if (p.id === part.id) return false;
-    if (p.kind === part.kind) return true;
-    if (part.kind === "piece" && p.kind === "piece" && p.compatibleBrand === part.compatibleBrand) return true;
+  const related = part ? products.filter((item) => {
+    if (item.id === part.id) return false;
+    if (item.kind === part.kind) return true;
+    if (part.kind === "piece" && item.kind === "piece" &&
+      (item.compatibleBrandSlugs?.some((slug) => part.compatibleBrandSlugs?.includes(slug)) || item.universalCompatibility)) return true;
     return false;
-  }).slice(0, 4);
+  }).slice(0, 4) : [];
+
+  if (status === "loading") {
+    return <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center text-sm text-black/50 dark:text-white/50">Chargement du produit…</div>;
+  }
+
+  if (!part) {
+    return (
+      <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center">
+        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">Produit introuvable</h1>
+        <p className="mt-3 text-sm text-black/55 dark:text-white/55">Ce produit n’est plus disponible ou n’existe pas dans le catalogue.</p>
+        <button type="button" onClick={() => back()} className="mt-6 min-h-11 border-b border-current text-xs font-bold uppercase tracking-[0.12em] text-black/70 dark:text-white/70">Retour au catalogue</button>
+      </div>
+    );
+  }
+
+  const sourceUrl = safeExternalUrl(part.sourceUrl);
 
   return (
     <div className="overflow-x-hidden bg-white dark:bg-[#141513]">
@@ -166,6 +210,11 @@ export default function AccessoryDetail({ id, go, back, backLabel }: Props) {
               </div>
             ))}
           </dl>
+          {sourceUrl && (
+            <a href={sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-10 items-center border-b border-black/25 text-[10px] font-bold uppercase tracking-[0.12em] text-black/55 transition hover:border-[#98741b] hover:text-[#98741b] dark:border-white/25 dark:text-white/55 dark:hover:border-[#ffd100] dark:hover:text-[#ffd100]">
+              Voir la fiche du fabricant ↗
+            </a>
+          )}
 
           <section className="mt-6 min-w-0 border-y border-black/15 dark:border-white/15 sm:mt-8" aria-label={content.accessoires.fiche.prixEtContact}>
             <div className="grid min-w-0 gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

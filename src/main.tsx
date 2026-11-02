@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
+import { PublicCatalogProvider } from "./contexts/PublicCatalogContext";
 
 // Start in dark mode by default. A new key prevents stale light-mode settings
 // from earlier builds from overriding the initial night theme.
@@ -11,6 +12,8 @@ if (localStorage.getItem("fb-theme-v2") !== "light") {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <PublicCatalogProvider>
+      <App />
+    </PublicCatalogProvider>
   </StrictMode>
 );

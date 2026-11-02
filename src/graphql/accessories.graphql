@@ -111,6 +111,11 @@ interface CatalogProduct {
   publishedAt: String
 }
 
+type CatalogProductPage {
+  items: [CatalogProduct!]!
+  totalCount: Int!
+}
+
 """Definition of an editable, reusable product characteristic."""
 type CharacteristicDefinition {
   id: ID!

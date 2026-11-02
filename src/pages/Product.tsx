@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faCheck, faMagnifyingGlassPlus, faPhone } from "@fortawesome/free-solid-svg-icons";
@@ -8,6 +8,8 @@ import { BikeCard } from "../components/Cards";
 import SmartImage from "../components/SmartImage";
 import ImageZoomViewer from "../components/ImageZoomViewer";
 import { content } from "../constants";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { liveBikes } from "../lib/catalogAdapters";
 
 export default function Product({
   id,
@@ -21,11 +23,36 @@ export default function Product({
   canGoBack?: boolean;
   backLabel?: string;
 }) {
-  const bike = BIKES.find((item) => item.id === id) ?? BIKES[0];
-  const gallery = bike.gallery ?? [bike.image];
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+  const bikes = useMemo(
+    () => usingApi ? liveBikes(catalog.products) : status === "error" ? BIKES : [],
+    [usingApi, status, catalog],
+  );
+  const bike = bikes.find((item) => item.id === id);
+  const gallery = bike?.gallery ?? (bike ? [bike.image] : []);
   const [active, setActive] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const related = BIKES.filter((item) => item.id !== bike.id && item.family === bike.family).slice(0, 4);
+  const related = bike ? bikes.filter((item) => item.id !== bike.id && item.family === bike.family).slice(0, 4) : [];
+
+  if (status === "loading") {
+    return <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center text-sm text-black/50 dark:text-white/50">Chargement de la moto…</div>;
+  }
+
+  if (!bike) {
+    return (
+      <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center">
+        <h1 className="font-display text-2xl font-semibold text-[#171816] dark:text-[#f2f0ea]">Moto introuvable</h1>
+        <p className="mt-3 text-sm text-black/55 dark:text-white/55">Ce modèle n’est plus disponible ou n’existe pas dans le catalogue.</p>
+        <button type="button" onClick={() => back()} className="mt-6 min-h-11 border-b border-current text-xs font-bold uppercase tracking-[0.12em] text-black/70 dark:text-white/70">Retour au catalogue</button>
+      </div>
+    );
+  }
+
+  const equipmentBrandSlug = bike.brandSlug ?? (bike.brand.toLocaleLowerCase("fr") === "tvs" ? "tvs" : undefined);
+  const canShowEquipmentLink = status === "error"
+    ? bike.brand.toLocaleLowerCase("fr") === "tvs"
+    : Boolean(catalog?.brands.some((brand) => brand.slug === equipmentBrandSlug && brand.sections?.some((section) => section.section === "equipements")));
 
   return (
     <div className="overflow-x-hidden bg-white dark:bg-[#141513]">
@@ -93,9 +120,10 @@ export default function Product({
             {bike.name}
           </h1>
           <p className="fluid-body mt-3.5 max-w-xl text-pretty text-black/60 dark:text-white/60 sm:mt-4">{bike.desc}</p>
+          {bike.recommendation && <p className="mt-3 max-w-xl border-l-2 border-[#ffd100] pl-3 text-sm leading-6 text-black/60 dark:text-white/60">{bike.recommendation}</p>}
 
           <dl className="mt-6 min-w-0 border-t border-black/15 dark:border-white/15 sm:mt-7">
-            {bike.specs.map((spec, index) => (
+            {(bike.reference ? [...bike.specs, { label: "Référence fabricant", value: bike.reference }] : bike.specs).map((spec, index) => (
               <div key={spec.label} className="grid min-w-0 grid-cols-[1.75rem_minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-1.5 border-b border-black/15 py-3 dark:border-white/15 sm:grid-cols-[2.2rem_1fr_1.2fr] sm:gap-2">
                 <span className="font-display text-[10px] text-black/35 dark:text-white/35">0{index + 1}</span>
                 <dt className="min-w-0 break-words text-[9px] font-bold uppercase leading-4 tracking-[0.07em] text-black/50 dark:text-white/50 sm:text-[10px] sm:tracking-[0.1em]">{spec.label}</dt>
@@ -145,10 +173,10 @@ export default function Product({
               </button>
             </div>
           </section>
-          {bike.brand === "TVS" && (
+          {canShowEquipmentLink && equipmentBrandSlug && (
             <button
               type="button"
-              onClick={() => go("equipements", "tvs")}
+              onClick={() => go("equipements", equipmentBrandSlug)}
               className="mt-4 inline-flex min-h-11 items-center gap-2 border-b border-black/20 text-[11px] font-bold uppercase tracking-[0.08em] text-black/65 transition hover:text-[#98741b] dark:border-white/20 dark:text-white/65 dark:hover:text-[#ffd100]"
             >
               {content.motos.fiche.lienEquipementsTvs}
