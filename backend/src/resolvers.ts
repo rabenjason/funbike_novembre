@@ -4,7 +4,7 @@ import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext }
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 import { siteContentResolvers } from "./siteContentResolvers.js";
 import { placeIdAtPosition } from "./listOrdering.js";
-import { buildProductSearchConditions } from "./productSearch.js";
+import { filterProductsBySearch, normalizeProductSearchTerms } from "./productSearch.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
@@ -150,9 +150,6 @@ function productConditions(
     values.push(usageId);
   }
 
-  const search = buildProductSearchConditions(args.search);
-  conditions.push(...search.conditions);
-  values.push(...search.values);
   return { conditions, values };
 }
 
@@ -170,14 +167,30 @@ const productJoins = `
      LEFT JOIN accessory_categories cat
        ON cat.id = COALESCE(sp.category_id, e.category_id, a.category_id)`;
 
-async function getProducts(
+type ProductPagination = { limit: number; offset: number };
+
+async function queryProducts(
   kind: string | string[] | undefined,
-  args: Args = {},
-  includeDrafts = false,
+  args: Args,
+  includeDrafts: boolean,
+  pagination?: ProductPagination,
+  includeSearchMetadata = false,
 ): Promise<DbRow[]> {
   const { conditions, values } = productConditions(kind, args, includeDrafts);
-  const { limit, offset } = pageArgs(args);
-  values.push(limit, offset);
+  const searchMetadataColumns = includeSearchMetadata ? `,
+       b.name AS searchBrandName,
+       f.name AS searchFamilyName,
+       sf.name AS searchSubfamilyName,
+       pt.name AS searchPartTypeName,
+       et.name AS searchEquipmentTypeName,
+       acc_type.name AS searchAccessoryTypeName,
+       cat.name AS searchCategoryName,
+       (SELECT GROUP_CONCAT(DISTINCT cb_search.name SEPARATOR ' ')
+        FROM spare_part_compatible_brands scb_search
+        JOIN brands cb_search ON cb_search.id = scb_search.brand_id
+        WHERE scb_search.product_id = p.id) AS searchCompatibleBrandNames` : "";
+  const paginationClause = pagination ? "\n     LIMIT ? OFFSET ?" : "";
+  if (pagination) values.push(pagination.limit, pagination.offset);
 
   return queryRows<DbRow>(
     `SELECT
@@ -204,14 +217,26 @@ async function getProducts(
        e.source_url AS equipmentSourceUrl,
        a.accessory_type_id AS accessoryTypeId,
        a.category_id AS accessoryCategoryId,
-       a.source_url AS accessorySourceUrl
+       a.source_url AS accessorySourceUrl${searchMetadataColumns}
      FROM products p
      ${productJoins}
      WHERE ${conditions.join(" AND ")}
-     ORDER BY p.created_at DESC, p.id DESC
-     LIMIT ? OFFSET ?`,
+     ORDER BY p.created_at DESC, p.id DESC${paginationClause}`,
     values,
   );
+}
+
+async function getProducts(
+  kind: string | string[] | undefined,
+  args: Args = {},
+  includeDrafts = false,
+): Promise<DbRow[]> {
+  const { limit, offset } = pageArgs(args);
+  if (normalizeProductSearchTerms(args.search).length > 0) {
+    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
+    return filterProductsBySearch(rows, args.search).slice(offset, offset + limit);
+  }
+  return queryProducts(kind, args, includeDrafts, { limit, offset });
 }
 
 async function getProductCount(
@@ -219,6 +244,11 @@ async function getProductCount(
   args: Args = {},
   includeDrafts = false,
 ): Promise<number> {
+  if (normalizeProductSearchTerms(args.search).length > 0) {
+    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
+    return filterProductsBySearch(rows, args.search).length;
+  }
+
   const { conditions, values } = productConditions(kind, args, includeDrafts);
   const rows = await queryRows<DbRow>(
     `SELECT COUNT(DISTINCT p.id) AS totalCount
@@ -235,6 +265,16 @@ async function getProductPage(
   args: Args,
   includeDrafts: boolean,
 ): Promise<{ items: DbRow[]; totalCount: number }> {
+  if (normalizeProductSearchTerms(args.search).length > 0) {
+    const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
+    const matchingRows = filterProductsBySearch(rows, args.search);
+    const { limit, offset } = pageArgs(args);
+    return {
+      items: matchingRows.slice(offset, offset + limit),
+      totalCount: matchingRows.length,
+    };
+  }
+
   const [items, totalCount] = await Promise.all([
     getProducts(kind, args, includeDrafts),
     getProductCount(kind, args, includeDrafts),
