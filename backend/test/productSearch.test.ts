@@ -3,7 +3,29 @@ import { readFileSync } from "node:fs";
 import { buildSchema, graphql } from "graphql";
 import test from "node:test";
 import { loadGraphqlTypeDefs } from "../src/schemaLoader.ts";
+import { searchAndPaginateAdminProducts } from "../../src/lib/productSearch.ts";
 import { filterProductsBySearch, normalizeProductSearchTerms, searchAndPaginateProducts } from "../src/productSearch.ts";
+
+const dashboardProducts = [
+  {
+    id: "1",
+    name: "Apache RTR 200",
+    reference: "TVS-200",
+    desc: "Moto de route",
+    brand: { id: "1", name: "TVS" },
+    family: { id: "1", name: "Apache" },
+    recommendation: "Idéale pour la ville",
+  },
+  {
+    id: "2",
+    name: "Casque intégral",
+    reference: "SH-42",
+    desc: "Protection route",
+    brand: { id: "2", name: "Sherco" },
+    category: { id: "3", name: "Équipement pilote" },
+    compatibleBrands: [{ id: "1", name: "TVS" }],
+  },
+];
 
 const products = [
   {
@@ -63,10 +85,26 @@ test("multi-keyword search is applied before pagination and preserves the total 
   );
 });
 
-test("dashboard adminProductPage GraphQL operation accepts and searches multiple keywords", async () => {
+test("dashboard-local search matches multiple keywords across database product fields and paginates", () => {
+  assert.deepEqual(
+    searchAndPaginateAdminProducts(dashboardProducts, "Apache TVS", { limit: 20, offset: 0 }).items.map((product) => product.id),
+    ["1"],
+  );
+  assert.deepEqual(
+    searchAndPaginateAdminProducts(dashboardProducts, "équipement sherco", { limit: 20, offset: 0 }).items.map((product) => product.id),
+    ["2"],
+  );
+  assert.deepEqual(
+    searchAndPaginateAdminProducts(dashboardProducts, "TVS", { limit: 1, offset: 1 }),
+    { items: [dashboardProducts[1]], totalCount: 2 },
+  );
+});
+
+test("dashboard adminProductPage GraphQL operation loads pages without sending text search", async () => {
   const adminSource = readFileSync(new URL("../../src/pages/Admin.tsx", import.meta.url), "utf8");
   const queryMatch = adminSource.match(/const ADMIN_PRODUCTS_PAGE_QUERY = `([^`]*)`;/);
   assert.ok(queryMatch, "Dashboard adminProductPage query is present");
+  assert.doesNotMatch(queryMatch[1], /\$search|search:/, "Dashboard text search must not be sent to the backend");
 
   const result = await graphql({
     schema: buildSchema(loadGraphqlTypeDefs()),
@@ -75,16 +113,14 @@ test("dashboard adminProductPage GraphQL operation accepts and searches multiple
       status: null,
       kind: null,
       brandId: null,
-      search: "Apache TVS",
       limit: 20,
       offset: 0,
     },
     rootValue: {
-      adminProductPage: (args: Record<string, unknown>) => searchAndPaginateProducts(
-        products,
-        args.search,
-        { limit: Number(args.limit), offset: Number(args.offset) },
-      ),
+      adminProductPage: (args: Record<string, unknown>) => {
+        assert.equal(args.search, undefined);
+        return { items: [products[0]], totalCount: 1 };
+      },
     },
   });
 
