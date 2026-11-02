@@ -1,8 +1,9 @@
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { GraphQLError } from "graphql";
 import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext } from "./auth.js";
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 import { siteContentResolvers } from "./siteContentResolvers.js";
+import { placeIdAtPosition } from "./listOrdering.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
@@ -152,7 +153,7 @@ function productConditions(
   const searchTerms = search.split(/\s+/).filter(Boolean).slice(0, 8);
   for (const term of searchTerms) {
     conditions.push(`(
-      CONCAT_WS(' ', p.name, p.reference, p.description, p.recommendation, b.name, f.name, sf.name, pt.name, et.name, acc_type.name, cat.name) LIKE ?
+      CONCAT_WS(' ', p.name, p.reference, p.description, m.recommendation, b.name, f.name, sf.name, pt.name, et.name, acc_type.name, cat.name) LIKE ?
       OR EXISTS (
         SELECT 1 FROM spare_part_compatible_brands scb_search
         JOIN brands cb ON cb.id = scb_search.brand_id
@@ -341,8 +342,37 @@ async function listLookupRecords(kindValue: unknown, includeInactive = false): P
             is_active AS isActive, sort_order AS sortOrder
      FROM ${config.table}
      ${includeInactive ? "" : "WHERE is_active = TRUE"}
-     ORDER BY sort_order ASC, name ASC`,
+     ORDER BY sort_order ASC, name ASC, id ASC`,
   );
+}
+
+async function getLookupOrder(
+  connection: PoolConnection,
+  kind: LookupKindKey,
+  familyId: number | null,
+): Promise<number[]> {
+  const config = lookupTables[kind];
+  const hasFamily = "hasFamily" in config;
+  if (hasFamily && !familyId) return badInput("A subfamily must belong to a family.");
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `SELECT id FROM ${config.table}
+     ${hasFamily ? "WHERE family_id = ?" : ""}
+     ORDER BY sort_order ASC, name ASC, id ASC
+     FOR UPDATE`,
+    hasFamily ? [familyId] : [],
+  );
+  return rows.map((row) => Number(row.id));
+}
+
+async function saveLookupOrder(
+  connection: PoolConnection,
+  kind: LookupKindKey,
+  orderedIds: readonly number[],
+): Promise<void> {
+  const table = lookupTables[kind].table;
+  for (const [index, id] of orderedIds.entries()) {
+    await connection.execute(`UPDATE ${table} SET sort_order = ? WHERE id = ?`, [index, id]);
+  }
 }
 
 async function getImages(productId: unknown): Promise<DbRow[]> {
@@ -1003,10 +1033,16 @@ export const resolvers: Record<string, any> = {
       }
       const id = await withTransaction(async (connection) => {
         if (input.familyId) await assertIdsExist(connection, "families", [input.familyId], "Family");
+        const currentOrder = await getLookupOrder(connection, input.kind, input.familyId);
+        const requestedPosition = args.input?.sortOrder === undefined || args.input?.sortOrder === null
+          ? currentOrder.length
+          : input.sortOrder;
         const [result] = await connection.execute<ResultSetHeader>(
           `INSERT INTO ${config.table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
           values as never[],
         );
+        const nextOrder = placeIdAtPosition(currentOrder, result.insertId, requestedPosition);
+        await saveLookupOrder(connection, input.kind, nextOrder);
         return result.insertId;
       });
       return (await getLookupRecord(input.kind, id)) ?? notFound("Created classification could not be loaded.");
@@ -1031,12 +1067,28 @@ export const resolvers: Record<string, any> = {
         values.push(input.unit, input.applicableTo);
       }
       values.push(id);
+      const oldFamilyId = kind === "SUBFAMILY" ? Number(current.familyId) : null;
+      const newFamilyId = kind === "SUBFAMILY" ? input.familyId : null;
       await withTransaction(async (connection) => {
         if (input.familyId) await assertIdsExist(connection, "families", [input.familyId], "Family");
+        const oldOrder = await getLookupOrder(connection, kind, oldFamilyId);
+        const sameList = oldFamilyId === newFamilyId;
+        const destinationOrder = sameList
+          ? oldOrder
+          : await getLookupOrder(connection, kind, newFamilyId);
+        const previousPosition = Math.max(0, oldOrder.indexOf(id));
+        const requestedPosition = args.input?.sortOrder === undefined || args.input?.sortOrder === null
+          ? (sameList ? previousPosition : destinationOrder.length)
+          : input.sortOrder;
+        const nextOrder = placeIdAtPosition(destinationOrder, id, requestedPosition);
         await connection.execute(
           `UPDATE ${config.table} SET ${assignments.join(", ")} WHERE id = ?`,
           values as never[],
         );
+        if (!sameList) {
+          await saveLookupOrder(connection, kind, oldOrder.filter((orderedId) => orderedId !== id));
+        }
+        await saveLookupOrder(connection, kind, nextOrder);
       });
       return (await getLookupRecord(kind, id)) ?? notFound("Updated classification could not be loaded.");
     },
