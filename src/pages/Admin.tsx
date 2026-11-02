@@ -4,6 +4,7 @@ import BrandSectionAssociationsEditor, { type BrandSectionFormValue } from "../c
 import SiteContentAdmin from "../components/SiteContentAdmin";
 import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
 import { announcePublicCatalogChange, graphqlRequest } from "../lib/graphqlClient";
+import { searchAndPaginateAdminProducts } from "../lib/productSearch";
 
 type AdminUser = { id: string; email: string; role: string };
 type ProductKind = "MOTORCYCLE" | "SPARE_PART" | "EQUIPMENT" | "ACCESSORY";
@@ -152,6 +153,7 @@ const CATEGORY_DESTINATIONS = [
 ] as const;
 
 const ADMIN_PAGE_SIZE = 20;
+const ADMIN_PRODUCT_FETCH_SIZE = 200;
 
 const REFERENCE_DATA_QUERY = `
   query AdminReferenceData {
@@ -173,8 +175,8 @@ const REFERENCE_DATA_QUERY = `
 `;
 
 const ADMIN_PRODUCTS_PAGE_QUERY = `
-  query AdminProductsPage($status: ProductStatus, $kind: ProductKind, $brandId: ID, $search: String, $limit: Int, $offset: Int) {
-    adminProductPage(status: $status, kind: $kind, brandId: $brandId, search: $search, limit: $limit, offset: $offset) {
+  query AdminProductsPage($status: ProductStatus, $kind: ProductKind, $brandId: ID, $limit: Int, $offset: Int) {
+    adminProductPage(status: $status, kind: $kind, brandId: $brandId, limit: $limit, offset: $offset) {
       totalCount
       items {
         __typename id name reference price desc status image gallery
@@ -491,6 +493,7 @@ export default function Admin() {
   const [productStatusFilter, setProductStatusFilter] = useState<ProductStatusFilter>("ALL");
   const [productBrandFilter, setProductBrandFilter] = useState<string>("ALL");
   const [productPage, setProductPage] = useState(1);
+  const [databaseProducts, setDatabaseProducts] = useState<AdminProduct[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [productTotalCount, setProductTotalCount] = useState(0);
   const [productLoading, setProductLoading] = useState(false);
@@ -562,6 +565,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!token || !user) {
+      setDatabaseProducts([]);
       setProducts([]);
       setProductTotalCount(0);
       setProductError("");
@@ -572,51 +576,84 @@ export default function Admin() {
       setProductLoading(false);
       return;
     }
+
     let cancelled = false;
     setProductLoading(true);
     setProductError("");
-    console.log("[AdminProducts] Recherche catalogue envoyée", {
-      hasSearch: appliedSearch.length > 0,
-      searchLength: appliedSearch.length,
+    console.log("[AdminProducts] Chargement des produits depuis la base", {
       productKind: productKindFilter,
       productStatus: productStatusFilter,
       hasBrandFilter: productBrandFilter !== "ALL",
-      page: productPage,
+      textSearchSentToGraphQL: false,
     });
-    void graphqlRequest<{ adminProductPage: { items: AdminProduct[]; totalCount: number } }>(
-      ADMIN_PRODUCTS_PAGE_QUERY,
-      {
-        status: productStatusFilter === "ALL" ? null : productStatusFilter,
-        kind: productKindFilter === "ALL" ? null : productKindFilter,
-        brandId: productBrandFilter === "ALL" ? null : productBrandFilter,
-        search: appliedSearch || null,
-        limit: ADMIN_PAGE_SIZE,
-        offset: (productPage - 1) * ADMIN_PAGE_SIZE,
-      },
-      token,
-    ).then(({ adminProductPage }) => {
+
+    const loadAllFilteredProducts = async () => {
+      const loadedProducts: AdminProduct[] = [];
+      let totalCount = 0;
+      let offset = 0;
+      let firstPage = true;
+
+      while (firstPage || offset < totalCount) {
+        firstPage = false;
+        const { adminProductPage } = await graphqlRequest<{
+          adminProductPage: { items: AdminProduct[]; totalCount: number };
+        }>(
+          ADMIN_PRODUCTS_PAGE_QUERY,
+          {
+            status: productStatusFilter === "ALL" ? null : productStatusFilter,
+            kind: productKindFilter === "ALL" ? null : productKindFilter,
+            brandId: productBrandFilter === "ALL" ? null : productBrandFilter,
+            limit: ADMIN_PRODUCT_FETCH_SIZE,
+            offset,
+          },
+          token,
+        );
+        totalCount = adminProductPage.totalCount;
+        if (adminProductPage.items.length === 0) break;
+        loadedProducts.push(...adminProductPage.items);
+        offset += adminProductPage.items.length;
+        if (cancelled) return { items: [], totalCount: 0 };
+      }
+      return { items: loadedProducts, totalCount };
+    };
+
+    void loadAllFilteredProducts().then(({ items, totalCount }) => {
       if (cancelled) return;
-      console.log("[AdminProducts] Résultats du catalogue reçus", {
-        returnedCount: adminProductPage.items.length,
-        totalCount: adminProductPage.totalCount,
-        page: productPage,
+      console.log("[AdminProducts] Produits récupérés", {
+        returnedCount: items.length,
+        totalCount,
       });
-      setProducts(adminProductPage.items);
-      setProductTotalCount(adminProductPage.totalCount);
+      setDatabaseProducts(items);
     }).catch((reason: unknown) => {
       if (cancelled) return;
-      console.log("[AdminProducts] Échec de la recherche catalogue", {
-        hasSearch: appliedSearch.length > 0,
-        searchLength: appliedSearch.length,
+      console.log("[AdminProducts] Échec du chargement des produits", {
         errorName: reason instanceof Error ? reason.name : typeof reason,
         errorMessage: reason instanceof Error ? reason.message : "Erreur inconnue",
       });
+      setDatabaseProducts([]);
       setProducts([]);
       setProductTotalCount(0);
       setProductError(productLoadErrorMessage(reason));
     }).finally(() => { if (!cancelled) setProductLoading(false); });
+
     return () => { cancelled = true; };
-  }, [token, user, tab, productStatusFilter, productKindFilter, productBrandFilter, appliedSearch, productPage, refreshKey]);
+  }, [token, user, tab, productStatusFilter, productKindFilter, productBrandFilter, refreshKey]);
+
+  useEffect(() => {
+    const result = searchAndPaginateAdminProducts(databaseProducts, appliedSearch, {
+      limit: ADMIN_PAGE_SIZE,
+      offset: (productPage - 1) * ADMIN_PAGE_SIZE,
+    });
+    setProducts(result.items);
+    setProductTotalCount(result.totalCount);
+    console.log("[AdminProducts] Recherche locale terminée", {
+      hasSearch: appliedSearch.length > 0,
+      searchLength: appliedSearch.length,
+      returnedCount: result.items.length,
+      totalCount: result.totalCount,
+      page: productPage,
+    });
+  }, [databaseProducts, appliedSearch, productPage]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(productTotalCount / ADMIN_PAGE_SIZE));
