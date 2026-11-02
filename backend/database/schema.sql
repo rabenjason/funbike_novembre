@@ -63,6 +63,85 @@ CREATE TABLE IF NOT EXISTS categories (
   KEY ix_categories_active_order (is_active, sort_order)
 ) ENGINE=InnoDB;
 
+-- Home-page content mirrors the frontend FeaturedBanner and HomepagePromotion records.
+CREATE TABLE IF NOT EXISTS featured_banners (
+  id VARCHAR(160) NOT NULL,
+  short VARCHAR(160) NOT NULL,
+  brand VARCHAR(160) NOT NULL,
+  tag VARCHAR(160) NOT NULL,
+  image_url TEXT NOT NULL,
+  alt_text VARCHAR(255) NOT NULL,
+  target_page VARCHAR(120) NOT NULL,
+  target_id VARCHAR(160) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ix_featured_banners_active_order (is_active, sort_order)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS homepage_promotions (
+  id VARCHAR(160) NOT NULL,
+  badge VARCHAR(160) NOT NULL,
+  eyebrow VARCHAR(200) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  alt_text VARCHAR(255) NOT NULL,
+  price VARCHAR(255) NOT NULL,
+  target_page VARCHAR(120) NULL,
+  target_id VARCHAR(160) NULL,
+  published_at DATETIME NULL,
+  starts_at DATETIME NULL,
+  ends_at DATETIME NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ix_homepage_promotions_active_order (is_active, sort_order),
+  KEY ix_homepage_promotions_schedule (starts_at, ends_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS homepage_promotion_highlights (
+  promotion_id VARCHAR(160) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  highlight VARCHAR(255) NOT NULL,
+  PRIMARY KEY (promotion_id, sort_order),
+  CONSTRAINT fk_promotion_highlights_promotion FOREIGN KEY (promotion_id) REFERENCES homepage_promotions(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Key is a stable frontend location slug, not a database-generated ID.
+CREATE TABLE IF NOT EXISTS dealers (
+  dealer_key VARCHAR(120) NOT NULL,
+  city VARCHAR(160) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  kind VARCHAR(160) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  hours VARCHAR(255) NOT NULL,
+  phone VARCHAR(80) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  description TEXT NOT NULL,
+  assistant_label VARCHAR(255) NULL,
+  latitude DECIMAL(10, 7) NOT NULL,
+  longitude DECIMAL(10, 7) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (dealer_key),
+  KEY ix_dealers_active_order (is_active, sort_order)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS dealer_services (
+  dealer_key VARCHAR(120) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  service VARCHAR(160) NOT NULL,
+  PRIMARY KEY (dealer_key, sort_order),
+  CONSTRAINT fk_dealer_services_dealer FOREIGN KEY (dealer_key) REFERENCES dealers(dealer_key) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS families (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(160) NOT NULL,
@@ -277,5 +356,10 @@ UPDATE accessory_types SET sort_order = 0 WHERE sort_order < 0;
 UPDATE accessory_categories SET sort_order = 0 WHERE sort_order < 0;
 UPDATE product_usages SET sort_order = 0 WHERE sort_order < 0;
 UPDATE characteristic_definitions SET sort_order = 0 WHERE sort_order < 0;
+UPDATE featured_banners SET sort_order = 0 WHERE sort_order < 0;
+UPDATE homepage_promotions SET sort_order = 0 WHERE sort_order < 0;
+UPDATE homepage_promotion_highlights SET sort_order = 0 WHERE sort_order < 0;
+UPDATE dealers SET sort_order = 0 WHERE sort_order < 0;
+UPDATE dealer_services SET sort_order = 0 WHERE sort_order < 0;
 UPDATE product_images SET sort_order = 0 WHERE sort_order < 0;
 UPDATE product_characteristics SET sort_order = 0 WHERE sort_order < 0;

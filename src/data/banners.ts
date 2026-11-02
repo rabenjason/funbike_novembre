@@ -1,4 +1,4 @@
-/** Existing hero slides displayed on the home page. */
+/** Données locales de secours si l’API GraphQL des bannières est indisponible. */
 import type { FeaturedBanner } from "../types";
 
 export const FEATURED_BANNERS: FeaturedBanner[] = [

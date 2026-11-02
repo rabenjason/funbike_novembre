@@ -49,80 +49,40 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
       ...parts.filter((part) => part.kind !== "piece").slice(0, 2),
     ];
   }, [usingApi, fallback, catalog]);
-  const equipmentBrands = useMemo(() => {
-    if (!usingApi) return fallback ? HOME_EQUIPMENT_BRANDS : [];
-    const slugs = new Set(catalog.products
-      .filter((product) => product.__typename === "Equipment" || product.__typename === "Accessory")
-      .map((product) => product.brand?.slug)
-      .filter((slug): slug is string => Boolean(slug)));
-    return catalog.brands.filter((brand) => slugs.has(brand.slug)).map(toBrand);
-  }, [usingApi, fallback, catalog]);
-  const featuredBrands = useMemo(() => {
-    if (!usingApi) return fallback ? HOME_FEATURED_BRANDS : [];
-    const slugs = new Set(catalog.products
-      .filter((product) => product.__typename === "Motorcycle")
-      .map((product) => product.brand?.slug)
-      .filter((slug): slug is string => Boolean(slug)));
-    return catalog.brands.filter((brand) => slugs.has(brand.slug)).map(toBrand);
-  }, [usingApi, fallback, catalog]);
-  const partnerBrands = usingApi ? catalog.brands.map(toBrand) : fallback ? HOME_PARTNER_BRANDS : [];
-  const homePromotions = useMemo(() => {
-    if (!usingApi) return fallback ? HOME_PROMOTIONS : [];
-    return HOME_PROMOTIONS.flatMap((promotion) => {
-      if (promotion.targetPage === "product") {
-        const liveBike = motorcycles.find((bike) => bike.name.toLocaleLowerCase("fr").includes(promotion.title.toLocaleLowerCase("fr")));
-        return liveBike ? [{
-          ...promotion,
-          id: liveBike.id,
-          title: liveBike.name,
-          eyebrow: `${liveBike.brand} / ${liveBike.family}`,
-          description: liveBike.desc || promotion.description,
-          image: liveBike.image || promotion.image,
-          alt: liveBike.alt || promotion.alt,
-          price: liveBike.price,
-          targetPage: "product",
-          targetId: liveBike.id,
-        }] : [];
-      }
-      const liveGear = catalog.products.find((product) =>
-        (product.__typename === "Equipment" || product.__typename === "Accessory") && product.brand?.slug === promotion.targetId,
-      );
-      if (!liveGear) return [];
-      return [{
-        ...promotion,
-        id: liveGear.id,
-        title: liveGear.name,
-        eyebrow: `${liveGear.brand?.name ?? promotion.eyebrow.split(" /")[0]} / ${liveGear.category?.name ?? promotion.eyebrow.split("/").slice(-1)[0]?.trim() ?? "Équipement"}`,
-        description: liveGear.desc || promotion.description,
-        image: liveGear.image ?? promotion.image,
-        alt: liveGear.name,
-        price: liveGear.price ?? promotion.price,
-        targetPage: "accessory",
-        targetId: liveGear.id,
-      }];
-    });
-  }, [usingApi, fallback, catalog, motorcycles]);
+  const sectionBrands = useMemo(() => (section: string, featuredOnly = false) =>
+    [...(catalog?.brands ?? [])]
+      .filter((brand) => brand.isActive && brand.sections?.some((association) =>
+        association.section === section && (!featuredOnly || association.homeFeatured === true),
+      ))
+      .sort((left, right) =>
+        (left.sections?.find((association) => association.section === section)?.order ?? 0) -
+        (right.sections?.find((association) => association.section === section)?.order ?? 0),
+      )
+      .map(toBrand),
+  [catalog]);
+  const equipmentBrands = usingApi ? sectionBrands("equipements") : fallback ? HOME_EQUIPMENT_BRANDS : [];
+  const featuredBrands = usingApi ? sectionBrands("motos", true) : fallback ? HOME_FEATURED_BRANDS : [];
+  const partnerBrands = usingApi ? sectionBrands("partenaires") : fallback ? HOME_PARTNER_BRANDS : [];
+  const homePromotions = usingApi ? catalog.homepagePromotions : fallback ? HOME_PROMOTIONS : [];
+  const heroBanners = usingApi ? catalog.featuredBanners : fallback ? FEATURED_BANNERS : [];
 
   const [activeHero, setActiveHero] = useState(0);
-  const current = FEATURED_BANNERS[activeHero];
-  const heroBike = usingApi ? motorcycles.find((bike) =>
-    bike.brand.toLocaleLowerCase("fr") === current.brand.toLocaleLowerCase("fr") &&
-    bike.name.toLocaleLowerCase("fr").includes(current.short.toLocaleLowerCase("fr"))
-  ) : undefined;
-  const heroTarget = !usingApi
-    ? { page: current.targetPage, id: current.targetId }
-    : heroBike ? { page: "product", id: heroBike.id } : { page: "motos", id: current.brand };
+  const safeHeroIndex = heroBanners.length ? activeHero % heroBanners.length : 0;
+  const current = heroBanners[safeHeroIndex];
 
   useEffect(() => {
+    setActiveHero((index) => heroBanners.length ? index % heroBanners.length : 0);
+    if (heroBanners.length < 2) return;
     const timer = window.setInterval(() => {
-      setActiveHero((index) => (index + 1) % FEATURED_BANNERS.length);
+      setActiveHero((index) => (index + 1) % heroBanners.length);
     }, 6500);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [heroBanners.length]);
 
   return (
     <div className="overflow-hidden bg-white text-[#171816] dark:bg-[#141513] dark:text-[#f2f0ea]">
       {/* Full-bleed hero image with a smooth contrast veil for the headline */}
+      {current && (
       <section className="relative isolate min-h-[max(560px,calc(100svh-64px))] overflow-hidden bg-[#22231f] sm:min-h-[720px] lg:min-h-[min(820px,calc(100svh-68px))]">
         <AnimatePresence initial={false} mode="sync">
           <motion.img
@@ -180,7 +140,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               {content.accueil.hero.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
             </button>
             <button
-              onClick={() => go(heroTarget.page, heroTarget.id)}
+              onClick={() => go(current.targetPage, current.targetId)}
               className="glass-panel fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 border-white/40 bg-white/10 px-5 py-3 text-center font-bold uppercase text-white transition active:scale-[0.98] hover:border-[#ffd100] hover:text-[#ffd100] sm:min-h-11 sm:w-auto"
             >
               <span className="truncate">{current.short}</span>
@@ -207,10 +167,10 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
             </div>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
               <span className="font-display text-[11px] font-semibold text-white/70 sm:mr-1 sm:text-xs">
-                0{activeHero + 1}
+                {String(safeHeroIndex + 1).padStart(2, "0")}
               </span>
               <div className="flex items-center" aria-label={content.accueil.hero.choisirModele}>
-                {FEATURED_BANNERS.map((item, index) => (
+                {heroBanners.map((item, index) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveHero(index)}
@@ -222,11 +182,12 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
                   </button>
                 ))}
               </div>
-              <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">{String(FEATURED_BANNERS.length).padStart(2, "0")}</span>
+              <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">{String(heroBanners.length).padStart(2, "0")}</span>
             </div>
           </div>
         </div>
       </section>
+      )}
 
       {/* Category index: compact links instead of large category tiles */}
       <section className="mx-auto w-full max-w-(--container-site) px-4 py-10 sm:px-7 sm:py-12 lg:px-10 lg:py-16">

@@ -8,7 +8,13 @@ import { fileURLToPath } from "node:url";
 import { authenticateRequest, requireAdmin } from "./auth.js";
 import { queryRows } from "./db.js";
 
-type DbRow = RowDataPacket & { isProductImage: number | boolean; isBrandLogo: number | boolean; isCategoryImage: number | boolean };
+type DbRow = RowDataPacket & {
+  isProductImage: number | boolean;
+  isBrandLogo: number | boolean;
+  isCategoryImage: number | boolean;
+  isFeaturedBannerImage: number | boolean;
+  isHomepagePromotionImage: number | boolean;
+};
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_CLEANUP_BODY_BYTES = 64 * 1024;
@@ -162,11 +168,16 @@ async function removeIfUnused(url: string): Promise<boolean> {
     `SELECT
        EXISTS (SELECT 1 FROM product_images WHERE image_url = ?) AS isProductImage,
        EXISTS (SELECT 1 FROM brands WHERE logo_url = ?) AS isBrandLogo,
-       EXISTS (SELECT 1 FROM categories WHERE image_url = ?) AS isCategoryImage`,
-    [url, url, url],
+       EXISTS (SELECT 1 FROM categories WHERE image_url = ?) AS isCategoryImage,
+       EXISTS (SELECT 1 FROM featured_banners WHERE image_url = ?) AS isFeaturedBannerImage,
+       EXISTS (SELECT 1 FROM homepage_promotions WHERE image_url = ?) AS isHomepagePromotionImage`,
+    [url, url, url, url, url],
   );
   const row = rows[0];
-  if (row && (Boolean(row.isProductImage) || Boolean(row.isBrandLogo) || Boolean(row.isCategoryImage))) return false;
+  if (row && (
+    Boolean(row.isProductImage) || Boolean(row.isBrandLogo) || Boolean(row.isCategoryImage) ||
+    Boolean(row.isFeaturedBannerImage) || Boolean(row.isHomepagePromotionImage)
+  )) return false;
   try {
     await rm(join(uploadDirectory, fileName));
     return true;

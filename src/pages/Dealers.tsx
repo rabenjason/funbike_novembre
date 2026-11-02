@@ -15,6 +15,7 @@ import {
 
 import { DEALERS } from "../data/dealers";
 import type { Dealer } from "../types";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { content } from "../constants";
 
 export type { Dealer };
@@ -29,18 +30,23 @@ const ICON = "w-4 shrink-0 text-[#98741b] dark:text-[#ffd100]";
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.1em] text-black/40 dark:text-white/40";
 
 export default function Dealers({ go, initialCity }: { go: (p: string, id?: string) => void; initialCity?: string }) {
-  const valid = DEALERS.some((d) => d.key === initialCity);
-  const [activeKey, setActiveKey] = useState(valid ? initialCity! : DEALERS[0].key);
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+  const fallback = status === "error";
+  const dealers: Dealer[] = usingApi ? catalog.dealers : fallback ? DEALERS : [];
+  const [activeKey, setActiveKey] = useState(initialCity ?? "");
   const [zoom, setZoom] = useState(1);
   const [mapReady, setMapReady] = useState(false);
   const [mapEnabled, setMapEnabled] = useState(false);
   const locatorRef = useRef<HTMLDivElement>(null);
-  const dealer = DEALERS.find((d) => d.key === activeKey)!;
+  const dealer = dealers.find((item) => item.key === activeKey) ?? dealers[0];
 
   useEffect(() => {
-    if (initialCity && DEALERS.some((d) => d.key === initialCity)) select(initialCity);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCity]);
+    const fallbackKey = initialCity && dealers.some((item) => item.key === initialCity)
+      ? initialCity
+      : dealers[0]?.key ?? "";
+    setActiveKey((current) => dealers.some((item) => item.key === current) ? current : fallbackKey);
+  }, [dealers, initialCity]);
 
   function select(key: string, scroll = false) {
     if (key !== activeKey) {
@@ -55,6 +61,17 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
   function changeZoom(delta: 1 | -1) {
     setZoom((z) => Math.max(0, Math.min(ZOOMS.length - 1, z + delta)));
     setMapReady(false);
+  }
+
+  if (!dealer) {
+    return (
+      <main className="mx-auto min-h-[50vh] w-full max-w-(--container-site) px-4 py-10 sm:px-7 lg:px-10">
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.04em]">{content.revendeurs.titre}</h1>
+        <p className="mt-3 text-sm text-black/60 dark:text-white/60">
+          {status === "loading" ? "Chargement des revendeurs…" : "Aucun revendeur disponible pour le moment."}
+        </p>
+      </main>
+    );
   }
 
   return (
@@ -73,7 +90,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
             aria-label={content.revendeurs.choisirVilleAria}
             className="mb-4 grid grid-cols-2 gap-2 border-black/10 sm:flex sm:gap-0 sm:border-y dark:border-white/10"
           >
-            {DEALERS.map((d) => (
+            {dealers.map((d) => (
               <button
                 key={d.key}
                 type="button"
@@ -254,7 +271,7 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
           </div>
 
           <ul className="border-t border-black/10 dark:border-white/10">
-            {DEALERS.map((d) => {
+            {dealers.map((d) => {
               const selected = d.key === activeKey;
               return (
                 <li key={d.key}>

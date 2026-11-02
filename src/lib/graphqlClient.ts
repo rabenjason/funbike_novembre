@@ -1,45 +1,53 @@
+import { ApolloClient, InMemoryCache, gql, type OperationVariables } from "@apollo/client";
+import { HttpLink } from "@apollo/client/link/http";
+import { getOperationAST } from "graphql";
+
 const endpoint = "/graphql";
 
-type GraphQLError = {
-  message: string;
-};
-
-type GraphQLResponse<T> = {
-  data?: T;
-  errors?: GraphQLError[];
-};
+const apolloClient = new ApolloClient({
+  link: new HttpLink({ uri: endpoint }),
+  cache: new InMemoryCache(),
+});
 
 export async function graphqlRequest<T>(
   query: string,
   variables?: Record<string, unknown>,
   accessToken?: string | null,
 ): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ query, variables }),
-    cache: "no-store",
-  });
+  const document = gql(query);
+  const operation = getOperationAST(document);
+  if (!operation) throw new Error("La requête GraphQL ne contient pas d’opération valide.");
+  const context = {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    fetchOptions: { cache: "no-store" as RequestCache },
+  };
+  const requestVariables = variables as OperationVariables | undefined;
 
-  const contentType = response.headers.get("content-type") ?? "unknown content type";
-  let result: GraphQLResponse<T>;
   try {
-    result = JSON.parse(await response.text()) as GraphQLResponse<T>;
-  } catch {
-    const hint = response.status >= 500
-      ? "Vérifiez que le backend GraphQL fonctionne et que le proxy /graphql pointe vers lui (API_PROXY_TARGET)."
-      : "Vérifiez que l’hébergement relaie bien /graphql vers le backend.";
-    throw new Error(`Réponse non JSON de l’API GraphQL (HTTP ${response.status}, ${contentType}). ${hint}`);
-  }
+    if (operation.operation === "mutation") {
+      const result = await apolloClient.mutate<T, OperationVariables>({
+        mutation: document,
+        variables: requestVariables,
+        context,
+        errorPolicy: "none",
+      });
+      if (!result.data) throw new Error("The GraphQL API returned no data.");
+      return result.data;
+    }
 
-  if (!response.ok || result.errors?.length || !result.data) {
-    const detail = result.errors?.map((error) => error.message).join("; ");
-    throw new Error(detail || `The GraphQL API request failed (${response.status}).`);
+    const result = await apolloClient.query<T, OperationVariables>({
+      query: document,
+      variables: requestVariables,
+      context,
+      fetchPolicy: "no-cache",
+      errorPolicy: "none",
+    });
+    if (result.data === undefined) throw new Error("The GraphQL API returned no data.");
+    return result.data;
+  } catch (reason) {
+    if (reason instanceof Error) throw reason;
+    throw new Error("The GraphQL API request failed.");
   }
-
-  return result.data;
 }
 
 export type ApiHealth = {
@@ -105,6 +113,56 @@ export type PublicCategory = {
   sortOrder: number | null;
 };
 
+export type PublicFeaturedBanner = {
+  id: string;
+  short: string;
+  brand: string;
+  tag: string;
+  image: string;
+  alt: string;
+  targetPage: string;
+  targetId: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type PublicHomepagePromotion = {
+  id: string;
+  badge: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  image: string;
+  alt: string;
+  highlights: string[];
+  price: string;
+  targetPage: string;
+  targetId: string;
+  publishedAt: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type PublicDealer = {
+  key: string;
+  city: string;
+  name: string;
+  kind: string;
+  address: string;
+  hours: string;
+  phone: string;
+  email: string;
+  desc: string;
+  assistantLabel: string | null;
+  lat: number;
+  lon: number;
+  services: string[];
+  isActive: boolean;
+  sortOrder: number;
+};
+
 export type PublicProduct = {
   __typename: ProductKind;
   id: string;
@@ -137,6 +195,9 @@ export type PublicCatalog = {
   products: PublicProduct[];
   brands: PublicBrand[];
   categories: PublicCategory[];
+  featuredBanners: PublicFeaturedBanner[];
+  homepagePromotions: PublicHomepagePromotion[];
+  dealers: PublicDealer[];
   families: PublicLookup[];
   subfamilies: PublicLookup[];
   partTypes: PublicLookup[];
@@ -197,6 +258,15 @@ const PUBLIC_CATALOG_REFERENCE_QUERY = `
       sections { section order label routeId filterable displayMode homeFeatured footerOrder footerFeaturedOrder }
     }
     categories { id title desc src to brand isActive sortOrder }
+    featuredBanners { id short brand tag image alt targetPage targetId isActive sortOrder }
+    homepagePromotions {
+      id badge eyebrow title description image alt highlights price targetPage targetId
+      publishedAt startsAt endsAt isActive sortOrder
+    }
+    dealers {
+      key city name kind address hours phone email desc assistantLabel lat lon services
+      isActive sortOrder
+    }
     families { id name isActive sortOrder }
     subfamilies { id name family { id name } isActive sortOrder }
     partTypes { id name isActive sortOrder }

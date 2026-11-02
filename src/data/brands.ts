@@ -4,13 +4,11 @@ import type { Brand, BrandSectionId } from "../types";
 export const LOGO = "https://funbike.mg/wp-content/themes/funbike/images/logo-funbike.png";
 
 /**
- * Référentiel frontend des marques.
- *
- * Les identifiants sont des clés stables ; `sections` représente la relation
- * marque-rubrique (ordre, libellé éventuel et route), prête à être persistée
- * ultérieurement dans une table de liaison ou exposée par GraphQL. La rubrique
- * `partenaires` correspond au carrousel de logos de l'accueil. Cette source reste
- * entièrement statique : aucun backend ni client API n'est créé ici.
+ * Référentiel local de secours, utilisé lorsque l’API GraphQL est indisponible.
+ * En fonctionnement normal, les marques et leurs associations de rubriques
+ * proviennent des tables `brands` et `brand_sections`. La rubrique `partenaires`
+ * correspond au carrousel de logos de l'accueil. Ces valeurs ne sont pas seedées
+ * dans la base de données.
  */
 export const BRANDS = [
   {

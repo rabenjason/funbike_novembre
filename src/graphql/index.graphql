@@ -5,6 +5,7 @@
 #import "./motorcycles.graphql"
 #import "./spare-parts.graphql"
 #import "./equipment.graphql"
+#import "./content.graphql"
 
 type APIHealth {
   status: String!
@@ -28,6 +29,12 @@ type Query {
   adminBrands: [Brand!]!
   categories: [Category!]!
   adminCategories: [Category!]!
+  featuredBanners: [FeaturedBanner!]!
+  adminFeaturedBanners: [FeaturedBanner!]!
+  homepagePromotions: [HomepagePromotion!]!
+  adminHomepagePromotions: [HomepagePromotion!]!
+  dealers: [Dealer!]!
+  adminDealers: [Dealer!]!
   adminLookups(kind: LookupKind!): [LookupRecord!]!
   families: [Family!]!
   subfamilies: [Subfamily!]!
@@ -63,6 +70,18 @@ type Mutation {
   createCategory(input: CategoryInput!): Category!
   updateCategory(id: ID!, input: CategoryInput!): Category!
   deleteCategory(id: ID!): Boolean!
+
+  createFeaturedBanner(input: FeaturedBannerInput!): FeaturedBanner!
+  updateFeaturedBanner(id: ID!, input: FeaturedBannerInput!): FeaturedBanner!
+  deleteFeaturedBanner(id: ID!): Boolean!
+
+  createHomepagePromotion(input: HomepagePromotionInput!): HomepagePromotion!
+  updateHomepagePromotion(id: ID!, input: HomepagePromotionInput!): HomepagePromotion!
+  deleteHomepagePromotion(id: ID!): Boolean!
+
+  createDealer(input: DealerInput!): Dealer!
+  updateDealer(key: ID!, input: DealerInput!): Dealer!
+  deleteDealer(key: ID!): Boolean!
 
   createLookup(kind: LookupKind!, input: LookupInput!): LookupRecord!
   updateLookup(kind: LookupKind!, id: ID!, input: LookupInput!): LookupRecord!

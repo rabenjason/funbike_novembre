@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import ImageFilePicker, { type ImageSelection } from "../components/ImageFilePicker";
+import BrandSectionAssociationsEditor, { type BrandSectionFormValue } from "../components/BrandSectionAssociationsEditor";
+import SiteContentAdmin from "../components/SiteContentAdmin";
 import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
 import { announcePublicCatalogChange, graphqlRequest } from "../lib/graphqlClient";
 
@@ -9,7 +11,18 @@ type ProductKindFilter = ProductKind | "ALL";
 type ProductStatusFilter = "DRAFT" | "PUBLISHED" | "ALL";
 type LookupKind = "FAMILY" | "SUBFAMILY" | "PART_TYPE" | "EQUIPMENT_TYPE" | "ACCESSORY_TYPE" | "CATEGORY" | "USAGE" | "CHARACTERISTIC";
 type Lookup = { id: string; name: string; family?: { id: string; name: string } | null; unit?: string | null; applicableTo?: string | null; isActive: boolean; sortOrder?: number | null };
-type Brand = { id: string; slug: string; name: string; logo?: string | null; logoAlt?: string | null; description?: string | null; isActive: boolean; sortOrder?: number | null };
+type BrandSectionRecord = {
+  section: string;
+  order: number;
+  label: string | null;
+  routeId: string | null;
+  filterable: boolean | null;
+  displayMode: string | null;
+  homeFeatured: boolean | null;
+  footerOrder: number | null;
+  footerFeaturedOrder: number | null;
+};
+type Brand = { id: string; slug: string; name: string; logo?: string | null; logoAlt?: string | null; description?: string | null; isActive: boolean; sortOrder?: number | null; sections?: BrandSectionRecord[] };
 type Category = { id: string; title: string; desc: string; src: string; to: string; brand?: string | null; isActive: boolean; sortOrder?: number | null };
 type ProductSpec = { characteristic?: { id: string; name: string } | null; label: string; value: string };
 type AdminProduct = {
@@ -77,9 +90,9 @@ type ProductForm = {
   specs: Array<{ characteristicId: string; value: string }>;
 };
 type LookupForm = { name: string; familyId: string; unit: string; applicableTo: string; sortOrder: string; isActive: boolean };
-type BrandForm = { slug: string; name: string; logoImage: ImageSelection | null; logoAlt: string; description: string; sortOrder: string; isActive: boolean };
+type BrandForm = { slug: string; name: string; logoImage: ImageSelection | null; logoAlt: string; description: string; sortOrder: string; isActive: boolean; sections: BrandSectionFormValue[] };
 type CategoryForm = { title: string; desc: string; image: ImageSelection | null; to: string; brand: string; sortOrder: string; isActive: boolean };
-type Tab = "products" | "classifications" | "brands" | "categories" | "security";
+type Tab = "products" | "classifications" | "brands" | "categories" | "siteContent" | "security";
 type ArchiveRequest =
   | { type: "lookup"; id: string; label: string; lookupKind: LookupKind; successMessage: string }
   | { type: "brand"; id: string; label: string; successMessage: string }
@@ -151,7 +164,10 @@ const REFERENCE_DATA_QUERY = `
     accessoryCategories { id name isActive sortOrder }
     productUsages { id name isActive sortOrder }
     characteristicDefinitions { id name unit applicableTo isActive sortOrder }
-    adminBrands { id slug name logo logoAlt description isActive sortOrder }
+    adminBrands {
+      id slug name logo logoAlt description isActive sortOrder
+      sections { section order label routeId filterable displayMode homeFeatured footerOrder footerFeaturedOrder }
+    }
     adminCategories { id title desc src to brand isActive sortOrder }
   }
 `;
@@ -221,7 +237,7 @@ const emptyProductForm = (): ProductForm => ({
 });
 
 const emptyLookupForm = (): LookupForm => ({ name: "", familyId: "", unit: "", applicableTo: "", sortOrder: "0", isActive: true });
-const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, logoAlt: "", description: "", sortOrder: "0", isActive: true });
+const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, logoAlt: "", description: "", sortOrder: "0", isActive: true, sections: [] });
 const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", image: null, to: "", brand: "", sortOrder: "0", isActive: true });
 
 const MAX_DISPLAY_ORDER = 100000;
@@ -834,6 +850,17 @@ export default function Admin() {
         description: brandForm.description || null,
         sortOrder: parseDisplayOrder(brandForm.sortOrder),
         isActive: brandForm.isActive,
+        sections: brandForm.sections.map((association) => ({
+          section: association.section,
+          order: parseDisplayOrder(association.order),
+          label: association.label.trim() || null,
+          routeId: association.routeId.trim() || null,
+          filterable: association.filterable === "" ? null : association.filterable === "true",
+          displayMode: association.displayMode || null,
+          homeFeatured: association.homeFeatured === "" ? null : association.homeFeatured === "true",
+          footerOrder: association.footerOrder === "" ? null : parseDisplayOrder(association.footerOrder),
+          footerFeaturedOrder: association.footerFeaturedOrder === "" ? null : parseDisplayOrder(association.footerFeaturedOrder),
+        })),
       };
       if (editingBrandId) {
         await graphqlRequest("mutation UpdateBrand($id: ID!, $input: BrandInput!) { updateBrand(id: $id, input: $input) { id name } }", { id: editingBrandId, input }, token);
@@ -1012,6 +1039,7 @@ export default function Admin() {
       items: [
         { id: "brands", label: "Marques" },
         { id: "categories", label: "Catégories" },
+        { id: "siteContent", label: "Bannières, promos, revendeurs" },
       ],
     },
     { label: "Compte", items: [{ id: "security", label: "Sécurité" }] },
@@ -1294,8 +1322,8 @@ export default function Admin() {
         )}
 
         {tab === "brands" && (
-          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Marques vendues par Funbike</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Marques</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les marques affichées dans le catalogue et les filtres du site.</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.isActive ? "Active sur le site" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: formatDisplayOrder(brand.sortOrder), isActive: brand.isActive }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveBrand} className={`${panelClass} space-y-5 p-5 sm:p-6`}><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Nom de la marque"><input className={fieldClass} required placeholder="Ex. Sherco" value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Nom court utilisé dans l’adresse de la page" hint="Écrivez en minuscules, sans espaces. Exemple : sherco ou tvs."><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="Ex. sherco" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Description du logo (accessibilité)" hint="Quelques mots pour décrire le logo aux personnes qui ne le voient pas."><input className={fieldClass} placeholder="Ex. Logo Sherco" value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-3"><p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Présentation de la marque"><textarea className={`${fieldClass} min-h-24`} placeholder="Ex. Motos et équipements TVS proposés par Funbike." value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-4 sm:grid-cols-2"><DisplayOrderField value={brandForm.sortOrder} onChange={(sortOrder) => setBrandForm({ ...brandForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex flex-wrap gap-3">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
+          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Marques vendues par Funbike</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Marques</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les marques affichées dans le catalogue et les filtres du site.</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.isActive ? "Active sur le site" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: formatDisplayOrder(brand.sortOrder), isActive: brand.isActive, sections: (brand.sections ?? []).map((association) => ({ section: association.section, order: String(association.order ?? 0), label: association.label ?? "", routeId: association.routeId ?? "", filterable: association.filterable == null ? "" : String(association.filterable), displayMode: association.displayMode ?? "", homeFeatured: association.homeFeatured == null ? "" : String(association.homeFeatured), footerOrder: association.footerOrder == null ? "" : String(association.footerOrder), footerFeaturedOrder: association.footerFeaturedOrder == null ? "" : String(association.footerFeaturedOrder) })) }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveBrand} className={`${panelClass} space-y-5 p-5 sm:p-6`}><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Nom de la marque"><input className={fieldClass} required placeholder="Ex. Sherco" value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Nom court utilisé dans l’adresse de la page" hint="Écrivez en minuscules, sans espaces. Exemple : sherco ou tvs."><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="Ex. sherco" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Description du logo (accessibilité)" hint="Quelques mots pour décrire le logo aux personnes qui ne le voient pas."><input className={fieldClass} placeholder="Ex. Logo Sherco" value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-3"><p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Présentation de la marque"><textarea className={`${fieldClass} min-h-24`} placeholder="Ex. Motos et équipements TVS proposés par Funbike." value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><BrandSectionAssociationsEditor value={brandForm.sections} onChange={(sections) => setBrandForm({ ...brandForm, sections })} disabled={busy} /><div className="grid gap-4 sm:grid-cols-2"><DisplayOrderField value={brandForm.sortOrder} onChange={(sortOrder) => setBrandForm({ ...brandForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex flex-wrap gap-3">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
           </section>
         )}
 
@@ -1341,6 +1369,8 @@ export default function Admin() {
             </form>
           </section>
         )}
+
+        {tab === "siteContent" && <SiteContentAdmin token={token} />}
 
         {tab === "security" && (
           <section className="mx-auto max-w-2xl space-y-6">
