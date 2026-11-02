@@ -170,13 +170,15 @@ async function removeIfUnused(url: string): Promise<boolean> {
        EXISTS (SELECT 1 FROM brands WHERE logo_url = ?) AS isBrandLogo,
        EXISTS (SELECT 1 FROM categories WHERE image_url = ?) AS isCategoryImage,
        EXISTS (SELECT 1 FROM featured_banners WHERE image_url = ?) AS isFeaturedBannerImage,
+       EXISTS (SELECT 1 FROM homepage_editorial_banners WHERE image_url = ?) AS isHomepageEditorialBannerImage,
        EXISTS (SELECT 1 FROM homepage_promotions WHERE image_url = ?) AS isHomepagePromotionImage`,
-    [url, url, url, url, url],
+    [url, url, url, url, url, url],
   );
   const row = rows[0];
   if (row && (
     Boolean(row.isProductImage) || Boolean(row.isBrandLogo) || Boolean(row.isCategoryImage) ||
-    Boolean(row.isFeaturedBannerImage) || Boolean(row.isHomepagePromotionImage)
+    Boolean(row.isFeaturedBannerImage) || Boolean(row.isHomepageEditorialBannerImage) ||
+    Boolean(row.isHomepagePromotionImage)
   )) return false;
   try {
     await rm(join(uploadDirectory, fileName));

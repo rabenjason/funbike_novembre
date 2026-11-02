@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import ImageFilePicker, { type ImageSelection } from "./ImageFilePicker";
+import HomepageHeroAdmin from "./HomepageHeroAdmin";
 import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
 import { announcePublicCatalogChange, graphqlRequest } from "../lib/graphqlClient";
 
@@ -73,7 +74,7 @@ type DealerForm = Omit<Dealer, "lat" | "lon" | "services" | "assistantLabel"> & 
   lon: string;
   servicesText: string;
 };
-type ContentSection = "banners" | "promotions" | "dealers";
+type ContentSection = "banners" | "homeHeroes" | "promotions" | "dealers";
 type ArchiveTarget =
   | { type: "banner"; id: string; label: string }
   | { type: "promotion"; id: string; label: string }
@@ -569,15 +570,16 @@ export default function SiteContentAdmin({ token }: { token: string }) {
     <section className="min-w-0 space-y-6">
       <div>
         <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Contenu public · source GraphQL</p>
-        <h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Bannières, promotions et revendeurs</h2>
+        <h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Contenus de l’accueil et points de vente</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-black/55 dark:text-white/55">
-          Ces fiches sont enregistrées dans le catalogue et alimentent directement le site public. Les photos se choisissent depuis votre ordinateur ; aucune URL d’image à saisir.
+          Gérez ici les visuels héro (diapositives du haut, textes et bannières secondaires), les promotions et les points de vente visibles sur le site. Les photos se choisissent depuis votre ordinateur ; aucune URL d’image à saisir.
         </p>
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-b border-black/10 dark:border-white/10" role="tablist" aria-label="Type de contenu public">
         {([
-          ["banners", "Bannières d’accueil"],
+          ["banners", "Diapositives du hero"],
+          ["homeHeroes", "Textes & bannière secondaire"],
           ["promotions", "Promotions"],
           ["dealers", "Revendeurs"],
         ] as const).map(([key, label]) => (
@@ -604,7 +606,10 @@ export default function SiteContentAdmin({ token }: { token: string }) {
       {section === "banners" && (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
           <div className="min-w-0 space-y-4">
-            <h3 className="font-display text-xl font-bold">Bannières enregistrées <span className="text-sm font-normal text-black/45 dark:text-white/45">({banners.length})</span></h3>
+            <div>
+              <h3 className="font-display text-xl font-bold">Diapositives du hero principal <span className="text-sm font-normal text-black/45 dark:text-white/45">({banners.length})</span></h3>
+              <p className="mt-1 text-sm text-black/50 dark:text-white/50">Chaque diapositive pilote la grande photo, le nom du modèle, la marque et le bouton d’accès du carrousel en haut de l’accueil.</p>
+            </div>
             <div className={panelClass}>
               <ul className="divide-y divide-black/10 dark:divide-white/10">
                 {banners.map((item) => (
@@ -661,6 +666,8 @@ export default function SiteContentAdmin({ token }: { token: string }) {
           </form>
         </div>
       )}
+
+      {section === "homeHeroes" && <HomepageHeroAdmin token={token} />}
 
       {section === "promotions" && (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">

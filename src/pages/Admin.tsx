@@ -104,7 +104,7 @@ const LOOKUP_KINDS: Array<{ key: LookupKind; label: string }> = [
   { key: "PART_TYPE", label: "Types de pièces" },
   { key: "EQUIPMENT_TYPE", label: "Types d’équipement" },
   { key: "ACCESSORY_TYPE", label: "Types d’accessoires" },
-  { key: "CATEGORY", label: "Catégories de produits" },
+  { key: "CATEGORY", label: "Catégories de produits (pièces & équipements)" },
   { key: "USAGE", label: "Usages possibles" },
   { key: "CHARACTERISTIC", label: "Caractéristiques à afficher" },
 ];
@@ -895,7 +895,7 @@ export default function Admin() {
     event.preventDefault();
     if (!token) return;
     if (!categoryForm.image) {
-      setError("Sélectionnez une photo pour cette catégorie.");
+      setError("Sélectionnez une photo pour cette carte d’accueil.");
       return;
     }
     setBusy(true);
@@ -917,10 +917,10 @@ export default function Admin() {
       };
       if (editingCategoryId) {
         await graphqlRequest("mutation UpdateCategory($id: ID!, $input: CategoryInput!) { updateCategory(id: $id, input: $input) { id title } }", { id: editingCategoryId, input }, token);
-        setNotice("Catégorie mise à jour.");
+        setNotice("Carte d’accueil mise à jour.");
       } else {
         await graphqlRequest("mutation CreateCategory($input: CategoryInput!) { createCategory(input: $input) { id title } }", { input }, token);
-        setNotice("Catégorie créée.");
+        setNotice("Carte d’accueil créée.");
       }
       announcePublicCatalogChange();
       cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
@@ -929,7 +929,7 @@ export default function Admin() {
       reload();
     } catch (reason) {
       cleanupImages(newlyUploadedUrls, token);
-      setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer la catégorie.");
+      setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer la carte d’accueil.");
     } finally {
       setBusy(false);
     }
@@ -940,7 +940,7 @@ export default function Admin() {
       type: "category",
       id: category.id,
       label: category.title,
-      successMessage: "Catégorie archivée.",
+      successMessage: "Carte d’accueil archivée.",
     });
   }
 
@@ -1038,8 +1038,8 @@ export default function Admin() {
       label: "Contenu du site",
       items: [
         { id: "brands", label: "Marques" },
-        { id: "categories", label: "Catégories" },
-        { id: "siteContent", label: "Bannières, promos, revendeurs" },
+        { id: "categories", label: "Cartes d’accueil" },
+        { id: "siteContent", label: "Visuels & contenus" },
       ],
     },
     { label: "Compte", items: [{ id: "security", label: "Sécurité" }] },
@@ -1198,7 +1198,7 @@ export default function Admin() {
                 <section className="space-y-5 border-t border-black/10 pt-6 dark:border-white/10">
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Détails de la moto</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Catégorie, gamme et éléments de présentation du modèle.</p></div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <Field label="Catégorie de moto"><select className={fieldClass} value={productForm.familyId} onChange={(event) => { const familyId = event.target.value; const currentSubfamily = data?.subfamilies.find((item) => item.id === productForm.subfamilyId); setProductForm({ ...productForm, familyId, subfamilyId: currentSubfamily && currentSubfamily.family?.id !== familyId ? "" : productForm.subfamilyId }); }}><option value="">Choisir une catégorie</option>{(data?.families ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Catégorie de moto"><select className={fieldClass} value={productForm.familyId} onChange={(event) => { const familyId = event.target.value; const currentSubfamily = data?.subfamilies.find((item) => item.id === productForm.subfamilyId); setProductForm({ ...productForm, familyId, subfamilyId: currentSubfamily && currentSubfamily.family?.id !== familyId ? "" : productForm.subfamilyId }); }}><option value="">Choisir une catégorie de moto</option>{(data?.families ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Gamme ou modèle associé (facultatif)" hint="Ex. Sherco SEF 250 ou TVS Apache."><select className={fieldClass} value={productForm.subfamilyId} onChange={(event) => setProductForm({ ...productForm, subfamilyId: event.target.value })}><option value="">Choisir une gamme ou un modèle</option>{(data?.subfamilies ?? []).filter((item) => !productForm.familyId || item.family?.id === productForm.familyId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Petit badge (facultatif)" hint="Texte court mis en avant sur la fiche produit."><input className={fieldClass} placeholder="Ex. Nouveauté 2026" value={productForm.tag} onChange={(event) => setProductForm({ ...productForm, tag: event.target.value })} /></Field>
                     <Field label="Description de la photo" hint="Décrivez l’image en quelques mots pour les personnes qui ne la voient pas."><input className={fieldClass} placeholder="Ex. Sherco SEF 250 Factory 2026, vue de côté" value={productForm.alt} onChange={(event) => setProductForm({ ...productForm, alt: event.target.value })} /></Field>
@@ -1211,7 +1211,7 @@ export default function Admin() {
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Pièce détachée</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Précisez son type, sa catégorie et les motos compatibles.</p></div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label="Type de pièce"><select className={fieldClass} value={productForm.partTypeId} onChange={(event) => setProductForm({ ...productForm, partTypeId: event.target.value })}><option value="">Choisir un type</option>{(data?.partTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-                    <Field label="Catégorie de la pièce"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Catégorie de produit (pièce)"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie de produit</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Compatible avec toutes les marques ?"><select className={fieldClass} value={productForm.universalCompatibility} onChange={(event) => setProductForm({ ...productForm, universalCompatibility: event.target.value, compatibleBrandIds: event.target.value === "true" ? [] : productForm.compatibleBrandIds })}><option value="">À préciser</option><option value="true">Oui, toutes les marques</option><option value="false">Non, compatibilité spécifique</option></select></Field>
                     {productForm.universalCompatibility !== "true" && <CheckboxGroupField label="Marques compatibles" hint="Cochez une ou plusieurs marques. Pour toutes les marques, choisissez « Oui » juste au-dessus." items={(data?.brands ?? []).filter((brand) => brand.isActive)} selectedIds={productForm.compatibleBrandIds} onChange={(compatibleBrandIds) => setProductForm({ ...productForm, compatibleBrandIds })} emptyLabel="Ajoutez d’abord les marques concernées dans la section « Marques »." />}
                     {productForm.universalCompatibility === "true" && <p className="border border-emerald-600/20 bg-emerald-50/60 px-3 py-3 text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200">Cette pièce sera proposée pour toutes les marques ; aucune sélection supplémentaire n’est nécessaire.</p>}
@@ -1224,7 +1224,7 @@ export default function Admin() {
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">{productForm.kind === "EQUIPMENT" ? "Équipement pilote" : "Accessoire moto"}</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Choisissez le type de produit, sa catégorie et les usages pertinents.</p></div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label={productForm.kind === "EQUIPMENT" ? "Type d’équipement" : "Type d’accessoire"}><select className={fieldClass} value={productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId : productForm.accessoryTypeId} onChange={(event) => setProductForm({ ...productForm, [productForm.kind === "EQUIPMENT" ? "equipmentTypeId" : "accessoryTypeId"]: event.target.value })}><option value="">Choisir un type</option>{(productForm.kind === "EQUIPMENT" ? data?.equipmentTypes ?? [] : data?.accessoryTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-                    <Field label="Catégorie du produit"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Catégorie de produit (équipement ou accessoire)"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie de produit</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <CheckboxGroupField label="Utilisation prévue" hint="Cochez tous les usages concernés." items={(data?.productUsages ?? []).filter((item) => item.isActive)} selectedIds={productForm.usageIds} onChange={(usageIds) => setProductForm({ ...productForm, usageIds })} emptyLabel="Ajoutez d’abord les usages dans « Listes du catalogue »." />
                     <Field label="Lien vers la fiche du fabricant (facultatif)" hint="Un lien vers la page de ce produit chez la marque, si vous l’avez."><input className={fieldClass} type="url" placeholder="Ex. https://…" value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field>
                   </div>
@@ -1279,7 +1279,7 @@ export default function Admin() {
 
         {tab === "classifications" && (
           <section className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(230px,0.8fr)_minmax(290px,1fr)_minmax(260px,1fr)]">
-            <div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Listes du catalogue</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Organisez les catégories, types et caractéristiques proposés dans les fiches produit.</p></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
+            <div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Listes du catalogue</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les listes utilisées par les formulaires produit : familles de motos, catégories de produits, types et caractéristiques. Ce ne sont pas les cartes éditoriales de l’accueil.</p></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
               {LOOKUP_KINDS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
             </select></Field><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-3 px-4 py-3.5"><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
             <form onSubmit={saveLookup} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
@@ -1317,7 +1317,7 @@ export default function Admin() {
                 <button className={buttonPrimary} type="submit" disabled={busy}>{editingLookupId ? "Enregistrer" : "Créer"}</button>
               </div>
             </form>
-            <aside className={`${panelClass} p-5 text-sm leading-relaxed text-black/60 dark:text-white/60`}><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes du catalogue</h3><p className="mt-2">Les valeurs créées ici apparaissent dans les listes proposées lors de l’ajout ou de la modification d’un produit. Ajoutez une catégorie, un type ou une caractéristique si le choix recherché n’existe pas encore.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
+            <aside className={`${panelClass} p-5 text-sm leading-relaxed text-black/60 dark:text-white/60`}><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes des fiches produit</h3><p className="mt-2">Les valeurs créées ici sont proposées dans les formulaires du catalogue. « Catégories de motos » classe les motos ; « Catégories de produits » concerne les pièces, équipements et accessoires.</p><p className="mt-3">Les cartes illustrées de la page d’accueil se gèrent séparément dans « Cartes d’accueil » : elles ne servent pas à classer les produits.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
           </section>
         )}
 
@@ -1328,13 +1328,13 @@ export default function Admin() {
         )}
 
         {tab === "categories" && (
-          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Catégories de la page d’accueil</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Choisissez les cartes mises en avant et leur destination sur le site.</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{CATEGORY_DESTINATIONS.find((destination) => destination.page === category.to)?.label ?? category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: formatDisplayOrder(category.sortOrder), isActive: category.isActive }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
+          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Cartes éditoriales de l’accueil</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-black/55 dark:text-white/55">Créez les cartes illustrées affichées dans la section « Choisir son univers » de la page d’accueil : titre, photo, description et destination. Elles ne classent pas les produits ; les catégories de produits se gèrent séparément dans « Listes du catalogue ».</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{CATEGORY_DESTINATIONS.find((destination) => destination.page === category.to)?.label ?? category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: formatDisplayOrder(category.sortOrder), isActive: category.isActive }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune carte d’accueil enregistrée.</li>}</ul></div></div>
             <form onSubmit={saveCategory} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p>
-                <h3 className="mt-1 font-display text-xl font-bold">Carte de la page d’accueil</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle carte d’accueil"}</p>
+                <h3 className="mt-1 font-display text-xl font-bold">Carte éditoriale</h3>
               </div>
-              <Field label="Titre de la catégorie" hint="Ex. Motos TVS & urbain.">
+              <Field label="Titre de la carte" hint="Ex. Motos TVS & urbain.">
                 <input className={fieldClass} required placeholder="Ex. Motos TVS & urbain" value={categoryForm.title} onChange={(event) => setCategoryForm({ ...categoryForm, title: event.target.value })} />
               </Field>
               <Field label="Courte description" hint="Expliquez en une phrase ce que le visiteur trouvera.">
@@ -1342,7 +1342,7 @@ export default function Admin() {
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2 min-w-0 space-y-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Photo de la catégorie</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Photo de la carte</p>
                   <ImageFilePicker images={categoryForm.image ? [categoryForm.image] : []} onChange={(images) => setCategoryForm({ ...categoryForm, image: images[0] ?? null })} disabled={busy} />
                 </div>
                 <Field label="Page à ouvrir au clic" hint="Choisissez où le visiteur sera dirigé.">
@@ -1364,7 +1364,7 @@ export default function Admin() {
               </div>
               <div className="flex flex-wrap gap-3">
                 {editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}
-                <button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button>
+                <button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer la carte" : "Créer la carte"}</button>
               </div>
             </form>
           </section>

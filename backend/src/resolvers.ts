@@ -1137,6 +1137,8 @@ export const resolvers: Record<string, any> = {
     },
   },
   FeaturedBanner: siteContentResolvers.FeaturedBanner,
+  HomepageHeroCopy: siteContentResolvers.HomepageHeroCopy,
+  HomepageEditorialBanner: siteContentResolvers.HomepageEditorialBanner,
   HomepagePromotion: siteContentResolvers.HomepagePromotion,
   Dealer: siteContentResolvers.Dealer,
   CatalogProduct: {

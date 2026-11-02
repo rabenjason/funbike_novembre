@@ -106,6 +106,41 @@ function normalizeFeaturedBanner(input: Args, current?: DbRow) {
   };
 }
 
+function normalizeHomepageHeroCopy(input: Args) {
+  const usages = stringList(input.usages, "Hero usages", 30, 160);
+  if (usages.length === 0) return badInput("Add at least one usage to the animated hero slogan.");
+  return {
+    localisation: requiredText(input.localisation, "Hero location line", 255),
+    titleLine1: requiredText(input.titleLine1, "Hero title line 1", 255),
+    titleLine2: requiredText(input.titleLine2, "Hero title line 2", 255),
+    description: requiredText(input.description, "Hero description", 10000),
+    sloganPrefix: requiredText(input.sloganPrefix, "Hero slogan prefix", 255),
+    usages,
+    catalogButton: requiredText(input.catalogButton, "Hero catalogue button", 160),
+    featuredLabel: requiredText(input.featuredLabel, "Hero featured label", 160),
+    year: requiredText(input.year, "Hero year label", 40),
+    chooseModelLabel: requiredText(input.chooseModelLabel, "Hero carousel label", 255),
+    displayModelLabel: requiredText(input.displayModelLabel, "Hero slide button label", 160),
+  };
+}
+
+function normalizeHomepageEditorialBanner(input: Args, current?: DbRow) {
+  return {
+    id: requiredKey(input.id, "Editorial banner ID", 160),
+    eyebrow: requiredText(input.eyebrow, "Editorial banner eyebrow", 255),
+    titleLine1: requiredText(input.titleLine1, "Editorial banner title line 1", 255),
+    titleLine2: requiredText(input.titleLine2, "Editorial banner title line 2", 255),
+    description: requiredText(input.description, "Editorial banner description", 10000),
+    image: requiredImage(input.image, "Editorial banner image"),
+    alt: requiredText(input.alt, "Editorial banner image description", 255),
+    buttonText: requiredText(input.buttonText, "Editorial banner button", 160),
+    targetPage: requiredText(input.targetPage, "Editorial banner destination page", 120),
+    targetId: requiredText(input.targetId, "Editorial banner destination ID", 160),
+    isActive: typeof input.isActive === "boolean" ? input.isActive : boolValue(current?.isActive, true),
+    sortOrder: displayOrder(input.sortOrder, Number(current?.sortOrder ?? 0)),
+  };
+}
+
 function normalizePromotion(input: Args, current?: DbRow) {
   const startsAt = dateInput(input.startsAt, "Promotion start date", current?.startsAt);
   const endsAt = dateInput(input.endsAt, "Promotion end date", current?.endsAt);
@@ -166,6 +201,31 @@ async function getFeaturedBanner(idValue: unknown): Promise<DbRow | null> {
             target_page AS targetPage, target_id AS targetId,
             is_active AS isActive, sort_order AS sortOrder
      FROM featured_banners WHERE id = ? LIMIT 1`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+async function getHomepageHeroCopy(): Promise<DbRow | null> {
+  const rows = await queryRows<DbRow>(
+    `SELECT hero_key AS id, localisation, title_line1 AS titleLine1, title_line2 AS titleLine2,
+            description, slogan_prefix AS sloganPrefix, catalog_button AS catalogButton,
+            featured_label AS featuredLabel, year_label AS year, choose_model_label AS chooseModelLabel,
+            display_model_label AS displayModelLabel
+     FROM homepage_hero_copy WHERE hero_key = 'main' LIMIT 1`,
+  );
+  return rows[0] ?? null;
+}
+
+async function getHomepageEditorialBanner(idValue: unknown): Promise<DbRow | null> {
+  const id = typeof idValue === "string" ? idValue : "";
+  if (!id) return null;
+  const rows = await queryRows<DbRow>(
+    `SELECT id, eyebrow, title_line1 AS titleLine1, title_line2 AS titleLine2,
+            description, image_url AS image, alt_text AS alt, button_text AS buttonText,
+            target_page AS targetPage, target_id AS targetId,
+            is_active AS isActive, sort_order AS sortOrder
+     FROM homepage_editorial_banners WHERE id = ? LIMIT 1`,
     [id],
   );
   return rows[0] ?? null;
@@ -243,6 +303,35 @@ export const siteContentResolvers: Record<string, Record<string, (...args: any[]
          FROM featured_banners ORDER BY sort_order ASC, id ASC`,
       );
     },
+    homepageHeroCopy: () => getHomepageHeroCopy(),
+    adminHomepageHeroCopy: (_parent: unknown, _args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      return getHomepageHeroCopy();
+    },
+    homepageEditorialBanners: () => queryRows<DbRow>(
+      `SELECT id, eyebrow, title_line1 AS titleLine1, title_line2 AS titleLine2,
+              description, image_url AS image, alt_text AS alt, button_text AS buttonText,
+              target_page AS targetPage, target_id AS targetId,
+              is_active AS isActive, sort_order AS sortOrder
+       FROM homepage_editorial_banners WHERE is_active = TRUE
+       ORDER BY sort_order ASC, id ASC`,
+    ),
+    homepageEditorialBannersConfigured: async () => {
+      const rows = await queryRows<DbRow>(
+        "SELECT EXISTS (SELECT 1 FROM homepage_editorial_banners) AS configured",
+      );
+      return booleanField(rows[0]?.configured);
+    },
+    adminHomepageEditorialBanners: (_parent: unknown, _args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      return queryRows<DbRow>(
+        `SELECT id, eyebrow, title_line1 AS titleLine1, title_line2 AS titleLine2,
+                description, image_url AS image, alt_text AS alt, button_text AS buttonText,
+                target_page AS targetPage, target_id AS targetId,
+                is_active AS isActive, sort_order AS sortOrder
+         FROM homepage_editorial_banners ORDER BY sort_order ASC, id ASC`,
+      );
+    },
     homepagePromotions: () => queryRows<DbRow>(
       `SELECT id, badge, eyebrow, title, description, image_url AS image, alt_text AS alt,
               price, target_page AS targetPage, target_id AS targetId,
@@ -311,6 +400,73 @@ export const siteContentResolvers: Record<string, Record<string, (...args: any[]
       const id = requiredKey(args.id, "Banner ID", 160);
       const [result] = await getPool().execute<ResultSetHeader>(
         "UPDATE featured_banners SET is_active = FALSE WHERE id = ?",
+        [id],
+      );
+      return result.affectedRows > 0;
+    },
+    saveHomepageHeroCopy: async (_parent: unknown, args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      const input = normalizeHomepageHeroCopy(args.input);
+      await withTransaction(async (connection) => {
+        await connection.execute(
+          `INSERT INTO homepage_hero_copy
+           (hero_key, localisation, title_line1, title_line2, description, slogan_prefix,
+            catalog_button, featured_label, year_label, choose_model_label, display_model_label)
+           VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE localisation = VALUES(localisation),
+             title_line1 = VALUES(title_line1), title_line2 = VALUES(title_line2),
+             description = VALUES(description), slogan_prefix = VALUES(slogan_prefix),
+             catalog_button = VALUES(catalog_button), featured_label = VALUES(featured_label),
+             year_label = VALUES(year_label), choose_model_label = VALUES(choose_model_label),
+             display_model_label = VALUES(display_model_label)`,
+          [input.localisation, input.titleLine1, input.titleLine2, input.description, input.sloganPrefix,
+            input.catalogButton, input.featuredLabel, input.year, input.chooseModelLabel, input.displayModelLabel],
+        );
+        await connection.execute("DELETE FROM homepage_hero_usages WHERE hero_key = 'main'");
+        for (const [index, usage] of input.usages.entries()) {
+          await connection.execute(
+            "INSERT INTO homepage_hero_usages (hero_key, sort_order, usage_text) VALUES ('main', ?, ?)",
+            [index, usage],
+          );
+        }
+      });
+      return (await getHomepageHeroCopy()) ?? notFound("Saved hero copy could not be loaded.");
+    },
+    createHomepageEditorialBanner: async (_parent: unknown, args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      const input = normalizeHomepageEditorialBanner(args.input);
+      await getPool().execute<ResultSetHeader>(
+        `INSERT INTO homepage_editorial_banners
+         (id, eyebrow, title_line1, title_line2, description, image_url, alt_text,
+          button_text, target_page, target_id, is_active, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [input.id, input.eyebrow, input.titleLine1, input.titleLine2, input.description,
+          input.image, input.alt, input.buttonText, input.targetPage, input.targetId,
+          input.isActive, input.sortOrder],
+      );
+      return (await getHomepageEditorialBanner(input.id)) ?? notFound("Created editorial banner could not be loaded.");
+    },
+    updateHomepageEditorialBanner: async (_parent: unknown, args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      const id = requiredKey(args.id, "Editorial banner ID", 160);
+      const current = await getHomepageEditorialBanner(id);
+      if (!current) return notFound("Editorial banner was not found.");
+      const input = normalizeHomepageEditorialBanner(args.input, current);
+      if (input.id !== id) return badInput("An editorial banner's stable ID cannot be changed.");
+      await getPool().execute(
+        `UPDATE homepage_editorial_banners SET eyebrow = ?, title_line1 = ?, title_line2 = ?,
+                description = ?, image_url = ?, alt_text = ?, button_text = ?, target_page = ?,
+                target_id = ?, is_active = ?, sort_order = ? WHERE id = ?`,
+        [input.eyebrow, input.titleLine1, input.titleLine2, input.description, input.image,
+          input.alt, input.buttonText, input.targetPage, input.targetId, input.isActive, input.sortOrder, id],
+      );
+      return (await getHomepageEditorialBanner(id)) ?? notFound("Updated editorial banner could not be loaded.");
+    },
+    deleteHomepageEditorialBanner: async (_parent: unknown, args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      const id = requiredKey(args.id, "Editorial banner ID", 160);
+      const [result] = await getPool().execute<ResultSetHeader>(
+        "UPDATE homepage_editorial_banners SET is_active = FALSE WHERE id = ?",
         [id],
       );
       return result.affectedRows > 0;
@@ -403,6 +559,16 @@ export const siteContentResolvers: Record<string, Record<string, (...args: any[]
       );
       return result.affectedRows > 0;
     },
+  },
+  HomepageHeroCopy: {
+    usages: (heroCopy: DbRow) => queryRows<DbRow>(
+      `SELECT usage_text AS usage FROM homepage_hero_usages
+       WHERE hero_key = ? ORDER BY sort_order ASC`,
+      [heroCopy.id],
+    ).then((rows) => rows.map((row) => row.usage)),
+  },
+  HomepageEditorialBanner: {
+    isActive: (banner: DbRow) => boolValue(banner.isActive, true),
   },
   HomepagePromotion: {
     highlights: (promotion: DbRow) => queryRows<DbRow>(

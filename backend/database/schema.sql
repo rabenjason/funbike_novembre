@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS categories (
   KEY ix_categories_active_order (is_active, sort_order)
 ) ENGINE=InnoDB;
 
--- Home-page content mirrors the frontend FeaturedBanner and HomepagePromotion records.
+-- Administrable home-page cards and visual content; no records are seeded.
 CREATE TABLE IF NOT EXISTS featured_banners (
   id VARCHAR(160) NOT NULL,
   short VARCHAR(160) NOT NULL,
@@ -79,6 +79,52 @@ CREATE TABLE IF NOT EXISTS featured_banners (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY ix_featured_banners_active_order (is_active, sort_order)
+) ENGINE=InnoDB;
+
+-- Optional copy overrides for the primary home-page hero. The row is created
+-- only when an administrator saves it; the frontend has a local text fallback.
+CREATE TABLE IF NOT EXISTS homepage_hero_copy (
+  hero_key VARCHAR(40) NOT NULL,
+  localisation VARCHAR(255) NOT NULL,
+  title_line1 VARCHAR(255) NOT NULL,
+  title_line2 VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  slogan_prefix VARCHAR(255) NOT NULL,
+  catalog_button VARCHAR(160) NOT NULL,
+  featured_label VARCHAR(160) NOT NULL,
+  year_label VARCHAR(40) NOT NULL,
+  choose_model_label VARCHAR(255) NOT NULL,
+  display_model_label VARCHAR(160) NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (hero_key)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS homepage_hero_usages (
+  hero_key VARCHAR(40) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  usage_text VARCHAR(160) NOT NULL,
+  PRIMARY KEY (hero_key, sort_order),
+  CONSTRAINT fk_homepage_hero_usages_copy FOREIGN KEY (hero_key) REFERENCES homepage_hero_copy(hero_key) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Additional editorial heroes; imported images are stored with the other site uploads.
+CREATE TABLE IF NOT EXISTS homepage_editorial_banners (
+  id VARCHAR(160) NOT NULL,
+  eyebrow VARCHAR(255) NOT NULL,
+  title_line1 VARCHAR(255) NOT NULL,
+  title_line2 VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  alt_text VARCHAR(255) NOT NULL,
+  button_text VARCHAR(160) NOT NULL,
+  target_page VARCHAR(120) NOT NULL,
+  target_id VARCHAR(160) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ix_homepage_editorial_banners_active_order (is_active, sort_order)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS homepage_promotions (
@@ -357,6 +403,7 @@ UPDATE accessory_categories SET sort_order = 0 WHERE sort_order < 0;
 UPDATE product_usages SET sort_order = 0 WHERE sort_order < 0;
 UPDATE characteristic_definitions SET sort_order = 0 WHERE sort_order < 0;
 UPDATE featured_banners SET sort_order = 0 WHERE sort_order < 0;
+UPDATE homepage_editorial_banners SET sort_order = 0 WHERE sort_order < 0;
 UPDATE homepage_promotions SET sort_order = 0 WHERE sort_order < 0;
 UPDATE homepage_promotion_highlights SET sort_order = 0 WHERE sort_order < 0;
 UPDATE dealers SET sort_order = 0 WHERE sort_order < 0;
