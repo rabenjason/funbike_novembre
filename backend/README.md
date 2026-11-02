@@ -72,7 +72,7 @@ query {
 }
 ```
 
-Lire les produits publiés est public. Les brouillons ne sont visibles que dans les requêtes d’administration authentifiées. Toutes les mutations, à l’exception de `login`, exigent un jeton administrateur `Authorization: Bearer <accessToken>`. Les jetons sont signés avec `JWT_SECRET`, expirent après `JWT_EXPIRES_IN` (huit heures par défaut), et sont invalidés lorsque le mot de passe change. Le frontend conserve le jeton dans le stockage de session de l’onglet courant. Après huit échecs de connexion pour la même adresse, les tentatives sont temporairement bloquées pendant quinze minutes; cette limite mémoire est réinitialisée au redémarrage, et une limitation complémentaire au niveau du reverse proxy est recommandée en production.
+Lire les produits publiés est public. Les brouillons ne sont visibles que dans les requêtes d’administration authentifiées. Toutes les mutations, à l’exception de `login`, exigent un jeton administrateur `Authorization: Bearer <accessToken>`. Les jetons sont signés avec `JWT_SECRET`, expirent après `JWT_EXPIRES_IN` (huit heures par défaut), et sont invalidés lorsque l’e-mail ou le mot de passe change. Le frontend conserve le jeton dans le stockage de session de l’onglet courant. Le compte se consulte avec `me`; seul son propriétaire peut modifier ses propres identifiants, et chaque changement exige le mot de passe actuel. `changeMyEmail(currentPassword, newEmail)` normalise et vérifie l’unicité de l’adresse; `changeMyPassword(currentPassword, newPassword)` vérifie la longueur et remplace le hash bcrypt. Après l’une ou l’autre opération, l’interface déconnecte le compte pour une nouvelle connexion avec les identifiants mis à jour. Après huit échecs de connexion pour la même adresse, les tentatives sont temporairement bloquées pendant quinze minutes; cette limite mémoire est réinitialisée au redémarrage, et une limitation complémentaire au niveau du reverse proxy est recommandée en production.
 
 Exemple de connexion :
 
@@ -85,6 +85,22 @@ mutation {
   }
 }
 ```
+
+Une fois connecté, le profil courant est disponible avec `query { me { id email role isActive } }`. Pour modifier les identifiants, envoyez le jeton dans l’en-tête `Authorization: Bearer <accessToken>` et passez toujours le mot de passe actuel :
+
+```graphql
+mutation ChangeEmail($currentPassword: String!, $newEmail: String!) {
+  changeMyEmail(currentPassword: $currentPassword, newEmail: $newEmail)
+}
+```
+
+```graphql
+mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
+  changeMyPassword(currentPassword: $currentPassword, newPassword: $newPassword)
+}
+```
+
+Ces mutations portent uniquement sur le compte connecté (aucun `userId` n’est accepté), pour empêcher la modification d’un autre compte. Après le changement, les jetons précédents sont révoqués et il faut se reconnecter. Il n’y a pas de création publique d’utilisateurs : le backend utilise le compte administrateur initialisé par la commande locale.
 
 En production, définissez `NODE_ENV=production`, utilisez HTTPS, gardez `JWT_SECRET` privé et configurez un reverse proxy approprié. Ne publiez pas phpMyAdmin sur Internet sans protection réseau et authentification renforcée.
 

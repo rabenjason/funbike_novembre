@@ -1,6 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { GraphQLError } from "graphql";
-import { changePassword, login, requireAdmin, type GraphQLContext } from "./auth.js";
+import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext } from "./auth.js";
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
@@ -778,6 +778,8 @@ export const resolvers: Record<string, any> = {
   },
   Mutation: {
     login: (_parent: unknown, args: Args) => login(args.email, args.password),
+    changeMyEmail: (_parent: unknown, args: Args, context: GraphQLContext) =>
+      changeEmail(context, args.currentPassword, args.newEmail),
     changeMyPassword: (_parent: unknown, args: Args, context: GraphQLContext) =>
       changePassword(context, args.currentPassword, args.newPassword),
 

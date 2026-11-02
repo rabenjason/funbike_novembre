@@ -168,6 +168,83 @@ export async function login(emailValue: unknown, passwordValue: unknown) {
   };
 }
 
+async function verifyCurrentPassword(userId: string, currentPassword: string): Promise<UserRow> {
+  if (Buffer.byteLength(currentPassword, "utf8") > 72) {
+    throw new GraphQLError("Current password is incorrect.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+  const rows = await queryRows<UserRow>(
+    `SELECT CAST(id AS CHAR) AS id, email, password_hash AS passwordHash,
+            role, is_active AS isActive, token_version AS tokenVersion
+     FROM users WHERE id = ? AND is_active = TRUE LIMIT 1`,
+    [userId],
+  );
+  const account = rows[0];
+  if (!account?.passwordHash || !(await bcrypt.compare(currentPassword, account.passwordHash))) {
+    throw new GraphQLError("Current password is incorrect.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+  return account;
+}
+
+function isDuplicateKey(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ER_DUP_ENTRY";
+}
+
+export async function changeEmail(
+  context: GraphQLContext,
+  currentPasswordValue: unknown,
+  newEmailValue: unknown,
+): Promise<boolean> {
+  const user = requireAdmin(context);
+  if (typeof currentPasswordValue !== "string" || typeof newEmailValue !== "string") {
+    throw new GraphQLError("Current password and new email are required.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  let newEmail: string;
+  try {
+    newEmail = normalizeAdminEmail(newEmailValue);
+  } catch {
+    throw new GraphQLError("Enter a valid email address.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const account = await verifyCurrentPassword(user.id, currentPasswordValue);
+  if (newEmail === account.email.toLowerCase()) {
+    throw new GraphQLError("The new email must be different from the current email.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  try {
+    await withTransaction(async (connection) => {
+      const [result] = await connection.execute(
+        `UPDATE users SET email = ?, token_version = token_version + 1
+         WHERE id = ? AND token_version = ? AND is_active = TRUE`,
+        [newEmail, user.id, account.tokenVersion],
+      );
+      if ((result as { affectedRows: number }).affectedRows !== 1) {
+        throw new GraphQLError("Your session has expired. Sign in again.", {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
+      }
+    });
+  } catch (error) {
+    if (isDuplicateKey(error)) {
+      throw new GraphQLError("An account with this email already exists.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    throw error;
+  }
+  return true;
+}
+
 export async function changePassword(
   context: GraphQLContext,
   currentPassword: unknown,
@@ -186,22 +263,7 @@ export async function changePassword(
     });
   }
 
-  const rows = await queryRows<UserRow>(
-    `SELECT password_hash AS passwordHash, token_version AS tokenVersion
-     FROM users WHERE id = ? AND is_active = TRUE LIMIT 1`,
-    [user.id],
-  );
-  const account = rows[0];
-  if (
-    Buffer.byteLength(currentPassword, "utf8") > 72 ||
-    !account?.passwordHash ||
-    !(await bcrypt.compare(currentPassword, account.passwordHash))
-  ) {
-    throw new GraphQLError("Current password is incorrect.", {
-      extensions: { code: "UNAUTHENTICATED" },
-    });
-  }
-
+  const account = await verifyCurrentPassword(user.id, currentPassword);
   const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
   await withTransaction(async (connection) => {
     const [result] = await connection.execute(
