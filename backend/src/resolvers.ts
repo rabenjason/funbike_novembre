@@ -853,6 +853,27 @@ function productNotFound(id: unknown): never {
   return notFound(`Product ${String(id)} was not found.`);
 }
 
+function logAdminProductPageError(error: unknown, args: Args, context: GraphQLContext): void {
+  const errorRecord = typeof error === "object" && error !== null
+    ? error as Record<string, unknown>
+    : {};
+  const normalizedError = error instanceof Error ? error : new Error(String(error));
+  console.error("[adminProductPage] catalogue query failed", {
+    requestId: context.requestId ?? "unavailable",
+    kind: args.kind ?? "ALL",
+    status: args.status ?? "ALL",
+    hasSearch: typeof args.search === "string" && args.search.trim().length > 0,
+    error: {
+      name: normalizedError.name,
+      message: normalizedError.message,
+      code: typeof errorRecord.code === "string" ? errorRecord.code : undefined,
+      errno: typeof errorRecord.errno === "number" ? errorRecord.errno : undefined,
+      sqlState: typeof errorRecord.sqlState === "string" ? errorRecord.sqlState : undefined,
+      stack: normalizedError.stack,
+    },
+  });
+}
+
 export const resolvers: Record<string, any> = {
   Query: {
     ...siteContentResolvers.Query,
@@ -921,9 +942,15 @@ export const resolvers: Record<string, any> = {
       requireAdmin(context);
       return getProducts(args.kind, args, true);
     },
-    adminProductPage: (_: unknown, args: Args, context: GraphQLContext) => {
+    adminProductPage: async (_: unknown, args: Args, context: GraphQLContext) => {
       requireAdmin(context);
-      return getProductPage(args.kind, args, true);
+      try {
+        return await getProductPage(args.kind, args, true);
+      } catch (error) {
+        // Do not include search text, credentials, or SQL parameters in logs.
+        logAdminProductPageError(error, args, context);
+        throw error;
+      }
     },
   },
   Mutation: {

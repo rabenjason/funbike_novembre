@@ -15,6 +15,7 @@ export type AuthUser = {
 
 export type GraphQLContext = {
   user: AuthUser | null;
+  requestId?: string;
 };
 
 type UserRow = RowDataPacket & AuthUser & { passwordHash?: string };
