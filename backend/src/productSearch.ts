@@ -43,3 +43,15 @@ export function filterProductsBySearch<T extends Record<string, unknown>>(
     return terms.every((term) => searchableText.includes(term));
   });
 }
+
+export function searchAndPaginateProducts<T extends Record<string, unknown>>(
+  rows: readonly T[],
+  searchValue: unknown,
+  pagination: { limit: number; offset: number },
+): { items: T[]; totalCount: number } {
+  const matchingRows = filterProductsBySearch(rows, searchValue);
+  return {
+    items: matchingRows.slice(pagination.offset, pagination.offset + pagination.limit),
+    totalCount: matchingRows.length,
+  };
+}

@@ -4,7 +4,7 @@ import { changeEmail, changePassword, login, requireAdmin, type GraphQLContext }
 import { queryRows, databaseHealth, getPool, withTransaction } from "./db.js";
 import { siteContentResolvers } from "./siteContentResolvers.js";
 import { placeIdAtPosition } from "./listOrdering.js";
-import { filterProductsBySearch, normalizeProductSearchTerms } from "./productSearch.js";
+import { filterProductsBySearch, normalizeProductSearchTerms, searchAndPaginateProducts } from "./productSearch.js";
 
 type DbRow = RowDataPacket & Record<string, any>;
 type Args = Record<string, any>;
@@ -234,7 +234,7 @@ async function getProducts(
   const { limit, offset } = pageArgs(args);
   if (normalizeProductSearchTerms(args.search).length > 0) {
     const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
-    return filterProductsBySearch(rows, args.search).slice(offset, offset + limit);
+    return searchAndPaginateProducts(rows, args.search, { limit, offset }).items;
   }
   return queryProducts(kind, args, includeDrafts, { limit, offset });
 }
@@ -267,12 +267,8 @@ async function getProductPage(
 ): Promise<{ items: DbRow[]; totalCount: number }> {
   if (normalizeProductSearchTerms(args.search).length > 0) {
     const rows = await queryProducts(kind, args, includeDrafts, undefined, true);
-    const matchingRows = filterProductsBySearch(rows, args.search);
     const { limit, offset } = pageArgs(args);
-    return {
-      items: matchingRows.slice(offset, offset + limit),
-      totalCount: matchingRows.length,
-    };
+    return searchAndPaginateProducts(rows, args.search, { limit, offset });
   }
 
   const [items, totalCount] = await Promise.all([
