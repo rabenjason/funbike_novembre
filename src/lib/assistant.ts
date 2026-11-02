@@ -1,7 +1,7 @@
 import { BIKES } from "../data/motorcycles";
 import { TLD } from "../data/equipment/tld";
 import { TVS_PARTS } from "../data/spare-parts/tvs";
-import type { Bike } from "../types";
+import type { Bike, Part } from "../types";
 import { assistantCopy, content } from "../constants";
 import { runRecommender, isSpecificModelRequest, detectBrandText, type NeedProfile } from "./recommender";
 
@@ -71,7 +71,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLower
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 
-const byId = (id: string) => BIKES.find((b) => b.id === id);
+const byId = (id: string, bikes: Bike[] = BIKES) => bikes.find((bike) => bike.id === id);
 
 /* ------------------------------------------------------------------ */
 /*  Shop facts (single source of truth for the assistant)              */
@@ -131,25 +131,20 @@ const FAMILY_WORDS: Record<Bike["family"], string[]> = {
   "3 roues": ["tuktuk", "tuk", "3 roues", "trois roues", "taxi", "bajaj", "tricycle"],
 };
 
-const BRAND_WORDS: Record<string, string[]> = {
-  Sherco: ["sherco", "sef"],
-  Fantic: ["fantic", "xx"],
-  TVS: ["tvs", "apache", "raider", "hlx", "king"],
-  Funbike: ["edition speciale", "serie limitee"],
-};
-
-const INDEX = BIKES.map((bike) => ({
-  bike,
-  name: norm(bike.name),
-  hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.desc} ${bike.specs.map((s) => s.value).join(" ")}`),
-}));
+function indexBikes(bikes: Bike[]) {
+  return bikes.map((bike) => ({
+    bike,
+    name: norm(bike.name),
+    hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.desc} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`),
+  }));
+}
 
 function detectFamily(t: string): Bike["family"] | undefined {
   return (Object.keys(FAMILY_WORDS) as Bike["family"][]).find((f) => hasAny(t, FAMILY_WORDS[f]));
 }
 
-function detectBrand(t: string): string | undefined {
-  return Object.keys(BRAND_WORDS).find((b) => hasAny(t, BRAND_WORDS[b]));
+function detectBrand(t: string, bikes: Bike[] = BIKES): string | undefined {
+  return detectBrandText(t, bikes);
 }
 
 const STOP = new Set(["moto", "motos", "pour", "avec", "vous", "avez", "est", "quel", "quelle", "quels", "une", "des", "les", "la", "le", "de", "du", "et", "je", "veux", "voudrais", "cherche", "recherche", "bonjour", "salut", "svp", "merci", "plus", "tres", "bien", "cette", "celle"]);
@@ -157,16 +152,16 @@ const STOP = new Set(["moto", "motos", "pour", "avec", "vous", "avez", "est", "q
 /** Scores every bike against the question, best match first. */
 const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
 
-export function searchBikes(t: string): Bike[] {
+export function searchBikes(t: string, bikes: Bike[] = BIKES): Bike[] {
   const family = detectFamily(t);
-  const brand = detectBrand(t);
+  const brand = detectBrand(t, bikes);
   // "250", "125cc", "300 cm3"…
   const numbers = Array.from(t.matchAll(/(?:^|\s)(\d{2,3})(?:cc|cm3)?(?=\s|$)/g))
     .map((m) => m[1])
     .filter((n) => Number(n) >= 50 && Number(n) <= 500);
   const tokens = wordsOf(t).filter((w) => w.length >= 4 && !STOP.has(w));
 
-  const scored = INDEX.map(({ bike, name, hay }) => {
+  const scored = indexBikes(bikes).map(({ bike, name, hay }) => {
     let score = 0;
     if (brand && bike.brand === brand) score += 5;
     MODEL_WORDS.forEach((kw) => {
@@ -191,7 +186,7 @@ export function searchBikes(t: string): Bike[] {
 }
 
 /** "la première", "la 2e", "celle-ci" … resolved against the last answer. */
-function resolveReference(t: string, mem: Memory): Bike | undefined {
+function resolveReference(t: string, mem: Memory, bikes: Bike[] = BIKES): Bike | undefined {
   if (!mem.lastIds.length) return undefined;
   const ordinals: [RegExp, number][] = [
     [/\b(premiere|1ere|1re|premier|1er)\b/, 0],
@@ -199,9 +194,9 @@ function resolveReference(t: string, mem: Memory): Bike | undefined {
     [/\b(troisieme|3eme|3e)\b/, 2],
     [/\b(quatrieme|4eme|4e)\b/, 3],
   ];
-  for (const [re, idx] of ordinals) if (re.test(t) && mem.lastIds[idx]) return byId(mem.lastIds[idx]);
-  if (/\b(derniere|dernier)\b/.test(t)) return byId(mem.lastIds[mem.lastIds.length - 1]);
-  if (/\b(celle ci|celle la|cette moto|ce modele|elle|la meme|celui ci|celui la)\b/.test(t)) return byId(mem.lastIds[0]);
+  for (const [re, idx] of ordinals) if (re.test(t) && mem.lastIds[idx]) return byId(mem.lastIds[idx], bikes);
+  if (/\b(derniere|dernier)\b/.test(t)) return byId(mem.lastIds[mem.lastIds.length - 1], bikes);
+  if (/\b(celle ci|celle la|cette moto|ce modele|elle|la meme|celui ci|celui la)\b/.test(t)) return byId(mem.lastIds[0], bikes);
   return undefined;
 }
 
@@ -282,7 +277,7 @@ function withBikes(reply: BotReply, bikes: Bike[], mem: Memory, max = 4): BotRep
   return { ...reply, productIds: list.map((b) => b.id) };
 }
 
-export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: Memory } {
+export function respond(raw: string, memIn: Memory, bikes: Bike[] = BIKES, parts?: Part[]): { reply: BotReply; memory: Memory } {
   const mem: Memory = { ...memIn, lastIds: [...memIn.lastIds] };
   const t = norm(raw);
   const ws = wordsOf(t);
@@ -291,6 +286,12 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   const done = (reply: BotReply) => {
     mem.misses = 0;
     return { reply, memory: mem };
+  };
+  const equipmentBrandId = (name: string, fallback: string) =>
+    parts?.find((part) => part.kind !== "piece" && part.brandName?.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"))?.kind ?? fallback;
+  const spareBrandId = (name: string, fallback: string) => {
+    const part = parts?.find((item) => item.kind === "piece" && item.compatibleBrands?.some((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")));
+    return part?.compatibleBrandSlugs?.[part.compatibleBrands?.findIndex((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")) ?? -1] ?? fallback;
   };
 
   if (!t) return done({ text: assistantCopy.emptyInput, quick: [...DEFAULT_QUICK] });
@@ -377,8 +378,8 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   {
     const isPartsOrGear = hasAny(t, I.parts) || hasAny(t, I.gear);
     const isPriceIntent = hasAny(t, I.price);
-    const isSpecificModel = isSpecificModelRequest(t);
-    const brandMention = detectBrandText(t);
+    const isSpecificModel = isSpecificModelRequest(t, bikes);
+    const brandMention = detectBrandText(t, bikes);
     const inSession = Boolean(mem.need) && !mem.needComplete;
     const genericSeek =
       (hasAny(t, I.recommend) ||
@@ -396,16 +397,16 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
         mem.need = undefined;
         mem.needComplete = false;
       }
-      const { reply } = runRecommender(t, mem);
+      const { reply } = runRecommender(t, mem, bikes);
       return { reply, memory: mem };
     }
   }
 
-  const found = searchBikes(t);
-  const ref = resolveReference(t, mem);
+  const found = searchBikes(t, bikes);
+  const ref = resolveReference(t, mem, bikes);
   // Short follow-ups ("Prix", "Voir la fiche", "son poids ?") refer to the bike just discussed
   const followUp =
-    mem.lastIds.length > 0 && hasAny(t, [...I.price, ...I.specs, ...I.open, ...I.test]) ? byId(mem.lastIds[0]) : undefined;
+    mem.lastIds.length > 0 && hasAny(t, [...I.price, ...I.specs, ...I.open, ...I.test]) ? byId(mem.lastIds[0], bikes) : undefined;
   const target = found[0] ?? ref ?? followUp;
 
   /* --- Price (never invented) --------------------------------------- */
@@ -413,7 +414,7 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     if (hasAny(t, I.gear) && hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
         text: assistantCopy.price.gearTvs,
-        actions: [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: "tvs", icon: "gear" }],
+        actions: [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" }],
       });
     }
     const text = target ? assistantCopy.price.forBike(target.name) : assistantCopy.price.general;
@@ -456,7 +457,7 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
   if (hasAny(t, I.compare)) {
     const pool = [...found];
     mem.lastIds.forEach((id) => {
-      const b = byId(id);
+      const b = byId(id, bikes);
       if (b && !pool.includes(b)) pool.push(b);
     });
     if (pool.length >= 2) {
@@ -497,8 +498,8 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     return done({
       text: assistantCopy.sizing,
       actions: [
-        { label: assistantCopy.gear.seeTroyLee, page: "equipements", id: "tld", icon: "gear" },
-        { label: assistantCopy.gear.seeGaerneBoots, page: "equipements", id: "gaerne", icon: "gear" },
+        { label: assistantCopy.gear.seeTroyLee, page: "equipements", id: equipmentBrandId("TLD", "tld"), icon: "gear" },
+        { label: assistantCopy.gear.seeGaerneBoots, page: "equipements", id: equipmentBrandId("Gaerne", "gaerne"), icon: "gear" },
       ],
     });
   }
@@ -508,17 +509,17 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
     if (hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
         text: assistantCopy.gear.tvs,
-        actions: [{ label: assistantCopy.gear.seeTvsGear, page: "equipements", id: "tvs", icon: "gear" }],
+        actions: [{ label: assistantCopy.gear.seeTvsGear, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" }],
         quick: [...assistantCopy.quick.gear],
       });
     }
     const boots = hasAny(t, ["botte", "gaerne", "chaussure"]);
     const mt = hasAny(t, ["mt helmet", "mt$"]);
     return done({
-      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(TLD.length),
+      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(parts?.filter((part) => part.kind !== "piece").length ?? TLD.length),
       actions: [
-        { label: boots ? assistantCopy.gear.seeGaerne : mt ? assistantCopy.gear.seeMt : assistantCopy.gear.seeTroyLee, page: "equipements", id: boots ? "gaerne" : mt ? "mt" : "tld", icon: "gear" },
-        ...(boots ? [] : [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: "tvs", icon: "gear" as const }]),
+        { label: boots ? assistantCopy.gear.seeGaerne : mt ? assistantCopy.gear.seeMt : assistantCopy.gear.seeTroyLee, page: "equipements", id: boots ? equipmentBrandId("Gaerne", "gaerne") : mt ? equipmentBrandId("MT", "mt") : equipmentBrandId("TLD", "tld"), icon: "gear" },
+        ...(boots ? [] : [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" as const }]),
       ],
       quick: [...assistantCopy.quick.gearSizing],
     });
@@ -526,11 +527,11 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
 
   /* --- Parts --------------------------------------------------------- */
   if (hasAny(t, I.parts)) {
-    const requestedBrand = detectBrandText(t);
+    const requestedBrand = detectBrandText(t, bikes);
     if (requestedBrand === "TVS") {
       return done({
-        text: assistantCopy.parts.tvs(TVS_PARTS.length),
-        actions: [{ label: assistantCopy.parts.seeTvs, page: "spares", id: "spare-tvs", icon: "parts" }],
+        text: assistantCopy.parts.tvs(parts?.filter((part) => part.kind === "piece" && (part.brandName?.toLocaleLowerCase("fr") === "tvs" || part.universalCompatibility || part.compatibleBrandSlugs?.includes("tvs") || part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === "tvs"))).length ?? TVS_PARTS.length),
+        actions: [{ label: assistantCopy.parts.seeTvs, page: "spares", id: spareBrandId("TVS", "spare-tvs"), icon: "parts" }],
         quick: [...assistantCopy.quick.partsTvs],
       });
     }
@@ -543,7 +544,7 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
 
   /* --- Catalogue search --------------------------------------------- */
   if (found.length) {
-    const brand = detectBrand(t);
+    const brand = detectBrand(t, bikes);
     const family = detectFamily(t);
     const label = brand ? assistantCopy.search.brand(brand) : family ? assistantCopy.search.family(family) : assistantCopy.search.found;
     return done(
@@ -561,9 +562,9 @@ export function respond(raw: string, memIn: Memory): { reply: BotReply; memory: 
 
   /* --- Catalogue overview ------------------------------------------ */
   if (hasAny(t, I.catalog)) {
-    const count = (f: Bike["family"]) => BIKES.filter((b) => b.family === f).length;
+    const count = (family: Bike["family"]) => bikes.filter((bike) => bike.family === family).length;
     return done({
-      text: assistantCopy.catalog.overview(BIKES.length, count("Off-road"), count("Urbain"), count("3 roues")),
+      text: assistantCopy.catalog.overview(bikes.length, count("Off-road"), count("Urbain"), count("3 roues")),
       quick: [...assistantCopy.quick.catalog],
       actions: [{ label: assistantCopy.catalog.seeCatalog, page: "motos", icon: "catalog" }],
     });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faClock, faEnvelope, faLocationDot, faPhone } from "@fortawesome/free-solid-svg-icons";
@@ -6,6 +6,8 @@ import { PageHeader } from "../components/Layout";
 import { PARTS, TVS_PARTS, SHERCO_PARTS, FANTIC_PARTS } from "../data/spare-parts";
 import { TVS_ACCESSORIES } from "../data/equipment/tvs";
 import { content } from "../constants";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { liveParts } from "../lib/catalogAdapters";
 
 const CONTACT_EMAIL = content.site.email;
 const CONTACT_ICONS = [faLocationDot, faClock, faPhone, faEnvelope];
@@ -16,11 +18,21 @@ const CONTACT_INFO = content.contact.infos.map((item, index) => ({
 }));
 
 export default function Contact({ inquiryId }: { inquiryId?: string }) {
-  const [sent, setSent] = useState(false);
-  const accessory = [...TVS_ACCESSORIES, ...PARTS, ...TVS_PARTS, ...SHERCO_PARTS, ...FANTIC_PARTS].find(
-    (item) => item.id === inquiryId,
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+  const parts = useMemo(
+    () => usingApi
+      ? liveParts(catalog.products)
+      : status === "error" ? [...TVS_ACCESSORIES, ...PARTS, ...TVS_PARTS, ...SHERCO_PARTS, ...FANTIC_PARTS] : [],
+    [usingApi, status, catalog],
   );
-  const inquirySubject = accessory?.kind === "tvs" ? "tvs-accessoires" : accessory ? "pieces" : "";
+  const [sent, setSent] = useState(false);
+  const accessory = parts.find((item) => item.id === inquiryId);
+  const inquirySubject = accessory?.kind === "piece"
+    ? "pieces"
+    : accessory?.brandName?.toLocaleLowerCase("fr") === "tvs"
+      ? "tvs-accessoires"
+      : accessory ? "autres" : "";
 
   return (
     <div className="bg-white dark:bg-[#141513]">
@@ -146,7 +158,7 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
               name="message"
               rows={4}
               defaultValue={accessory
-                ? `${content.contact.demandePiecePrefix}${accessory.name}${content.contact.demandePieceSuffix}`
+                ? `${content.contact.demandePiecePrefix}${accessory.name}${accessory.reference ? ` (${accessory.reference})` : ""}${content.contact.demandePieceSuffix}`
                 : ""}
               className="mt-1.5 w-full resize-y border-b border-black/20 bg-transparent py-2 text-sm text-[#171816] outline-none transition focus:border-[#98741b] dark:border-white/20 dark:text-[#f2f0ea] dark:focus:border-[#ffd100]"
             />

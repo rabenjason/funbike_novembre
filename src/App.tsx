@@ -15,7 +15,8 @@ import { BIKES } from "./data/motorcycles";
 import { FEATURED_BANNERS } from "./data/banners";
 import { findPart } from "./data/index";
 import { content } from "./constants";
-import { getApiHealth } from "./lib/graphqlClient";
+import { getApiHealth, type PublicProduct } from "./lib/graphqlClient";
+import { usePublicCatalog } from "./contexts/PublicCatalogContext";
 
 const FIRST_HERO = FEATURED_BANNERS[0].image;
 
@@ -23,7 +24,7 @@ function sameRoute(a: Route, b: Route) {
   return a.page === b.page && (a.id ?? "") === (b.id ?? "");
 }
 
-function routeLabel(route: Route): string {
+function routeLabel(route: Route, publicProducts?: PublicProduct[]): string {
   switch (route.page) {
     case "home":
       return content.navigation.accueil;
@@ -36,10 +37,16 @@ function routeLabel(route: Route): string {
     case "spares":
       return content.navigation.piecesDetachees;
     case "product": {
-      const bike = BIKES.find((b) => b.id === route.id);
+      if (publicProducts !== undefined) {
+        return publicProducts.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
+      }
+      const bike = BIKES.find((item) => item.id === route.id);
       return bike ? bike.name : content.motos.fiche.titreDefaut;
     }
     case "accessory": {
+      if (publicProducts !== undefined) {
+        return publicProducts.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
+      }
       const part = findPart(route.id);
       return part ? part.name : content.accessoires.fiche.titreDefaut;
     }
@@ -53,6 +60,7 @@ function routeLabel(route: Route): string {
 }
 
 export default function App() {
+  const { catalog } = usePublicCatalog();
   const [dark, setDark] = useState(
     () => localStorage.getItem("fb-theme-v2") !== "light",
   );
@@ -66,8 +74,8 @@ export default function App() {
   const canGoBack = history.length > 1;
   const previousRoute = canGoBack ? history[history.length - 2] : null;
   const backLabel = useMemo(
-    () => (previousRoute ? routeLabel(previousRoute) : content.navigation.accueil),
-    [previousRoute?.page, previousRoute?.id],
+    () => (previousRoute ? routeLabel(previousRoute, catalog?.products) : content.navigation.accueil),
+    [previousRoute?.page, previousRoute?.id, catalog],
   );
 
   useEffect(() => {

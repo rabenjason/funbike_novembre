@@ -21,6 +21,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LOGO } from "../data/brands";
 import { getFooterFeaturedMotoBrands, getFooterMotoBrands } from "../data/brands";
 import { content } from "../constants";
+import { usePublicCatalog } from "../contexts/PublicCatalogContext";
+import { toBrand } from "../lib/catalogAdapters";
 
 export type Route = { page: string; id?: string };
 
@@ -167,18 +169,31 @@ export function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => voi
 }
 
 export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void; onCookies: () => void }) {
+  const { catalog, status } = usePublicCatalog();
+  const usingApi = status === "ready" && catalog !== null;
+
   function scrollTop() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const footerMotoBrands = getFooterMotoBrands();
-  const footerFeaturedBrands = getFooterFeaturedMotoBrands();
+  const footerMotoBrands = usingApi
+    ? catalog.brands
+        .filter((brand) => brand.isActive && brand.sections?.some((section) => section.section === "motos" && section.footerOrder !== null && section.footerOrder !== undefined))
+        .sort((left, right) => (left.sections?.find((section) => section.section === "motos")?.footerOrder ?? 0) - (right.sections?.find((section) => section.section === "motos")?.footerOrder ?? 0))
+        .map(toBrand)
+    : getFooterMotoBrands();
+  const footerFeaturedBrands = usingApi
+    ? catalog.brands
+        .filter((brand) => brand.isActive && brand.sections?.some((section) => section.section === "motos" && section.footerFeaturedOrder !== null && section.footerFeaturedOrder !== undefined))
+        .sort((left, right) => (left.sections?.find((section) => section.section === "motos")?.footerFeaturedOrder ?? 0) - (right.sections?.find((section) => section.section === "motos")?.footerFeaturedOrder ?? 0))
+        .map(toBrand)
+    : getFooterFeaturedMotoBrands();
   const shopIcons = [faHelmetSafety, faGears, faStore];
   const shop = [
     ...footerMotoBrands.map((brand) => ({
       label: `${content.footer.motosPrefix} ${brand.name}`,
       page: "motos",
-      id: brand.name,
+      id: brand.id,
       icon: faMotorcycle,
     })),
     ...content.footer.catalogueLiens.map((item, index) => ({

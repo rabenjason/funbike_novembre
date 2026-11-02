@@ -87,14 +87,20 @@ const BRAND_WORDS: Record<string, string[]> = {
   Funbike: ["edition speciale", "serie limitee"],
 };
 
-export function detectBrandText(t: string): string | undefined {
-  return Object.keys(BRAND_WORDS).find((b) => hasAny(t, BRAND_WORDS[b]));
+export function detectBrandText(t: string, bikes: Bike[] = BIKES): string | undefined {
+  const dynamicBrand = [...new Set(bikes.map((bike) => bike.brand).filter(Boolean))]
+    .sort((left, right) => right.length - left.length)
+    .find((brand) => {
+      const terms = brand.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/);
+      return terms.some((term) => term.length >= 3 && hasAny(t, [term]));
+    });
+  return dynamicBrand ?? Object.keys(BRAND_WORDS).find((brand) => hasAny(t, BRAND_WORDS[brand]));
 }
 
 const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
 
-export function isSpecificModelRequest(t: string): boolean {
-  const brand = detectBrandText(t);
+export function isSpecificModelRequest(t: string, bikes: Bike[] = BIKES): boolean {
+  const brand = detectBrandText(t, bikes);
   if (!brand) return false;
   const hasModel = MODEL_WORDS.some((kw) => hasAny(t, [kw]));
   return hasModel || hasNumber(t);
@@ -311,28 +317,65 @@ type Match = { bike: Bike; score: number; pitch: string };
 
 function scoreBike(bike: Bike, p: NeedProfile): number {
   const tags = TAGS[bike.id];
-  if (!tags) return 0;
+  if (tags) {
+    let score = 0;
+    if (p.usage && tags.usage.includes(p.usage)) score += 5;
+    if (p.terrain && tags.terrain.includes(p.terrain)) score += 4;
+    if (p.distance && tags.distance.includes(p.distance)) score += 3;
+    if (p.experience && tags.experience.includes(p.experience)) score += 3;
+    if (p.priority && tags.priority.includes(p.priority)) score += 2;
+    if (p.transport && tags.transport.includes(p.transport)) score += 2;
+    return score;
+  }
+
+  const text = `${bike.family} ${bike.name} ${bike.desc} ${bike.recommendation ?? ""} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`
+    .toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const matches = (words: string[]) => words.some((word) => text.includes(word));
+  const usageWords: Record<Usage, string[]> = {
+    ville: ["urbain", "ville", "scooter", "route", "citadin"],
+    travail: ["travail", "utilitaire", "transport", "urbain", "3 roues"],
+    voyage: ["voyage", "trail", "tourisme", "aventure", "autonomie"],
+    cross: ["cross", "motocross", "piste", "tout-terrain"],
+    enduro: ["enduro", "off-road", "offroad", "tout-terrain", "sef"],
+    "tout-terrain": ["off-road", "offroad", "cross", "enduro", "terrain", "trail"],
+    loisir: ["loisir", "trail", "sport", "tout-terrain", "polyvalent"],
+    sport: ["sport", "performance", "racing", "factory", "puissance"],
+    transport: ["transport", "utilitaire", "3 roues", "tuk", "marchandise"],
+    polyvalent: ["polyvalent", "mixte", "trail", "urbain", "off-road"],
+  };
+  const terrainWords: Record<Terrain, string[]> = {
+    route: ["route", "urbain", "ville", "roadster"],
+    piste: ["piste", "cross", "motocross", "circuit"],
+    "tout-terrain": ["tout-terrain", "off-road", "offroad", "enduro", "trail"],
+    mixte: ["mixte", "polyvalent", "trail", "route"],
+  };
+  const priorityWords: Record<Priority, string[]> = {
+    economie: ["econom", "consommation", "faible cout"],
+    confort: ["confort", "ergonomie", "suspension"],
+    puissance: ["puissance", "couple", "cylindree"],
+    performance: ["performance", "sport", "factory", "racing"],
+    maniable: ["maniable", "leger", "compact", "agile"],
+    autonomie: ["autonomie", "reservoir", "longue distance"],
+  };
+
   let score = 0;
-  if (p.usage && tags.usage.includes(p.usage)) score += 5;
-  if (p.terrain && tags.terrain.includes(p.terrain)) score += 4;
-  if (p.distance && tags.distance.includes(p.distance)) score += 3;
-  if (p.experience && tags.experience.includes(p.experience)) score += 3;
-  if (p.priority && tags.priority.includes(p.priority)) score += 2;
-  if (p.transport && tags.transport.includes(p.transport)) score += 2;
+  if (p.usage && matches(usageWords[p.usage])) score += 5;
+  if (p.terrain && matches(terrainWords[p.terrain])) score += 4;
+  if (p.distance && (p.distance === "longue" ? matches(["longue distance", "voyage", "trail", "autonomie"]) : p.distance === "courte" ? matches(["ville", "urbain", "quotidien", "compact"]) : matches(["polyvalent", "mixte", "trail"]))) score += 3;
+  if (p.experience && matches(p.experience === "debutant" ? ["debutant", "facile", "accessible", "maniable"] : p.experience === "experimente" ? ["experimente", "expert", "competition", "factory"] : ["intermediaire", "polyvalent"])) score += 3;
+  if (p.priority && matches(priorityWords[p.priority])) score += 2;
+  if (p.transport && matches(p.transport === "marchandise" ? ["marchandise", "charge", "utilitaire", "3 roues"] : ["passager", "duo", "3 roues", "tuk"])) score += 2;
   return score;
 }
 
-export function recommend(p: NeedProfile, brand?: string): Match[] {
-  let pool = BIKES.filter((b) => TAGS[b.id]);
-  if (brand) pool = pool.filter((b) => b.brand === brand || b.brand === "Funbike");
-
-  // Primary criterion: the usage must match (when the client told us the usage).
-  if (p.usage) pool = pool.filter((b) => TAGS[b.id].usage.includes(p.usage as Usage));
+export function recommend(p: NeedProfile, brand?: string, bikes: Bike[] = BIKES): Match[] {
+  let pool = [...bikes];
+  if (brand) pool = pool.filter((bike) => bike.brand.toLocaleLowerCase("fr").includes(brand.toLocaleLowerCase("fr")) || bike.brand === "Funbike");
 
   const matches: Match[] = pool
     .map((bike) => ({ bike, score: scoreBike(bike, p), pitch: bike.recommendation ?? "" }))
-    .filter((m) => m.score >= 7)
-    .sort((a, b) => b.score - a.score);
+    .filter((match) => match.score >= (TAGS[match.bike.id] ? 7 : 5))
+    .sort((left, right) => right.score - left.score);
 
   return matches.slice(0, 3);
 }
@@ -352,7 +395,7 @@ function introText(p: NeedProfile): string {
 /*  Orchestration                                                      */
 /* ------------------------------------------------------------------ */
 
-export function runRecommender(t: string, mem: MemoryLike): { reply: ReplyLike; memory: MemoryLike } {
+export function runRecommender(t: string, mem: MemoryLike, bikes: Bike[] = BIKES): { reply: ReplyLike; memory: MemoryLike } {
   const profile = mem.need && !mem.needComplete ? { ...mem.need } : emptyNeed();
   mergeNeed(profile, extractNeed(t));
   inferTerrain(profile);
@@ -365,8 +408,8 @@ export function runRecommender(t: string, mem: MemoryLike): { reply: ReplyLike; 
     return { reply: { text: q.text, quick: [...q.quick] }, memory: mem };
   }
 
-  const brand = detectBrandText(t);
-  const matches = recommend(profile, brand);
+  const brand = detectBrandText(t, bikes);
+  const matches = recommend(profile, brand, bikes);
   mem.needComplete = true;
   mem.need = profile;
 

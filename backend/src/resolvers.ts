@@ -67,11 +67,11 @@ function pageArgs(args: Args): { limit: number; offset: number } {
   };
 }
 
-async function getProducts(
+function productConditions(
   kind: string | string[] | undefined,
-  args: Args = {},
-  includeDrafts = false,
-): Promise<DbRow[]> {
+  args: Args,
+  includeDrafts: boolean,
+): { conditions: string[]; values: Array<string | number> } {
   const conditions = includeDrafts ? ["1 = 1"] : ["p.status = 'PUBLISHED'"];
   const values: Array<string | number> = [];
 
@@ -79,13 +79,11 @@ async function getProducts(
     conditions.push("p.status = ?");
     values.push(args.status);
   }
-
   const requestedId = numericId(args.id);
   if (requestedId) {
     conditions.push("p.id = ?");
     values.push(requestedId);
   }
-
   if (typeof kind === "string") {
     conditions.push("p.product_kind = ?");
     values.push(kind);
@@ -94,40 +92,20 @@ async function getProducts(
     values.push(...kind);
   }
 
-  const brandId = numericId(args.brandId);
-  if (brandId) {
-    conditions.push("p.brand_id = ?");
-    values.push(brandId);
-  }
-
-  const familyId = numericId(args.familyId);
-  if (familyId) {
-    conditions.push("m.family_id = ?");
-    values.push(familyId);
-  }
-
-  const partTypeId = numericId(args.partTypeId);
-  if (partTypeId) {
-    conditions.push("sp.part_type_id = ?");
-    values.push(partTypeId);
-  }
-
-  const equipmentTypeId = numericId(args.equipmentTypeId);
-  if (equipmentTypeId) {
-    conditions.push("e.equipment_type_id = ?");
-    values.push(equipmentTypeId);
-  }
-
-  const accessoryTypeId = numericId(args.accessoryTypeId);
-  if (accessoryTypeId) {
-    conditions.push("a.accessory_type_id = ?");
-    values.push(accessoryTypeId);
-  }
-
-  const categoryId = numericId(args.categoryId);
-  if (categoryId) {
-    conditions.push("COALESCE(sp.category_id, e.category_id, a.category_id) = ?");
-    values.push(categoryId);
+  const filters: Array<[string, unknown]> = [
+    ["p.brand_id", args.brandId],
+    ["m.family_id", args.familyId],
+    ["sp.part_type_id", args.partTypeId],
+    ["e.equipment_type_id", args.equipmentTypeId],
+    ["a.accessory_type_id", args.accessoryTypeId],
+    ["COALESCE(sp.category_id, e.category_id, a.category_id)", args.categoryId],
+  ];
+  for (const [column, value] of filters) {
+    const id = numericId(value);
+    if (id) {
+      conditions.push(`${column} = ?`);
+      values.push(id);
+    }
   }
 
   const compatibleBrandId = numericId(args.compatibleBrandId);
@@ -138,7 +116,6 @@ async function getProducts(
     )`);
     values.push(compatibleBrandId);
   }
-
   const usageId = numericId(args.usageId);
   if (usageId) {
     conditions.push(`EXISTS (
@@ -148,12 +125,42 @@ async function getProducts(
     values.push(usageId);
   }
 
-  const search = typeof args.search === "string" ? args.search.trim() : "";
-  if (search) {
-    conditions.push(`CONCAT_WS(' ', p.name, p.reference, p.description, b.name, f.name, sf.name, pt.name, cat.name) LIKE ?`);
-    values.push(`%${search}%`);
+  const search = typeof args.search === "string" ? args.search.trim().slice(0, 160) : "";
+  const searchTerms = search.split(/\s+/).filter(Boolean).slice(0, 8);
+  for (const term of searchTerms) {
+    conditions.push(`(
+      CONCAT_WS(' ', p.name, p.reference, p.description, p.recommendation, b.name, f.name, sf.name, pt.name, et.name, acc_type.name, cat.name) LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM spare_part_compatible_brands scb_search
+        JOIN brands cb ON cb.id = scb_search.brand_id
+        WHERE scb_search.product_id = p.id AND cb.name LIKE ?
+      )
+    )`);
+    values.push(`%${term}%`, `%${term}%`);
   }
+  return { conditions, values };
+}
 
+const productJoins = `
+     LEFT JOIN brands b ON b.id = p.brand_id
+     LEFT JOIN subfamilies sf ON sf.id = p.subfamily_id
+     LEFT JOIN motorcycles m ON m.product_id = p.id
+     LEFT JOIN families f ON f.id = m.family_id
+     LEFT JOIN spare_parts sp ON sp.product_id = p.id
+     LEFT JOIN part_types pt ON pt.id = sp.part_type_id
+     LEFT JOIN equipment e ON e.product_id = p.id
+     LEFT JOIN equipment_types et ON et.id = e.equipment_type_id
+     LEFT JOIN accessories a ON a.product_id = p.id
+     LEFT JOIN accessory_types acc_type ON acc_type.id = a.accessory_type_id
+     LEFT JOIN accessory_categories cat
+       ON cat.id = COALESCE(sp.category_id, e.category_id, a.category_id)`;
+
+async function getProducts(
+  kind: string | string[] | undefined,
+  args: Args = {},
+  includeDrafts = false,
+): Promise<DbRow[]> {
+  const { conditions, values } = productConditions(kind, args, includeDrafts);
   const { limit, offset } = pageArgs(args);
   values.push(limit, offset);
 
@@ -184,21 +191,40 @@ async function getProducts(
        a.category_id AS accessoryCategoryId,
        a.source_url AS accessorySourceUrl
      FROM products p
-     LEFT JOIN brands b ON b.id = p.brand_id
-     LEFT JOIN subfamilies sf ON sf.id = p.subfamily_id
-     LEFT JOIN motorcycles m ON m.product_id = p.id
-     LEFT JOIN families f ON f.id = m.family_id
-     LEFT JOIN spare_parts sp ON sp.product_id = p.id
-     LEFT JOIN part_types pt ON pt.id = sp.part_type_id
-     LEFT JOIN equipment e ON e.product_id = p.id
-     LEFT JOIN accessories a ON a.product_id = p.id
-     LEFT JOIN accessory_categories cat
-       ON cat.id = COALESCE(sp.category_id, e.category_id, a.category_id)
+     ${productJoins}
      WHERE ${conditions.join(" AND ")}
      ORDER BY p.created_at DESC, p.id DESC
      LIMIT ? OFFSET ?`,
     values,
   );
+}
+
+async function getProductCount(
+  kind: string | string[] | undefined,
+  args: Args = {},
+  includeDrafts = false,
+): Promise<number> {
+  const { conditions, values } = productConditions(kind, args, includeDrafts);
+  const rows = await queryRows<DbRow>(
+    `SELECT COUNT(DISTINCT p.id) AS totalCount
+     FROM products p
+     ${productJoins}
+     WHERE ${conditions.join(" AND ")}`,
+    values,
+  );
+  return Number(rows[0]?.totalCount ?? 0);
+}
+
+async function getProductPage(
+  kind: string | string[] | undefined,
+  args: Args,
+  includeDrafts: boolean,
+): Promise<{ items: DbRow[]; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    getProducts(kind, args, includeDrafts),
+    getProductCount(kind, args, includeDrafts),
+  ]);
+  return { items, totalCount };
 }
 
 async function getBrand(id: unknown): Promise<DbRow | null> {
@@ -771,11 +797,17 @@ export const resolvers: Record<string, any> = {
     equipment: (_: unknown, args: Args) => getProducts("EQUIPMENT", args),
     gearItems: (_: unknown, args: Args) => getProducts("EQUIPMENT", args),
     accessories: (_: unknown, args: Args) => getProducts("ACCESSORY", args),
+    product: async (_: unknown, args: Args) => (await getProducts(undefined, { id: args.id, limit: 1 }, false))[0] ?? null,
     products: (_: unknown, args: Args) => getProducts(undefined, args),
+    catalogProductPage: (_: unknown, args: Args) => getProductPage(undefined, args, false),
     allParts: (_: unknown, args: Args) => getProducts(["SPARE_PART", "EQUIPMENT", "ACCESSORY"], args),
     adminProducts: (_: unknown, args: Args, context: GraphQLContext) => {
       requireAdmin(context);
       return getProducts(args.kind, args, true);
+    },
+    adminProductPage: (_: unknown, args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      return getProductPage(args.kind, args, true);
     },
   },
   Mutation: {

@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import ImageFilePicker, { type ImageSelection } from "../components/ImageFilePicker";
 import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
-import { graphqlRequest } from "../lib/graphqlClient";
+import { announcePublicCatalogChange, graphqlRequest } from "../lib/graphqlClient";
 
 type AdminUser = { id: string; email: string; role: string };
 type ProductKind = "MOTORCYCLE" | "SPARE_PART" | "EQUIPMENT" | "ACCESSORY";
+type ProductKindFilter = ProductKind | "ALL";
+type ProductStatusFilter = "DRAFT" | "PUBLISHED" | "ALL";
 type LookupKind = "FAMILY" | "SUBFAMILY" | "PART_TYPE" | "EQUIPMENT_TYPE" | "ACCESSORY_TYPE" | "CATEGORY" | "USAGE" | "CHARACTERISTIC";
 type Lookup = { id: string; name: string; family?: { id: string; name: string } | null; unit?: string | null; applicableTo?: string | null; isActive: boolean; sortOrder?: number | null };
 type Brand = { id: string; slug: string; name: string; logo?: string | null; logoAlt?: string | null; description?: string | null; isActive: boolean; sortOrder?: number | null };
@@ -37,7 +39,6 @@ type AdminProduct = {
   specs?: ProductSpec[];
 };
 type ReferenceData = {
-  products: AdminProduct[];
   brands: Brand[];
   families: Lookup[];
   subfamilies: Lookup[];
@@ -120,6 +121,13 @@ const LOOKUP_NAME_EXAMPLES: Record<LookupKind, string> = {
   CHARACTERISTIC: "Ex. Cylindrée",
 };
 
+const CHARACTERISTIC_SCOPES = [
+  { value: "MOTORCYCLE", label: "Moto" },
+  { value: "SPARE_PART", label: "Pièce détachée" },
+  { value: "EQUIPMENT", label: "Équipement pilote" },
+  { value: "ACCESSORY", label: "Accessoire moto" },
+] as const;
+
 const CATEGORY_DESTINATIONS = [
   { page: "home", label: "Accueil" },
   { page: "catalogue", label: "Tout le catalogue" },
@@ -130,39 +138,10 @@ const CATEGORY_DESTINATIONS = [
   { page: "contact", label: "Contact" },
 ] as const;
 
-const PRODUCTS_QUERY = `
-  query AdminData {
-    products: adminProducts(limit: 200) {
-      __typename id name reference price desc status image gallery
-      brand { id name }
-      subfamily { id name }
-      ... on Motorcycle {
-        family { id name }
-        tag alt recommendation
-        specs { characteristic { id name } label value }
-      }
-      ... on SparePart {
-        partType { id name }
-        category { id name }
-        compatibleBrands { id name }
-        universalCompatibility sourceUrl
-        specs { characteristic { id name } label value }
-      }
-      ... on Equipment {
-        equipmentType { id name }
-        category { id name }
-        usages { id name }
-        sourceUrl
-        specs { characteristic { id name } label value }
-      }
-      ... on Accessory {
-        accessoryType { id name }
-        category { id name }
-        usages { id name }
-        sourceUrl
-        specs { characteristic { id name } label value }
-      }
-    }
+const ADMIN_PAGE_SIZE = 20;
+
+const REFERENCE_DATA_QUERY = `
+  query AdminReferenceData {
     brands { id slug name isActive sortOrder }
     families { id name isActive sortOrder }
     subfamilies { id name family { id name } isActive sortOrder }
@@ -174,6 +153,45 @@ const PRODUCTS_QUERY = `
     characteristicDefinitions { id name unit applicableTo isActive sortOrder }
     adminBrands { id slug name logo logoAlt description isActive sortOrder }
     adminCategories { id title desc src to brand isActive sortOrder }
+  }
+`;
+
+const ADMIN_PRODUCTS_PAGE_QUERY = `
+  query AdminProductsPage($status: ProductStatus, $kind: ProductKind, $brandId: ID, $search: String, $limit: Int, $offset: Int) {
+    adminProductPage(status: $status, kind: $kind, brandId: $brandId, search: $search, limit: $limit, offset: $offset) {
+      totalCount
+      items {
+        __typename id name reference price desc status image gallery
+        brand { id name }
+        subfamily { id name }
+        ... on Motorcycle {
+          family { id name }
+          tag alt recommendation
+          specs { characteristic { id name } label value }
+        }
+        ... on SparePart {
+          partType { id name }
+          category { id name }
+          compatibleBrands { id name }
+          universalCompatibility sourceUrl
+          specs { characteristic { id name } label value }
+        }
+        ... on Equipment {
+          equipmentType { id name }
+          category { id name }
+          usages { id name }
+          sourceUrl
+          specs { characteristic { id name } label value }
+        }
+        ... on Accessory {
+          accessoryType { id name }
+          category { id name }
+          usages { id name }
+          sourceUrl
+          specs { characteristic { id name } label value }
+        }
+      }
+    }
   }
 `;
 
@@ -218,6 +236,39 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
       {children}
       {hint && <span className="block text-[11px] text-black/45 dark:text-white/45">{hint}</span>}
     </label>
+  );
+}
+
+function CheckboxGroupField({ label, hint, items, selectedIds, onChange, emptyLabel }: {
+  label: string;
+  hint?: string;
+  items: Array<{ id: string; name: string }>;
+  selectedIds: string[];
+  onChange: (nextIds: string[]) => void;
+  emptyLabel: string;
+}) {
+  return (
+    <fieldset className="space-y-1.5">
+      <legend className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">{label}</legend>
+      {hint && <p className="text-[11px] text-black/45 dark:text-white/45">{hint}</p>}
+      {items.length === 0 ? (
+        <p className="border border-dashed border-black/15 px-3 py-3 text-xs text-black/45 dark:border-white/15 dark:text-white/45">{emptyLabel}</p>
+      ) : (
+        <div className="grid max-h-48 gap-1 overflow-y-auto border border-black/15 p-2 sm:grid-cols-2 dark:border-white/15">
+          {items.map((item) => (
+            <label key={item.id} className="flex min-h-10 cursor-pointer items-center gap-2 px-2 text-xs hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(item.id)}
+                onChange={(event) => onChange(event.target.checked ? [...selectedIds, item.id] : selectedIds.filter((id) => id !== item.id))}
+                className="accent-[#c49d00]"
+              />
+              <span>{item.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </fieldset>
   );
 }
 
@@ -269,6 +320,21 @@ function productKindLabel(kind: AdminProduct["__typename"] | ProductKind): strin
 function kindFromTypename(name: AdminProduct["__typename"]): ProductKind {
   const kinds = { Motorcycle: "MOTORCYCLE", SparePart: "SPARE_PART", Equipment: "EQUIPMENT", Accessory: "ACCESSORY" } as const;
   return kinds[name];
+}
+
+function characteristicApplies(definition: Lookup, kind: ProductKind): boolean {
+  if (!definition.applicableTo?.trim()) return true;
+  const scope = definition.applicableTo.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (scope.includes("tous") || scope.includes("all") || scope.includes("produit")) return true;
+  const scopes: Record<ProductKind, string[]> = {
+    MOTORCYCLE: ["moto", "motorcycle"],
+    SPARE_PART: ["piece", "spare"],
+    EQUIPMENT: ["equipement", "equipment"],
+    ACCESSORY: ["accessoire", "accessory"],
+  };
+  const knownScopes = Object.values(scopes).flat();
+  if (!knownScopes.some((value) => scope.includes(value))) return true;
+  return scopes[kind].some((value) => scope.includes(value));
 }
 
 function imageFromStoredUrl(url: string, id: string): ImageSelection {
@@ -350,6 +416,14 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [productKindFilter, setProductKindFilter] = useState<ProductKindFilter>("ALL");
+  const [productStatusFilter, setProductStatusFilter] = useState<ProductStatusFilter>("ALL");
+  const [productBrandFilter, setProductBrandFilter] = useState<string>("ALL");
+  const [productPage, setProductPage] = useState(1);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [productTotalCount, setProductTotalCount] = useState(0);
+  const [productLoading, setProductLoading] = useState(false);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [lookupKind, setLookupKind] = useState<LookupKind>("FAMILY");
   const [lookupRows, setLookupRows] = useState<Lookup[]>([]);
@@ -396,7 +470,7 @@ export default function Admin() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    void graphqlRequest<ReferenceData>(PRODUCTS_QUERY, undefined, token)
+    void graphqlRequest<ReferenceData>(REFERENCE_DATA_QUERY, undefined, token)
       .then((result) => { if (!cancelled) setData(result); })
       .catch((reason: unknown) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : "Impossible de charger les données.");
@@ -404,6 +478,56 @@ export default function Admin() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [token, user, refreshKey]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setAppliedSearch(search.trim());
+      setProductPage(1);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    if (!token || !user) {
+      setProducts([]);
+      setProductTotalCount(0);
+      setProductLoading(false);
+      return;
+    }
+    if (tab !== "products") {
+      setProductLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProductLoading(true);
+    void graphqlRequest<{ adminProductPage: { items: AdminProduct[]; totalCount: number } }>(
+      ADMIN_PRODUCTS_PAGE_QUERY,
+      {
+        status: productStatusFilter === "ALL" ? null : productStatusFilter,
+        kind: productKindFilter === "ALL" ? null : productKindFilter,
+        brandId: productBrandFilter === "ALL" ? null : productBrandFilter,
+        search: appliedSearch || null,
+        limit: ADMIN_PAGE_SIZE,
+        offset: (productPage - 1) * ADMIN_PAGE_SIZE,
+      },
+      token,
+    ).then(({ adminProductPage }) => {
+      if (cancelled) return;
+      setProducts(adminProductPage.items);
+      setProductTotalCount(adminProductPage.totalCount);
+    }).catch((reason: unknown) => {
+      if (cancelled) return;
+      setProducts([]);
+      setProductTotalCount(0);
+      setError(reason instanceof Error ? reason.message : "Impossible de charger les produits.");
+    }).finally(() => { if (!cancelled) setProductLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, user, tab, productStatusFilter, productKindFilter, productBrandFilter, appliedSearch, productPage, refreshKey]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(productTotalCount / ADMIN_PAGE_SIZE));
+    if (productPage > totalPages) setProductPage(totalPages);
+  }, [productPage, productTotalCount]);
 
   useEffect(() => {
     if (!token || !user || tab !== "classifications") return;
@@ -537,6 +661,7 @@ export default function Admin() {
         );
         setNotice("Produit créé en brouillon. Publiez-le lorsqu’il est prêt.");
       }
+      announcePublicCatalogChange();
       cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
       setProductForm(emptyProductForm());
       reload();
@@ -561,6 +686,7 @@ export default function Admin() {
         token,
       );
       setNotice(`« ${product.name} » a été ${label}.`);
+      announcePublicCatalogChange();
       reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Impossible de modifier la publication.");
@@ -577,6 +703,7 @@ export default function Admin() {
       await graphqlRequest("mutation DeleteProduct($id: ID!) { deleteProduct(id: $id) }", { id: product.id }, token);
       if (productForm.id === product.id) setProductForm(emptyProductForm());
       setNotice("Produit supprimé.");
+      announcePublicCatalogChange();
       reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Impossible de supprimer le produit.");
@@ -614,6 +741,7 @@ export default function Admin() {
       }
       setEditingLookupId(null);
       setLookupForm(emptyLookupForm());
+      announcePublicCatalogChange();
       reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Impossible d’enregistrer la classification.");
@@ -671,6 +799,7 @@ export default function Admin() {
       }
       setNotice(request.successMessage);
       setArchiveRequest(null);
+      announcePublicCatalogChange();
       reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Impossible d’archiver cet élément.");
@@ -706,6 +835,7 @@ export default function Admin() {
         await graphqlRequest("mutation CreateBrand($input: BrandInput!) { createBrand(input: $input) { id name } }", { input }, token);
         setNotice("Marque créée.");
       }
+      announcePublicCatalogChange();
       cleanupImages(uploadedImagesRemoved(previousImageUrls, logoUrls), token);
       setEditingBrandId(null);
       setBrandForm(emptyBrandForm());
@@ -758,6 +888,7 @@ export default function Admin() {
         await graphqlRequest("mutation CreateCategory($input: CategoryInput!) { createCategory(input: $input) { id title } }", { input }, token);
         setNotice("Catégorie créée.");
       }
+      announcePublicCatalogChange();
       cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
       setEditingCategoryId(null);
       setCategoryForm(emptyCategoryForm());
@@ -831,10 +962,10 @@ export default function Admin() {
     setNotice("");
   }
 
-  const filteredProducts = (data?.products ?? []).filter((product) => {
-    const term = search.trim().toLowerCase();
-    return !term || `${product.name} ${product.reference ?? ""} ${product.brand?.name ?? ""}`.toLowerCase().includes(term);
-  });
+  const productTotalPages = Math.max(1, Math.ceil(productTotalCount / ADMIN_PAGE_SIZE));
+  const characteristicOptions = (data?.characteristicDefinitions ?? []).filter((item) => item.isActive && characteristicApplies(item, productForm.kind));
+  const firstProductNumber = productTotalCount === 0 ? 0 : (productPage - 1) * ADMIN_PAGE_SIZE + 1;
+  const lastProductNumber = Math.min(productPage * ADMIN_PAGE_SIZE, productTotalCount);
 
   if (checking) {
     return <div className="grid min-h-screen place-items-center bg-[#f7f6f1] text-sm text-black/55 dark:bg-[#141513] dark:text-white/55">Vérification de la session administrateur…</div>;
@@ -954,15 +1085,27 @@ export default function Admin() {
                 <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Catalogue</p><h2 className="mt-1 font-display text-2xl font-bold">Produits</h2></div>
                 <button className={buttonPrimary} onClick={() => { setProductForm(emptyProductForm()); setError(""); setNotice(""); }}>+ Nouveau produit</button>
               </div>
-              <Field label="Rechercher"><input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom, référence ou marque" /></Field>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Field label="Rechercher"><input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom, référence, marque…" /></Field>
+                <Field label="Type de produit"><select className={fieldClass} value={productKindFilter} onChange={(event) => { setProductKindFilter(event.target.value as ProductKindFilter); setProductPage(1); }}><option value="ALL">Tous les types</option><option value="MOTORCYCLE">Motos</option><option value="SPARE_PART">Pièces détachées</option><option value="EQUIPMENT">Équipements pilote</option><option value="ACCESSORY">Accessoires moto</option></select></Field>
+                <Field label="Marque"><select className={fieldClass} value={productBrandFilter} onChange={(event) => { setProductBrandFilter(event.target.value); setProductPage(1); }}><option value="ALL">Toutes les marques</option>{(data?.adminBrands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (archivée)"}</option>)}</select></Field>
+                <Field label="Publication"><select className={fieldClass} value={productStatusFilter} onChange={(event) => { setProductStatusFilter(event.target.value as ProductStatusFilter); setProductPage(1); }}><option value="ALL">Tous les statuts</option><option value="PUBLISHED">Publiés</option><option value="DRAFT">Brouillons</option></select></Field>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-black/50 dark:text-white/50">
+                <span>{productLoading ? "Mise à jour des résultats…" : `${productTotalCount} produit${productTotalCount === 1 ? "" : "s"}`}</span>
+                <span>{productTotalCount > 0 ? `Affichage ${firstProductNumber}–${lastProductNumber} sur ${productTotalCount}` : "Aucun résultat"}</span>
+              </div>
               <div className="overflow-hidden border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]">
-                {filteredProducts.length === 0 ? <p className="p-6 text-sm text-black/50 dark:text-white/50">Aucun produit trouvé. Les nouveaux produits sont enregistrés en brouillon.</p> : (
+                {productLoading && products.length === 0 ? <p className="p-6 text-sm text-black/50 dark:text-white/50">Chargement des produits…</p> : products.length === 0 ? <p className="p-6 text-sm text-black/50 dark:text-white/50">Aucun produit ne correspond aux filtres. Les nouveaux produits sont enregistrés en brouillon.</p> : (
                   <ul className="divide-y divide-black/10 dark:divide-white/10">
-                    {filteredProducts.map((product) => (
+                    {products.map((product) => (
                       <li key={`${product.__typename}-${product.id}`} className="flex flex-wrap items-center gap-3 p-4">
+                        <div className="grid h-12 w-14 shrink-0 place-items-center overflow-hidden border border-black/10 bg-black/[0.025] dark:border-white/10 dark:bg-white/[0.03]">
+                          {product.image ? <img src={product.image} alt="" loading="lazy" className="h-full w-full object-contain" /> : <span className="text-[9px] font-bold text-black/35 dark:text-white/35">Sans photo</span>}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2"><span className="truncate font-semibold">{product.name}</span><span className={`border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${product.status === "PUBLISHED" ? "border-emerald-600/30 text-emerald-700 dark:text-emerald-300" : "border-black/15 text-black/50 dark:border-white/15 dark:text-white/50"}`}>{product.status === "PUBLISHED" ? "Publié" : "Brouillon"}</span></div>
-                          <p className="mt-1 truncate text-xs text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.reference ? ` · ${product.reference}` : ""}{product.price ? ` · ${product.price}` : ""}</p>
+                          <p className="mt-1 truncate text-xs text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.brand?.name ? ` · ${product.brand.name}` : ""}{product.reference ? ` · ${product.reference}` : ""}{product.price ? ` · ${product.price}` : ""}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button className={buttonSecondary} onClick={() => startProductEdit(product)}>Modifier</button>
@@ -974,21 +1117,60 @@ export default function Admin() {
                   </ul>
                 )}
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-black/50 dark:text-white/50">Page {productPage} sur {productTotalPages} · 20 produits par page</p>
+                <div className="flex gap-2">
+                  <button type="button" className={buttonSecondary} disabled={productPage <= 1 || productLoading} onClick={() => setProductPage((current) => Math.max(1, current - 1))}>Précédent</button>
+                  <button type="button" className={buttonSecondary} disabled={productPage >= productTotalPages || productLoading} onClick={() => setProductPage((current) => Math.min(productTotalPages, current + 1))}>Suivant</button>
+                </div>
+              </div>
             </div>
 
             <form onSubmit={saveProduct} className="space-y-4 border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-[#1c1d1a] sm:p-5">
               <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8c6d00] dark:text-[#ffd100]">{productForm.id ? "Modifier" : "Créer"}</p><h2 className="mt-1 font-display text-xl font-bold">{productForm.id ? "Fiche produit" : "Nouveau produit"}</h2></div>{productForm.id && <button type="button" className={buttonSecondary} onClick={() => setProductForm(emptyProductForm())}>Annuler</button>}</div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Type de produit"><select className={fieldClass} value={productForm.kind} disabled={Boolean(productForm.id)} onChange={(event) => setProductForm({ ...productForm, kind: event.target.value as ProductKind })}><option value="MOTORCYCLE">Moto</option><option value="SPARE_PART">Pièce détachée</option><option value="EQUIPMENT">Équipement pilote</option><option value="ACCESSORY">Accessoire moto</option></select></Field>
+                <Field label="Type de produit"><select className={fieldClass} value={productForm.kind} disabled={Boolean(productForm.id)} onChange={(event) => setProductForm((current) => ({ ...current, kind: event.target.value as ProductKind, familyId: "", subfamilyId: "", tag: "", alt: "", recommendation: "", partTypeId: "", equipmentTypeId: "", accessoryTypeId: "", categoryId: "", sourceUrl: "", universalCompatibility: "", compatibleBrandIds: [], usageIds: [], specs: [] }))}><option value="MOTORCYCLE">Moto</option><option value="SPARE_PART">Pièce détachée</option><option value="EQUIPMENT">Équipement pilote</option><option value="ACCESSORY">Accessoire moto</option></select></Field>
                 <Field label="Nom du produit"><input className={fieldClass} required maxLength={255} placeholder={PRODUCT_NAME_EXAMPLES[productForm.kind]} value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></Field>
                 <Field label="Référence du fabricant (facultatif)" hint="Recopiez la référence indiquée sur la boîte ou la fiche du fabricant."><input className={fieldClass} maxLength={160} placeholder="Ex. TVS-428H-122L" value={productForm.reference} onChange={(event) => setProductForm({ ...productForm, reference: event.target.value })} /></Field>
                 <Field label="Prix affiché" hint="Saisissez un montant ou indiquez « Sur devis »."><input className={fieldClass} maxLength={255} placeholder="Ex. 1 250 000 Ar ou Sur devis" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /></Field>
                 <Field label="Marque"><select className={fieldClass} value={productForm.brandId} onChange={(event) => setProductForm({ ...productForm, brandId: event.target.value })}><option value="">Choisir une marque (ex. TVS ou Sherco)</option>{(data?.brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></Field>
-                <Field label="Gamme ou modèle associé (facultatif)" hint="Ex. Sherco SEF 250 ou TVS Apache."><select className={fieldClass} value={productForm.subfamilyId} onChange={(event) => setProductForm({ ...productForm, subfamilyId: event.target.value })}><option value="">Choisir une gamme ou un modèle</option>{(data?.subfamilies ?? []).filter((item) => productForm.kind !== "MOTORCYCLE" || !productForm.familyId || item.family?.id === productForm.familyId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
               </div>
-              {productForm.kind === "MOTORCYCLE" && <div className="grid gap-3 sm:grid-cols-2"><Field label="Catégorie de moto" hint="Ex. Urbain, Off-road ou 3 roues."><select className={fieldClass} value={productForm.familyId} onChange={(event) => { const familyId = event.target.value; const currentSubfamily = data?.subfamilies.find((item) => item.id === productForm.subfamilyId); setProductForm({ ...productForm, familyId, subfamilyId: currentSubfamily && currentSubfamily.family?.id !== familyId ? "" : productForm.subfamilyId }); }}><option value="">Choisir une catégorie</option>{(data?.families ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Petit badge (facultatif)" hint="Texte court mis en avant sur la fiche produit."><input className={fieldClass} placeholder="Ex. Nouveauté 2026" value={productForm.tag} onChange={(event) => setProductForm({ ...productForm, tag: event.target.value })} /></Field><Field label="Description de la photo" hint="Décrivez l’image en quelques mots pour les personnes qui ne la voient pas."><input className={fieldClass} placeholder="Ex. Sherco SEF 250 Factory 2026, vue de côté" value={productForm.alt} onChange={(event) => setProductForm({ ...productForm, alt: event.target.value })} /></Field><Field label="Phrase de mise en avant" hint="En une phrase, indiquez à qui ce modèle convient ou ce qui le distingue."><input className={fieldClass} placeholder="Ex. Idéale pour la ville et les trajets quotidiens" value={productForm.recommendation} onChange={(event) => setProductForm({ ...productForm, recommendation: event.target.value })} /></Field></div>}
-              {productForm.kind === "SPARE_PART" && <div className="grid gap-3 sm:grid-cols-2"><Field label="Type de pièce"><select className={fieldClass} value={productForm.partTypeId} onChange={(event) => setProductForm({ ...productForm, partTypeId: event.target.value })}><option value="">Choisir un type</option>{(data?.partTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Catégorie de la pièce"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Compatible avec toutes les marques ?"><select className={fieldClass} value={productForm.universalCompatibility} onChange={(event) => setProductForm({ ...productForm, universalCompatibility: event.target.value })}><option value="">À préciser</option><option value="true">Oui, toutes les marques</option><option value="false">Non, compatibilité spécifique</option></select></Field><Field label="Marques compatibles" hint="Choisissez toutes les marques concernées."><select multiple className={`${fieldClass} min-h-24`} value={productForm.compatibleBrandIds} onChange={(event) => setProductForm({ ...productForm, compatibleBrandIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })}>{(data?.brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></Field><div className="sm:col-span-2"><Field label="Lien vers la fiche du fabricant (facultatif)" hint="Un lien vers la page de ce produit chez la marque, si vous l’avez."><input className={fieldClass} type="url" placeholder="Ex. https://..." value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field></div></div>}
-              {(productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY") && <div className="grid gap-3 sm:grid-cols-2"><Field label={productForm.kind === "EQUIPMENT" ? "Type d’équipement" : "Type d’accessoire"}><select className={fieldClass} value={productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId : productForm.accessoryTypeId} onChange={(event) => setProductForm({ ...productForm, [productForm.kind === "EQUIPMENT" ? "equipmentTypeId" : "accessoryTypeId"]: event.target.value })}><option value="">Choisir un type</option>{(productForm.kind === "EQUIPMENT" ? data?.equipmentTypes ?? [] : data?.accessoryTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Catégorie du produit"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Utilisation prévue" hint="Vous pouvez choisir plusieurs usages."><select multiple className={`${fieldClass} min-h-24`} value={productForm.usageIds} onChange={(event) => setProductForm({ ...productForm, usageIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })}>{(data?.productUsages ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Lien vers la fiche du fabricant (facultatif)" hint="Un lien vers la page de ce produit chez la marque, si vous l’avez."><input className={fieldClass} type="url" placeholder="Ex. https://..." value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field></div>}
+              {productForm.kind === "MOTORCYCLE" && (
+                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                  <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Détails de la moto</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Catégorie, gamme et éléments de présentation du modèle.</p></div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Catégorie de moto"><select className={fieldClass} value={productForm.familyId} onChange={(event) => { const familyId = event.target.value; const currentSubfamily = data?.subfamilies.find((item) => item.id === productForm.subfamilyId); setProductForm({ ...productForm, familyId, subfamilyId: currentSubfamily && currentSubfamily.family?.id !== familyId ? "" : productForm.subfamilyId }); }}><option value="">Choisir une catégorie</option>{(data?.families ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Gamme ou modèle associé (facultatif)" hint="Ex. Sherco SEF 250 ou TVS Apache."><select className={fieldClass} value={productForm.subfamilyId} onChange={(event) => setProductForm({ ...productForm, subfamilyId: event.target.value })}><option value="">Choisir une gamme ou un modèle</option>{(data?.subfamilies ?? []).filter((item) => !productForm.familyId || item.family?.id === productForm.familyId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Petit badge (facultatif)" hint="Texte court mis en avant sur la fiche produit."><input className={fieldClass} placeholder="Ex. Nouveauté 2026" value={productForm.tag} onChange={(event) => setProductForm({ ...productForm, tag: event.target.value })} /></Field>
+                    <Field label="Description de la photo" hint="Décrivez l’image en quelques mots pour les personnes qui ne la voient pas."><input className={fieldClass} placeholder="Ex. Sherco SEF 250 Factory 2026, vue de côté" value={productForm.alt} onChange={(event) => setProductForm({ ...productForm, alt: event.target.value })} /></Field>
+                    <Field label="Phrase de mise en avant" hint="En une phrase, indiquez à qui ce modèle convient ou ce qui le distingue."><input className={fieldClass} placeholder="Ex. Idéale pour la ville et les trajets quotidiens" value={productForm.recommendation} onChange={(event) => setProductForm({ ...productForm, recommendation: event.target.value })} /></Field>
+                  </div>
+                </section>
+              )}
+              {productForm.kind === "SPARE_PART" && (
+                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                  <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Pièce détachée</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Précisez son type, sa catégorie et les motos compatibles.</p></div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Type de pièce"><select className={fieldClass} value={productForm.partTypeId} onChange={(event) => setProductForm({ ...productForm, partTypeId: event.target.value })}><option value="">Choisir un type</option>{(data?.partTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Catégorie de la pièce"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Compatible avec toutes les marques ?"><select className={fieldClass} value={productForm.universalCompatibility} onChange={(event) => setProductForm({ ...productForm, universalCompatibility: event.target.value, compatibleBrandIds: event.target.value === "true" ? [] : productForm.compatibleBrandIds })}><option value="">À préciser</option><option value="true">Oui, toutes les marques</option><option value="false">Non, compatibilité spécifique</option></select></Field>
+                    {productForm.universalCompatibility !== "true" && <CheckboxGroupField label="Marques compatibles" hint="Cochez une ou plusieurs marques. Pour toutes les marques, choisissez « Oui » juste au-dessus." items={(data?.brands ?? []).filter((brand) => brand.isActive)} selectedIds={productForm.compatibleBrandIds} onChange={(compatibleBrandIds) => setProductForm({ ...productForm, compatibleBrandIds })} emptyLabel="Ajoutez d’abord les marques concernées dans la section « Marques »." />}
+                    {productForm.universalCompatibility === "true" && <p className="border border-emerald-600/20 bg-emerald-50/60 px-3 py-3 text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200">Cette pièce sera proposée pour toutes les marques ; aucune sélection supplémentaire n’est nécessaire.</p>}
+                    <div className="sm:col-span-2"><Field label="Lien vers la fiche du fabricant (facultatif)" hint="Un lien vers la page de ce produit chez la marque, si vous l’avez."><input className={fieldClass} type="url" placeholder="Ex. https://…" value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field></div>
+                  </div>
+                </section>
+              )}
+              {(productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY") && (
+                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                  <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">{productForm.kind === "EQUIPMENT" ? "Équipement pilote" : "Accessoire moto"}</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Choisissez le type de produit, sa catégorie et les usages pertinents.</p></div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label={productForm.kind === "EQUIPMENT" ? "Type d’équipement" : "Type d’accessoire"}><select className={fieldClass} value={productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId : productForm.accessoryTypeId} onChange={(event) => setProductForm({ ...productForm, [productForm.kind === "EQUIPMENT" ? "equipmentTypeId" : "accessoryTypeId"]: event.target.value })}><option value="">Choisir un type</option>{(productForm.kind === "EQUIPMENT" ? data?.equipmentTypes ?? [] : data?.accessoryTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <Field label="Catégorie du produit"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                    <CheckboxGroupField label="Utilisation prévue" hint="Cochez tous les usages concernés." items={(data?.productUsages ?? []).filter((item) => item.isActive)} selectedIds={productForm.usageIds} onChange={(usageIds) => setProductForm({ ...productForm, usageIds })} emptyLabel="Ajoutez d’abord les usages dans « Listes du catalogue »." />
+                    <Field label="Lien vers la fiche du fabricant (facultatif)" hint="Un lien vers la page de ce produit chez la marque, si vous l’avez."><input className={fieldClass} type="url" placeholder="Ex. https://…" value={productForm.sourceUrl} onChange={(event) => setProductForm({ ...productForm, sourceUrl: event.target.value })} /></Field>
+                  </div>
+                </section>
+              )}
               <Field label="Description du produit" hint="Présentez le produit, ses points forts et, si besoin, les modèles compatibles."><textarea className={`${fieldClass} min-h-24 resize-y`} placeholder={PRODUCT_DESCRIPTION_EXAMPLES[productForm.kind]} value={productForm.desc} onChange={(event) => setProductForm({ ...productForm, desc: event.target.value })} /></Field>
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photos du produit</p>
@@ -1017,7 +1199,7 @@ export default function Admin() {
                   </div>
                   <button type="button" className="text-xs font-bold text-[#806300] underline underline-offset-2 dark:text-[#ffd100]" onClick={() => setProductForm({ ...productForm, specs: [...productForm.specs, { characteristicId: "", value: "" }] })}>+ Ajouter</button>
                 </div>
-                {productForm.specs.map((spec, index) => <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select aria-label="Caractéristique du produit" className={fieldClass} value={spec.characteristicId} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, characteristicId: event.target.value } : row) })}><option value="">Choisir une caractéristique…</option>{(data?.characteristicDefinitions ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ""}</option>)}</select><input aria-label="Valeur" className={fieldClass} placeholder="Ex. 250 cc" value={spec.value} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row) })} /><button type="button" aria-label="Retirer la caractéristique" className="px-2 text-red-600" onClick={() => setProductForm({ ...productForm, specs: productForm.specs.filter((_, rowIndex) => rowIndex !== index) })}>×</button></div>)}
+                {productForm.specs.map((spec, index) => <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select aria-label="Caractéristique du produit" className={fieldClass} value={spec.characteristicId} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, characteristicId: event.target.value } : row) })}><option value="">Choisir une caractéristique…</option>{characteristicOptions.map((item) => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ""}</option>)}</select><input aria-label="Valeur" className={fieldClass} placeholder="Ex. 250 cc" value={spec.value} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row) })} /><button type="button" aria-label="Retirer la caractéristique" className="px-2 text-red-600" onClick={() => setProductForm({ ...productForm, specs: productForm.specs.filter((_, rowIndex) => rowIndex !== index) })}>×</button></div>)}
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4 dark:border-white/10"><p className="text-[11px] text-black/45 dark:text-white/45">Les nouveaux produits restent en brouillon jusqu’à publication.</p><button type="submit" className={buttonPrimary} disabled={busy}>{busy ? "Enregistrement…" : productForm.id ? "Enregistrer" : "Créer le produit"}</button></div>
             </form>
@@ -1047,8 +1229,12 @@ export default function Admin() {
                 <Field label="Unité de mesure (facultatif)" hint="Ex. cc, mm ou kg.">
                   <input className={fieldClass} value={lookupForm.unit} onChange={(event) => setLookupForm({ ...lookupForm, unit: event.target.value })} placeholder="Ex. cc, mm, kg…" />
                 </Field>
-                <Field label="Type de produit concerné (facultatif)" hint="Précisez où cette caractéristique est utilisée.">
-                  <input className={fieldClass} value={lookupForm.applicableTo} onChange={(event) => setLookupForm({ ...lookupForm, applicableTo: event.target.value })} placeholder="Ex. Moto, pièce détachée" />
+                <Field label="Type de produit concerné" hint="Laissez « Tous les types » pour proposer la caractéristique partout.">
+                  <select className={fieldClass} value={lookupForm.applicableTo} onChange={(event) => setLookupForm({ ...lookupForm, applicableTo: event.target.value })}>
+                    <option value="">Tous les types</option>
+                    {lookupForm.applicableTo && !CHARACTERISTIC_SCOPES.some((scope) => scope.value === lookupForm.applicableTo) && <option value={lookupForm.applicableTo}>Valeur actuelle à vérifier : {lookupForm.applicableTo}</option>}
+                    {CHARACTERISTIC_SCOPES.map((scope) => <option key={scope.value} value={scope.value}>{scope.label}</option>)}
+                  </select>
                 </Field>
               </div>}
               <div className="grid gap-3 sm:grid-cols-2">
