@@ -1,28 +1,55 @@
-"""
-Liens éditoriaux de la page d'accueil (CATEGORIES). Ils restent distincts de la
-taxonomie administrable Famille/Sous-famille.
-"""
+"""Editorial links shown on the home page; not product taxonomy."""
 type Category {
+  id: ID!
   title: String!
   desc: String!
   src: String!
   to: String!
   brand: String
+  isActive: Boolean!
+  sortOrder: Int
 }
 
-"""Famille administrable; aucune valeur de famille n'est figée dans le SDL."""
+input CategoryInput {
+  title: String!
+  desc: String!
+  src: String!
+  to: String!
+  brand: String
+  isActive: Boolean
+  sortOrder: Int
+}
+
+"""Administrable motorcycle family. Values are database records, not enums."""
 type Family {
   id: ID!
   name: String!
+  isActive: Boolean!
+  sortOrder: Int
   subfamilies: [Subfamily!]!
 }
 
-"""
-Sous-famille administrable, toujours rattachée à une famille.
-Les produits référencent leur sous-famille; la famille se déduit de cette relation.
-"""
+"""Optional subdivision of a family; products need not have one."""
 type Subfamily {
   id: ID!
   name: String!
   family: Family!
+  isActive: Boolean!
+  sortOrder: Int
+}
+
+"""Browse category used by catalogue products, separate from editorial Category."""
+type AccessoryCategory {
+  id: ID!
+  name: String!
+  isActive: Boolean!
+  sortOrder: Int
+}
+
+"""Administrable usage label, assignable to equipment without code changes."""
+type ProductUsage {
+  id: ID!
+  name: String!
+  isActive: Boolean!
+  sortOrder: Int
 }

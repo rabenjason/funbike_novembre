@@ -1,18 +1,16 @@
-"""
-Marque administrable. Les produits référencent cette entité par `brand`;
-les métadonnées de rubrique restent des chaînes extensibles, non des enums.
-"""
+"""Administrable brand record linked to products by a real relation."""
 type Brand {
   id: ID!
+  slug: String!
   name: String!
-  logo: String!
-  logoAlt: String!
+  logo: String
+  logoAlt: String
   description: String
   isActive: Boolean!
+  sortOrder: Int
   sections: [BrandSectionAssociation!]!
 }
 
-"""Métadonnées d'affichage associées à une marque dans une rubrique."""
 type BrandSectionAssociation {
   section: String!
   order: Int!

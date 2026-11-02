@@ -1,4 +1,4 @@
-# Point d'entrée SDL, composé avec la convention graphql-import.
+# GraphQL entry point. Backend flattens these #import statements at startup.
 #import "./brands.graphql"
 #import "./categories.graphql"
 #import "./accessories.graphql"
@@ -6,22 +6,67 @@
 #import "./spare-parts.graphql"
 #import "./equipment.graphql"
 
-"""Vue agrégée des fiches produit hors motos, sans enum de catégorie."""
-union ProductDetail = SparePart | Equipment | Accessory
+type APIHealth {
+  status: String!
+  database: String!
+}
 
-"""Racines de lecture pour les entités et collections du schéma."""
+type LookupRecord {
+  id: ID!
+  name: String!
+  family: Family
+  unit: String
+  applicableTo: String
+  isActive: Boolean!
+  sortOrder: Int
+}
+
 type Query {
+  health: APIHealth!
+  me: User
   brands: [Brand!]!
+  adminBrands: [Brand!]!
   categories: [Category!]!
+  adminCategories: [Category!]!
+  adminLookups(kind: LookupKind!): [LookupRecord!]!
   families: [Family!]!
   subfamilies: [Subfamily!]!
   partTypes: [PartType!]!
   equipmentTypes: [EquipmentType!]!
   accessoryTypes: [AccessoryType!]!
-  motorcycles: [Motorcycle!]!
-  spareParts: [SparePart!]!
-  equipment: [Equipment!]!
-  accessories: [Accessory!]!
-  products: [CatalogProduct!]!
-  allParts: [ProductDetail!]!
+  accessoryCategories: [AccessoryCategory!]!
+  productUsages: [ProductUsage!]!
+  characteristicDefinitions: [CharacteristicDefinition!]!
+
+  motorcycles(brandId: ID, familyId: ID, search: String, limit: Int, offset: Int): [Motorcycle!]!
+  spareParts(partTypeId: ID, compatibleBrandId: ID, search: String, limit: Int, offset: Int): [SparePart!]!
+  equipment(brandId: ID, categoryId: ID, usageId: ID, search: String, limit: Int, offset: Int): [Equipment!]!
+  gearItems(brandId: ID, categoryId: ID, usageId: ID, search: String, limit: Int, offset: Int): [Equipment!]!
+  accessories(brandId: ID, categoryId: ID, search: String, limit: Int, offset: Int): [Accessory!]!
+  products(search: String, limit: Int, offset: Int): [CatalogProduct!]!
+  allParts(search: String, limit: Int, offset: Int): [ProductDetail!]!
+  adminProducts(status: ProductStatus, kind: ProductKind, search: String, limit: Int, offset: Int): [CatalogProduct!]!
+}
+
+type Mutation {
+  login(email: String!, password: String!): AuthPayload!
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+
+  createBrand(input: BrandInput!): Brand!
+  updateBrand(id: ID!, input: BrandInput!): Brand!
+  deleteBrand(id: ID!): Boolean!
+
+  createCategory(input: CategoryInput!): Category!
+  updateCategory(id: ID!, input: CategoryInput!): Category!
+  deleteCategory(id: ID!): Boolean!
+
+  createLookup(kind: LookupKind!, input: LookupInput!): LookupRecord!
+  updateLookup(kind: LookupKind!, id: ID!, input: LookupInput!): LookupRecord!
+  deleteLookup(kind: LookupKind!, id: ID!): Boolean!
+
+  createProduct(input: ProductInput!): CatalogProduct!
+  updateProduct(id: ID!, input: ProductInput!): CatalogProduct!
+  publishProduct(id: ID!): CatalogProduct!
+  unpublishProduct(id: ID!): CatalogProduct!
+  deleteProduct(id: ID!): Boolean!
 }
