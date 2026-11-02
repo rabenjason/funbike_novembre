@@ -64,7 +64,7 @@ Ouvrez `/admin` sur le site pour vous connecter avec l’adresse e-mail du compt
 
 ### Importation des photos
 
-Dans le dashboard, les produits acceptent plusieurs photos; les logos de marque et les images de catégorie acceptent une photo. Les aperçus apparaissent dès la sélection sur l’ordinateur. Une photo peut être retirée ou remplacée avant l’enregistrement. Les formats acceptés sont JPG, PNG, WebP, GIF et AVIF, avec une limite de 10 Mo par fichier. L’importation et le nettoyage des photos exigent une session administrateur.
+Dans le dashboard, les produits acceptent plusieurs photos; les logos de marque et les images de catégorie acceptent une photo. Les aperçus apparaissent dès la sélection sur l’ordinateur. Une photo peut être retirée ou remplacée avant l’enregistrement. Pour un produit, la première photo est principale par défaut; le bouton « Définir comme principale » permet d’en choisir une autre. Les formats acceptés sont JPG, PNG, WebP, GIF et AVIF, avec une limite de 10 Mo par fichier. L’importation et le nettoyage des photos exigent une session administrateur.
 
 Le backend conserve les fichiers dans `backend/uploads/` par défaut. `UPLOAD_DIR` peut définir un autre dossier persistant et accessible en écriture. Sauvegardez ce dossier avec la base de données : les fiches stockent les chemins des photos, pas leur contenu binaire. Les chemins `/admin/uploads` (importation/nettoyage) et `/uploads/` (lecture publique des photos) doivent être relayés vers le backend par le reverse proxy en production; le serveur Vite les relaie automatiquement en développement.
 
