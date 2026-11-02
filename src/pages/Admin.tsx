@@ -575,6 +575,14 @@ export default function Admin() {
     let cancelled = false;
     setProductLoading(true);
     setProductError("");
+    console.log("[AdminProducts] Recherche catalogue envoyée", {
+      hasSearch: appliedSearch.length > 0,
+      searchLength: appliedSearch.length,
+      productKind: productKindFilter,
+      productStatus: productStatusFilter,
+      hasBrandFilter: productBrandFilter !== "ALL",
+      page: productPage,
+    });
     void graphqlRequest<{ adminProductPage: { items: AdminProduct[]; totalCount: number } }>(
       ADMIN_PRODUCTS_PAGE_QUERY,
       {
@@ -588,10 +596,21 @@ export default function Admin() {
       token,
     ).then(({ adminProductPage }) => {
       if (cancelled) return;
+      console.log("[AdminProducts] Résultats du catalogue reçus", {
+        returnedCount: adminProductPage.items.length,
+        totalCount: adminProductPage.totalCount,
+        page: productPage,
+      });
       setProducts(adminProductPage.items);
       setProductTotalCount(adminProductPage.totalCount);
     }).catch((reason: unknown) => {
       if (cancelled) return;
+      console.log("[AdminProducts] Échec de la recherche catalogue", {
+        hasSearch: appliedSearch.length > 0,
+        searchLength: appliedSearch.length,
+        errorName: reason instanceof Error ? reason.name : typeof reason,
+        errorMessage: reason instanceof Error ? reason.message : "Erreur inconnue",
+      });
       setProducts([]);
       setProductTotalCount(0);
       setProductError(productLoadErrorMessage(reason));
