@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { ApolloServer } from "@apollo/server";
@@ -48,9 +49,17 @@ app.use(
   "/graphql",
   express.json({ limit: "1mb" }),
   expressMiddleware(apolloServer, {
-    context: async ({ req }) => ({
-      user: await authenticateRequest(toWebHeaders(req.headers)),
-    }),
+    context: async ({ req, res }) => {
+      const suppliedRequestId = req.header("x-request-id");
+      const requestId = suppliedRequestId && /^[A-Za-z0-9._-]{1,100}$/.test(suppliedRequestId)
+        ? suppliedRequestId
+        : randomUUID();
+      res.setHeader("x-request-id", requestId);
+      return {
+        requestId,
+        user: await authenticateRequest(toWebHeaders(req.headers)),
+      };
+    },
   }),
 );
 
