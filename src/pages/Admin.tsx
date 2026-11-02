@@ -225,16 +225,17 @@ const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, 
 const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", image: null, to: "", brand: "", sortOrder: "0", isActive: true });
 
 const MAX_DISPLAY_ORDER = 100000;
-const fieldClass = "w-full border border-black/15 bg-white px-3 py-2.5 text-sm text-[#171816] outline-none transition focus:border-[#c49d00] dark:border-white/15 dark:bg-[#1c1d1a] dark:text-[#f2f0ea]";
-const buttonPrimary = "inline-flex min-h-10 items-center justify-center gap-2 bg-[#ffd100] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.1em] text-[#171816] transition hover:bg-[#ffe36b] disabled:cursor-not-allowed disabled:opacity-50";
-const buttonSecondary = "inline-flex min-h-10 items-center justify-center gap-2 border border-black/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#171816] transition hover:border-[#c49d00] dark:border-white/20 dark:text-[#f2f0ea]";
+const panelClass = "border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#1c1d1a]";
+const fieldClass = "w-full min-w-0 border border-black/15 bg-white px-3 py-2.5 text-sm leading-5 text-[#171816] outline-none transition placeholder:text-black/35 focus:border-[#c49d00] focus:ring-2 focus:ring-[#ffd100]/20 dark:border-white/15 dark:bg-[#1c1d1a] dark:text-[#f2f0ea] dark:placeholder:text-white/35";
+const buttonPrimary = "inline-flex min-h-11 items-center justify-center gap-2 bg-[#ffd100] px-5 py-2.5 text-xs font-extrabold uppercase tracking-[0.1em] text-[#171816] shadow-sm transition hover:bg-[#ffe36b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c49d00] disabled:cursor-not-allowed disabled:opacity-50";
+const buttonSecondary = "inline-flex min-h-11 items-center justify-center gap-2 border border-black/15 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-[#171816] transition hover:border-[#c49d00] hover:bg-black/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c49d00] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:bg-[#1c1d1a] dark:text-[#f2f0ea] dark:hover:bg-white/[0.04]";
 
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">{label}</span>
+    <label className="block min-w-0 space-y-2">
+      <span className="block text-[11px] font-bold uppercase leading-4 tracking-[0.11em] text-black/60 dark:text-white/60">{label}</span>
       {children}
-      {hint && <span className="block text-[11px] text-black/45 dark:text-white/45">{hint}</span>}
+      {hint && <span className="block text-xs leading-5 text-black/45 dark:text-white/45">{hint}</span>}
     </label>
   );
 }
@@ -248,15 +249,15 @@ function CheckboxGroupField({ label, hint, items, selectedIds, onChange, emptyLa
   emptyLabel: string;
 }) {
   return (
-    <fieldset className="space-y-1.5">
-      <legend className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">{label}</legend>
-      {hint && <p className="text-[11px] text-black/45 dark:text-white/45">{hint}</p>}
+    <fieldset className="min-w-0 space-y-2">
+      <legend className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">{label}</legend>
+      {hint && <p className="text-xs leading-5 text-black/45 dark:text-white/45">{hint}</p>}
       {items.length === 0 ? (
         <p className="border border-dashed border-black/15 px-3 py-3 text-xs text-black/45 dark:border-white/15 dark:text-white/45">{emptyLabel}</p>
       ) : (
-        <div className="grid max-h-48 gap-1 overflow-y-auto border border-black/15 p-2 sm:grid-cols-2 dark:border-white/15">
+        <div className="grid max-h-56 gap-1.5 overflow-y-auto border border-black/15 p-3 sm:grid-cols-2 dark:border-white/15">
           {items.map((item) => (
-            <label key={item.id} className="flex min-h-10 cursor-pointer items-center gap-2 px-2 text-xs hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+            <label key={item.id} className="flex min-h-11 cursor-pointer items-center gap-3 px-2 text-sm leading-5 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
               <input
                 type="checkbox"
                 checked={selectedIds.includes(item.id)}
@@ -425,6 +426,7 @@ export default function Admin() {
   const [productTotalCount, setProductTotalCount] = useState(0);
   const [productLoading, setProductLoading] = useState(false);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
+  const [productEditorOpen, setProductEditorOpen] = useState(false);
   const [lookupKind, setLookupKind] = useState<LookupKind>("FAMILY");
   const [lookupRows, setLookupRows] = useState<Lookup[]>([]);
   const [lookupForm, setLookupForm] = useState<LookupForm>(emptyLookupForm);
@@ -595,6 +597,7 @@ export default function Admin() {
 
   function startProductEdit(product: AdminProduct) {
     setProductForm(formFromProduct(product));
+    setProductEditorOpen(true);
     setTab("products");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -664,6 +667,7 @@ export default function Admin() {
       announcePublicCatalogChange();
       cleanupImages(uploadedImagesRemoved(previousImageUrls, imageUrls), token);
       setProductForm(emptyProductForm());
+      setProductEditorOpen(false);
       reload();
     } catch (reason) {
       cleanupImages(newlyUploadedUrls, token);
@@ -701,7 +705,10 @@ export default function Admin() {
     setError("");
     try {
       await graphqlRequest("mutation DeleteProduct($id: ID!) { deleteProduct(id: $id) }", { id: product.id }, token);
-      if (productForm.id === product.id) setProductForm(emptyProductForm());
+      if (productForm.id === product.id) {
+        setProductForm(emptyProductForm());
+        setProductEditorOpen(false);
+      }
       setNotice("Produit supprimé.");
       announcePublicCatalogChange();
       reload();
@@ -1013,8 +1020,8 @@ export default function Admin() {
 
   return (
     <main className="min-h-screen bg-[#f7f6f1] text-[#171816] dark:bg-[#141513] dark:text-[#f2f0ea]">
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#1c1d1a]/90">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 border-b-2 border-[#ffd100] bg-white/95 backdrop-blur dark:border-[#ffd100]/70 dark:bg-[#1c1d1a]/95">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
           <div>
             <a href="/" className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Funbike · Site public</a>
             <h1 className="mt-1 font-display text-xl font-bold sm:text-2xl">Administration</h1>
@@ -1026,25 +1033,25 @@ export default function Admin() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8 lg:flex-row lg:items-start lg:gap-8 lg:px-8">
-        <aside className="hidden w-60 shrink-0 lg:block">
-          <nav className="sticky top-24 border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#1c1d1a]" aria-label="Navigation d’administration">
-            <div className="border-b border-black/10 px-2 pb-3 dark:border-white/10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:flex-row lg:items-start lg:gap-9 lg:px-10 lg:py-10">
+        <aside className="hidden w-64 shrink-0 lg:block">
+          <nav className={`${panelClass} sticky top-24 p-4`} aria-label="Navigation d’administration">
+            <div className="border-b border-black/10 px-2 pb-4 dark:border-white/10">
               <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#8c6d00] dark:text-[#ffd100]">Espace admin</p>
               <p className="mt-1 text-xs text-black/45 dark:text-white/45">Navigation principale</p>
             </div>
-            <div className="mt-4 space-y-5">
+            <div className="mt-5 space-y-6">
               {navigationGroups.map((group) => (
                 <div key={group.label}>
                   <p className="px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-black/40 dark:text-white/40">{group.label}</p>
-                  <div className="mt-1 space-y-1">
+                  <div className="mt-2 space-y-1.5">
                     {group.items.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         aria-current={tab === item.id ? "page" : undefined}
                         onClick={() => selectTab(item.id)}
-                        className={`flex min-h-10 w-full items-center justify-between border-l-2 px-3 py-2 text-left text-xs font-bold transition ${tab === item.id ? "border-[#d2a900] bg-yellow-50 text-[#171816] dark:bg-yellow-400/10 dark:text-white" : "border-transparent text-black/55 hover:bg-black/[0.03] hover:text-black dark:text-white/55 dark:hover:bg-white/[0.04] dark:hover:text-white"}`}
+                        className={`flex min-h-11 w-full items-center justify-between border-l-2 px-3 py-2.5 text-left text-sm font-bold transition ${tab === item.id ? "border-[#d2a900] bg-yellow-50 text-[#171816] dark:bg-yellow-400/10 dark:text-white" : "border-transparent text-black/55 hover:bg-black/[0.03] hover:text-black dark:text-white/55 dark:hover:bg-white/[0.04] dark:hover:text-white"}`}
                       >
                         <span>{item.label}</span>
                         {tab === item.id && <span className="text-[#8c6d00] dark:text-[#ffd100]" aria-hidden="true">›</span>}
@@ -1057,78 +1064,102 @@ export default function Admin() {
           </nav>
         </aside>
 
-        <div className="min-w-0 flex-1">
-          <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-black/10 lg:hidden dark:border-white/10" aria-label="Sections d’administration">
+        <div className="min-w-0 flex-1 space-y-6">
+          <nav className="flex gap-2 overflow-x-auto border-b border-black/10 pb-1 lg:hidden dark:border-white/10" aria-label="Sections d’administration">
             {tabs.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 aria-current={tab === item.id ? "page" : undefined}
                 onClick={() => selectTab(item.id)}
-                className={`min-h-11 shrink-0 border-b-2 px-3 text-xs font-bold uppercase tracking-[0.08em] transition ${tab === item.id ? "border-[#d2a900] text-[#171816] dark:text-white" : "border-transparent text-black/45 hover:text-black dark:text-white/45 dark:hover:text-white"}`}
+                className={`min-h-12 shrink-0 border-b-2 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] transition ${tab === item.id ? "border-[#d2a900] bg-yellow-50/70 text-[#171816] dark:bg-yellow-400/10 dark:text-white" : "border-transparent text-black/45 hover:text-black dark:text-white/45 dark:hover:text-white"}`}
               >
                 {item.label}
               </button>
             ))}
           </nav>
           {(error || notice) && (
-            <div className={`mb-5 border-l-2 px-4 py-3 text-sm ${error ? "border-red-500 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200" : "border-[#c49d00] bg-yellow-50 text-[#5f4b00] dark:bg-yellow-950/20 dark:text-yellow-100"}`} role={error ? "alert" : "status"}>
+            <div className={`border-l-4 px-4 py-3.5 text-sm leading-6 ${error ? "border-red-500 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200" : "border-[#c49d00] bg-yellow-50 text-[#5f4b00] dark:bg-yellow-950/20 dark:text-yellow-100"}`} role={error ? "alert" : "status"}>
               {error || notice}
             </div>
           )}
-          {loading && <p className="mb-4 text-xs text-black/45 dark:text-white/45">Chargement des données…</p>}
+          {loading && <p className="text-xs text-black/45 dark:text-white/45" role="status">Chargement des données…</p>}
 
         {tab === "products" && (
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(330px,0.95fr)]">
-            <div className="min-w-0 space-y-4">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Catalogue</p><h2 className="mt-1 font-display text-2xl font-bold">Produits</h2></div>
-                <button className={buttonPrimary} onClick={() => { setProductForm(emptyProductForm()); setError(""); setNotice(""); }}>+ Nouveau produit</button>
+          <section className="space-y-6">
+            <div className="min-w-0 space-y-6">
+              <div className="flex flex-col gap-4 border-b border-black/10 pb-5 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Catalogue</p>
+                  <h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Produits</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-black/55 dark:text-white/55">Gérez les fiches, leur publication et les informations visibles sur le site.</p>
+                </div>
+                <button type="button" className={productEditorOpen ? buttonSecondary : buttonPrimary} onClick={() => {
+                  setError("");
+                  setNotice("");
+                  if (productEditorOpen) {
+                    setProductForm(emptyProductForm());
+                    setProductEditorOpen(false);
+                  } else {
+                    setProductForm(emptyProductForm());
+                    setProductEditorOpen(true);
+                  }
+                }}>{productEditorOpen ? "Retour à la liste" : "+ Ajouter un produit"}</button>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {!productEditorOpen && <>
+              <div className={`${panelClass} grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4 sm:gap-5`}>
                 <Field label="Rechercher"><input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom, référence, marque…" /></Field>
                 <Field label="Type de produit"><select className={fieldClass} value={productKindFilter} onChange={(event) => { setProductKindFilter(event.target.value as ProductKindFilter); setProductPage(1); }}><option value="ALL">Tous les types</option><option value="MOTORCYCLE">Motos</option><option value="SPARE_PART">Pièces détachées</option><option value="EQUIPMENT">Équipements pilote</option><option value="ACCESSORY">Accessoires moto</option></select></Field>
                 <Field label="Marque"><select className={fieldClass} value={productBrandFilter} onChange={(event) => { setProductBrandFilter(event.target.value); setProductPage(1); }}><option value="ALL">Toutes les marques</option>{(data?.adminBrands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (archivée)"}</option>)}</select></Field>
                 <Field label="Publication"><select className={fieldClass} value={productStatusFilter} onChange={(event) => { setProductStatusFilter(event.target.value as ProductStatusFilter); setProductPage(1); }}><option value="ALL">Tous les statuts</option><option value="PUBLISHED">Publiés</option><option value="DRAFT">Brouillons</option></select></Field>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-black/50 dark:text-white/50">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-black/55 dark:text-white/55">
                 <span>{productLoading ? "Mise à jour des résultats…" : `${productTotalCount} produit${productTotalCount === 1 ? "" : "s"}`}</span>
                 <span>{productTotalCount > 0 ? `Affichage ${firstProductNumber}–${lastProductNumber} sur ${productTotalCount}` : "Aucun résultat"}</span>
               </div>
-              <div className="overflow-hidden border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]">
-                {productLoading && products.length === 0 ? <p className="p-6 text-sm text-black/50 dark:text-white/50">Chargement des produits…</p> : products.length === 0 ? <p className="p-6 text-sm text-black/50 dark:text-white/50">Aucun produit ne correspond aux filtres. Les nouveaux produits sont enregistrés en brouillon.</p> : (
+              <div className={`${panelClass} overflow-hidden`}>
+                {productLoading && products.length === 0 ? <p className="px-6 py-12 text-center text-sm text-black/50 dark:text-white/50">Chargement des produits…</p> : products.length === 0 ? <p className="px-6 py-14 text-center text-sm leading-6 text-black/50 dark:text-white/50">Aucun produit ne correspond aux filtres.<br />Les nouveaux produits seront enregistrés en brouillon.</p> : (
                   <ul className="divide-y divide-black/10 dark:divide-white/10">
                     {products.map((product) => (
-                      <li key={`${product.__typename}-${product.id}`} className="flex flex-wrap items-center gap-3 p-4">
-                        <div className="grid h-12 w-14 shrink-0 place-items-center overflow-hidden border border-black/10 bg-black/[0.025] dark:border-white/10 dark:bg-white/[0.03]">
+                      <li key={`${product.__typename}-${product.id}`} className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 p-4 transition-colors hover:bg-black/[0.015] lg:grid-cols-[64px_minmax(0,1fr)_auto] lg:gap-5 lg:p-5 dark:hover:bg-white/[0.02]">
+                        <div className="grid h-14 w-14 place-items-center overflow-hidden border border-black/10 bg-black/[0.025] lg:h-16 lg:w-16 dark:border-white/10 dark:bg-white/[0.03]">
                           {product.image ? <img src={product.image} alt="" loading="lazy" className="h-full w-full object-contain" /> : <span className="text-[9px] font-bold text-black/35 dark:text-white/35">Sans photo</span>}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2"><span className="truncate font-semibold">{product.name}</span><span className={`border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${product.status === "PUBLISHED" ? "border-emerald-600/30 text-emerald-700 dark:text-emerald-300" : "border-black/15 text-black/50 dark:border-white/15 dark:text-white/50"}`}>{product.status === "PUBLISHED" ? "Publié" : "Brouillon"}</span></div>
-                          <p className="mt-1 truncate text-xs text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.brand?.name ? ` · ${product.brand.name}` : ""}{product.reference ? ` · ${product.reference}` : ""}{product.price ? ` · ${product.price}` : ""}</p>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2"><span className="min-w-0 break-words font-semibold leading-5">{product.name}</span><span className={`shrink-0 border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${product.status === "PUBLISHED" ? "border-emerald-600/30 text-emerald-700 dark:text-emerald-300" : "border-black/15 text-black/50 dark:border-white/15 dark:text-white/50"}`}>{product.status === "PUBLISHED" ? "Publié" : "Brouillon"}</span></div>
+                          <p className="mt-1 text-xs leading-5 text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.brand?.name ? ` · ${product.brand.name}` : ""}{product.reference ? ` · ${product.reference}` : ""}{product.price ? ` · ${product.price}` : ""}</p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <button className={buttonSecondary} onClick={() => startProductEdit(product)}>Modifier</button>
-                          <button className={buttonSecondary} disabled={busy} onClick={() => void changePublication(product)}>{product.status === "PUBLISHED" ? "Dépublier" : "Publier"}</button>
-                          <button className="min-h-10 border border-red-300 px-3 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30" disabled={busy} onClick={() => void deleteProduct(product)}>Supprimer</button>
+                        <div className="col-span-2 flex flex-wrap gap-2 border-t border-black/10 pt-3 lg:col-span-1 lg:border-0 lg:pt-0 dark:border-white/10">
+                          <button type="button" className={buttonSecondary} onClick={() => startProductEdit(product)}>Modifier</button>
+                          <button type="button" className={buttonSecondary} disabled={busy} onClick={() => void changePublication(product)}>{product.status === "PUBLISHED" ? "Dépublier" : "Publier"}</button>
+                          <button type="button" className="inline-flex min-h-11 items-center justify-center border border-red-300 px-4 text-xs font-bold uppercase tracking-[0.08em] text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30" disabled={busy} onClick={() => void deleteProduct(product)}>Supprimer</button>
                         </div>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-black/50 dark:text-white/50">Page {productPage} sur {productTotalPages} · 20 produits par page</p>
-                <div className="flex gap-2">
+              <div className={`${panelClass} flex flex-wrap items-center justify-between gap-4 p-4 sm:px-5`}>
+                <p className="text-sm text-black/55 dark:text-white/55">Page <strong className="text-[#171816] dark:text-white">{productPage}</strong> sur {productTotalPages} <span className="mx-1 text-black/25 dark:text-white/25">·</span> 20 produits par page</p>
+                <div className="flex gap-3">
                   <button type="button" className={buttonSecondary} disabled={productPage <= 1 || productLoading} onClick={() => setProductPage((current) => Math.max(1, current - 1))}>Précédent</button>
                   <button type="button" className={buttonSecondary} disabled={productPage >= productTotalPages || productLoading} onClick={() => setProductPage((current) => Math.min(productTotalPages, current + 1))}>Suivant</button>
                 </div>
               </div>
+              </>}
             </div>
 
-            <form onSubmit={saveProduct} className="space-y-4 border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-[#1c1d1a] sm:p-5">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8c6d00] dark:text-[#ffd100]">{productForm.id ? "Modifier" : "Créer"}</p><h2 className="mt-1 font-display text-xl font-bold">{productForm.id ? "Fiche produit" : "Nouveau produit"}</h2></div>{productForm.id && <button type="button" className={buttonSecondary} onClick={() => setProductForm(emptyProductForm())}>Annuler</button>}</div>
-              <div className="grid gap-3 sm:grid-cols-2">
+            {productEditorOpen && (
+            <form onSubmit={saveProduct} className={`${panelClass} space-y-6 p-5 sm:p-7`}>
+              <div className="flex flex-col gap-4 border-b border-black/10 pb-5 dark:border-white/10 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#8c6d00] dark:text-[#ffd100]">{productForm.id ? "Modifier le produit" : "Nouveau produit"}</p>
+                  <h3 className="mt-1 font-display text-2xl font-bold">{productForm.id ? productForm.name : "Créer une fiche produit"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-black/50 dark:text-white/50">Renseignez les informations nécessaires. Les nouveaux produits sont enregistrés en brouillon.</p>
+                </div>
+                <button type="button" className={buttonSecondary} onClick={() => { setProductForm(emptyProductForm()); setProductEditorOpen(false); }}>Annuler</button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <Field label="Type de produit"><select className={fieldClass} value={productForm.kind} disabled={Boolean(productForm.id)} onChange={(event) => setProductForm((current) => ({ ...current, kind: event.target.value as ProductKind, familyId: "", subfamilyId: "", tag: "", alt: "", recommendation: "", partTypeId: "", equipmentTypeId: "", accessoryTypeId: "", categoryId: "", sourceUrl: "", universalCompatibility: "", compatibleBrandIds: [], usageIds: [], specs: [] }))}><option value="MOTORCYCLE">Moto</option><option value="SPARE_PART">Pièce détachée</option><option value="EQUIPMENT">Équipement pilote</option><option value="ACCESSORY">Accessoire moto</option></select></Field>
                 <Field label="Nom du produit"><input className={fieldClass} required maxLength={255} placeholder={PRODUCT_NAME_EXAMPLES[productForm.kind]} value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></Field>
                 <Field label="Référence du fabricant (facultatif)" hint="Recopiez la référence indiquée sur la boîte ou la fiche du fabricant."><input className={fieldClass} maxLength={160} placeholder="Ex. TVS-428H-122L" value={productForm.reference} onChange={(event) => setProductForm({ ...productForm, reference: event.target.value })} /></Field>
@@ -1136,9 +1167,9 @@ export default function Admin() {
                 <Field label="Marque"><select className={fieldClass} value={productForm.brandId} onChange={(event) => setProductForm({ ...productForm, brandId: event.target.value })}><option value="">Choisir une marque (ex. TVS ou Sherco)</option>{(data?.brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></Field>
               </div>
               {productForm.kind === "MOTORCYCLE" && (
-                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                <section className="space-y-5 border-t border-black/10 pt-6 dark:border-white/10">
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Détails de la moto</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Catégorie, gamme et éléments de présentation du modèle.</p></div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label="Catégorie de moto"><select className={fieldClass} value={productForm.familyId} onChange={(event) => { const familyId = event.target.value; const currentSubfamily = data?.subfamilies.find((item) => item.id === productForm.subfamilyId); setProductForm({ ...productForm, familyId, subfamilyId: currentSubfamily && currentSubfamily.family?.id !== familyId ? "" : productForm.subfamilyId }); }}><option value="">Choisir une catégorie</option>{(data?.families ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Gamme ou modèle associé (facultatif)" hint="Ex. Sherco SEF 250 ou TVS Apache."><select className={fieldClass} value={productForm.subfamilyId} onChange={(event) => setProductForm({ ...productForm, subfamilyId: event.target.value })}><option value="">Choisir une gamme ou un modèle</option>{(data?.subfamilies ?? []).filter((item) => !productForm.familyId || item.family?.id === productForm.familyId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Petit badge (facultatif)" hint="Texte court mis en avant sur la fiche produit."><input className={fieldClass} placeholder="Ex. Nouveauté 2026" value={productForm.tag} onChange={(event) => setProductForm({ ...productForm, tag: event.target.value })} /></Field>
@@ -1148,9 +1179,9 @@ export default function Admin() {
                 </section>
               )}
               {productForm.kind === "SPARE_PART" && (
-                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                <section className="space-y-5 border-t border-black/10 pt-6 dark:border-white/10">
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">Pièce détachée</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Précisez son type, sa catégorie et les motos compatibles.</p></div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label="Type de pièce"><select className={fieldClass} value={productForm.partTypeId} onChange={(event) => setProductForm({ ...productForm, partTypeId: event.target.value })}><option value="">Choisir un type</option>{(data?.partTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Catégorie de la pièce"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Compatible avec toutes les marques ?"><select className={fieldClass} value={productForm.universalCompatibility} onChange={(event) => setProductForm({ ...productForm, universalCompatibility: event.target.value, compatibleBrandIds: event.target.value === "true" ? [] : productForm.compatibleBrandIds })}><option value="">À préciser</option><option value="true">Oui, toutes les marques</option><option value="false">Non, compatibilité spécifique</option></select></Field>
@@ -1161,9 +1192,9 @@ export default function Admin() {
                 </section>
               )}
               {(productForm.kind === "EQUIPMENT" || productForm.kind === "ACCESSORY") && (
-                <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+                <section className="space-y-5 border-t border-black/10 pt-6 dark:border-white/10">
                   <div><h3 className="text-xs font-extrabold uppercase tracking-[0.14em]">{productForm.kind === "EQUIPMENT" ? "Équipement pilote" : "Accessoire moto"}</h3><p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Choisissez le type de produit, sa catégorie et les usages pertinents.</p></div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label={productForm.kind === "EQUIPMENT" ? "Type d’équipement" : "Type d’accessoire"}><select className={fieldClass} value={productForm.kind === "EQUIPMENT" ? productForm.equipmentTypeId : productForm.accessoryTypeId} onChange={(event) => setProductForm({ ...productForm, [productForm.kind === "EQUIPMENT" ? "equipmentTypeId" : "accessoryTypeId"]: event.target.value })}><option value="">Choisir un type</option>{(productForm.kind === "EQUIPMENT" ? data?.equipmentTypes ?? [] : data?.accessoryTypes ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <Field label="Catégorie du produit"><select className={fieldClass} value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: event.target.value })}><option value="">Choisir une catégorie</option>{(data?.accessoryCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
                     <CheckboxGroupField label="Utilisation prévue" hint="Cochez tous les usages concernés." items={(data?.productUsages ?? []).filter((item) => item.isActive)} selectedIds={productForm.usageIds} onChange={(usageIds) => setProductForm({ ...productForm, usageIds })} emptyLabel="Ajoutez d’abord les usages dans « Listes du catalogue »." />
@@ -1171,10 +1202,14 @@ export default function Admin() {
                   </div>
                 </section>
               )}
-              <Field label="Description du produit" hint="Présentez le produit, ses points forts et, si besoin, les modèles compatibles."><textarea className={`${fieldClass} min-h-24 resize-y`} placeholder={PRODUCT_DESCRIPTION_EXAMPLES[productForm.kind]} value={productForm.desc} onChange={(event) => setProductForm({ ...productForm, desc: event.target.value })} /></Field>
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photos du produit</p>
-                <ImageFilePicker
+              <div className="grid gap-6 border-t border-black/10 pt-6 dark:border-white/10 xl:grid-cols-2">
+                <Field label="Description du produit" hint="Présentez le produit, ses points forts et, si besoin, les modèles compatibles."><textarea className={`${fieldClass} min-h-40 resize-y`} placeholder={PRODUCT_DESCRIPTION_EXAMPLES[productForm.kind]} value={productForm.desc} onChange={(event) => setProductForm({ ...productForm, desc: event.target.value })} /></Field>
+                <div className="min-w-0 space-y-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Photos du produit</p>
+                    <p className="mt-1 text-xs leading-5 text-black/45 dark:text-white/45">Ajoutez et ordonnez les images de cette fiche.</p>
+                  </div>
+                  <ImageFilePicker
                   multiple
                   maxImages={30}
                   images={productForm.imageSelections}
@@ -1188,30 +1223,38 @@ export default function Admin() {
                   primaryImageId={productForm.primaryImageId}
                   onSetPrimary={(primaryImageId) => setProductForm((current) => ({ ...current, primaryImageId }))}
                   disabled={busy}
-                />
-                <p className="text-[11px] text-black/45 dark:text-white/45">La première photo est principale par défaut. Cliquez sur « Définir comme principale » pour en choisir une autre. Vous pouvez sélectionner plusieurs fichiers à la fois.</p>
+                  />
+                  <p className="text-xs leading-5 text-black/45 dark:text-white/45">La première photo est principale par défaut. Cliquez sur « Définir comme principale » pour en choisir une autre. Vous pouvez sélectionner plusieurs fichiers à la fois.</p>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3 border-t border-black/10 pt-6 dark:border-white/10">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Caractéristiques du produit</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Caractéristiques du produit</span>
                     <p className="mt-1 text-[11px] text-black/45 dark:text-white/45">Ex. « Cylindrée » : « 250 cc ».</p>
                   </div>
                   <button type="button" className="text-xs font-bold text-[#806300] underline underline-offset-2 dark:text-[#ffd100]" onClick={() => setProductForm({ ...productForm, specs: [...productForm.specs, { characteristicId: "", value: "" }] })}>+ Ajouter</button>
                 </div>
                 {productForm.specs.map((spec, index) => <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select aria-label="Caractéristique du produit" className={fieldClass} value={spec.characteristicId} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, characteristicId: event.target.value } : row) })}><option value="">Choisir une caractéristique…</option>{characteristicOptions.map((item) => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ""}</option>)}</select><input aria-label="Valeur" className={fieldClass} placeholder="Ex. 250 cc" value={spec.value} onChange={(event) => setProductForm({ ...productForm, specs: productForm.specs.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row) })} /><button type="button" aria-label="Retirer la caractéristique" className="px-2 text-red-600" onClick={() => setProductForm({ ...productForm, specs: productForm.specs.filter((_, rowIndex) => rowIndex !== index) })}>×</button></div>)}
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4 dark:border-white/10"><p className="text-[11px] text-black/45 dark:text-white/45">Les nouveaux produits restent en brouillon jusqu’à publication.</p><button type="submit" className={buttonPrimary} disabled={busy}>{busy ? "Enregistrement…" : productForm.id ? "Enregistrer" : "Créer le produit"}</button></div>
+              <div className="flex flex-col gap-4 border-t border-black/10 pt-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-black/50 dark:text-white/50">Les nouveaux produits restent en brouillon jusqu’à publication.</p>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className={buttonSecondary} onClick={() => { setProductForm(emptyProductForm()); setProductEditorOpen(false); }}>Annuler</button>
+                  <button type="submit" className={buttonPrimary} disabled={busy}>{busy ? "Enregistrement…" : productForm.id ? "Enregistrer les modifications" : "Créer le brouillon"}</button>
+                </div>
+              </div>
             </form>
+            )}
           </section>
         )}
 
         {tab === "classifications" && (
-          <section className="grid gap-6 lg:grid-cols-[minmax(240px,0.7fr)_minmax(320px,1fr)_minmax(300px,1fr)]">
-            <div className="space-y-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-2xl font-bold">Listes du catalogue</h2></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
+          <section className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(230px,0.8fr)_minmax(290px,1fr)_minmax(260px,1fr)]">
+            <div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Listes du catalogue</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Organisez les catégories, types et caractéristiques proposés dans les fiches produit.</p></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
               {LOOKUP_KINDS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-            </select></Field><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-2 p-3"><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="text-xs text-red-600 dark:text-red-300" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveLookup} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+            </select></Field><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-3 px-4 py-3.5"><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveLookup} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingLookupId ? "Modification" : "Nouvelle valeur"}</p>
                 <h3 className="mt-1 font-display text-xl font-bold">{LOOKUP_KINDS.find((item) => item.key === lookupKind)?.label}</h3>
@@ -1225,7 +1268,7 @@ export default function Admin() {
                   {(data?.families ?? []).map((family) => <option key={family.id} value={family.id}>{family.name}</option>)}
                 </select>
               </Field>}
-              {lookupKind === "CHARACTERISTIC" && <div className="grid gap-3 sm:grid-cols-2">
+              {lookupKind === "CHARACTERISTIC" && <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Unité de mesure (facultatif)" hint="Ex. cc, mm ou kg.">
                   <input className={fieldClass} value={lookupForm.unit} onChange={(event) => setLookupForm({ ...lookupForm, unit: event.target.value })} placeholder="Ex. cc, mm, kg…" />
                 </Field>
@@ -1237,28 +1280,28 @@ export default function Admin() {
                   </select>
                 </Field>
               </div>}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <DisplayOrderField value={lookupForm.sortOrder} onChange={(sortOrder) => setLookupForm({ ...lookupForm, sortOrder })} />
                 <Field label="Statut"><select className={fieldClass} value={String(lookupForm.isActive)} onChange={(event) => setLookupForm({ ...lookupForm, isActive: event.target.value === "true" })}><option value="true">Actif</option><option value="false">Archivé</option></select></Field>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-3">
                 {editingLookupId && <button type="button" className={buttonSecondary} onClick={() => { setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>Annuler</button>}
                 <button className={buttonPrimary} type="submit" disabled={busy}>{editingLookupId ? "Enregistrer" : "Créer"}</button>
               </div>
             </form>
-            <aside className="border border-black/10 bg-white p-5 text-sm leading-relaxed text-black/60 dark:border-white/10 dark:bg-[#1c1d1a] dark:text-white/60"><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes du catalogue</h3><p className="mt-2">Les valeurs créées ici apparaissent dans les listes proposées lors de l’ajout ou de la modification d’un produit. Ajoutez une catégorie, un type ou une caractéristique si le choix recherché n’existe pas encore.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
+            <aside className={`${panelClass} p-5 text-sm leading-relaxed text-black/60 dark:text-white/60`}><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes du catalogue</h3><p className="mt-2">Les valeurs créées ici apparaissent dans les listes proposées lors de l’ajout ou de la modification d’un produit. Ajoutez une catégorie, un type ou une caractéristique si le choix recherché n’existe pas encore.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
           </section>
         )}
 
         {tab === "brands" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Marques vendues par Funbike</p><h2 className="mt-1 font-display text-2xl font-bold">Marques</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.isActive ? "Active sur le site" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: formatDisplayOrder(brand.sortOrder), isActive: brand.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveBrand} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nom de la marque"><input className={fieldClass} required placeholder="Ex. Sherco" value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Nom court utilisé dans l’adresse de la page" hint="Écrivez en minuscules, sans espaces. Exemple : sherco ou tvs."><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="Ex. sherco" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Description du logo (accessibilité)" hint="Quelques mots pour décrire le logo aux personnes qui ne le voient pas."><input className={fieldClass} placeholder="Ex. Logo Sherco" value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Présentation de la marque"><textarea className={`${fieldClass} min-h-24`} placeholder="Ex. Motos et équipements TVS proposés par Funbike." value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-3 sm:grid-cols-2"><DisplayOrderField value={brandForm.sortOrder} onChange={(sortOrder) => setBrandForm({ ...brandForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex gap-2">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
+          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Marques vendues par Funbike</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Marques</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les marques affichées dans le catalogue et les filtres du site.</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminBrands ?? []).map((brand) => <li key={brand.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{brand.name}</p><p className="text-xs text-black/45 dark:text-white/45">{brand.isActive ? "Active sur le site" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingBrandId(brand.id); setBrandForm({ slug: brand.slug, name: brand.name, logoImage: brand.logo ? imageFromStoredUrl(brand.logo, `brand-${brand.id}-logo`) : null, logoAlt: brand.logoAlt ?? "", description: brand.description ?? "", sortOrder: formatDisplayOrder(brand.sortOrder), isActive: brand.isActive }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveBrand(brand)}>Archiver</button></li>)}{!data?.adminBrands.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune marque enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveBrand} className={`${panelClass} space-y-5 p-5 sm:p-6`}><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingBrandId ? "Modification" : "Nouvelle marque"}</p><h3 className="mt-1 font-display text-xl font-bold">Fiche marque</h3></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Nom de la marque"><input className={fieldClass} required placeholder="Ex. Sherco" value={brandForm.name} onChange={(event) => setBrandForm({ ...brandForm, name: event.target.value })} /></Field><Field label="Nom court utilisé dans l’adresse de la page" hint="Écrivez en minuscules, sans espaces. Exemple : sherco ou tvs."><input className={fieldClass} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="Ex. sherco" value={brandForm.slug} onChange={(event) => setBrandForm({ ...brandForm, slug: event.target.value.toLowerCase() })} /></Field><Field label="Description du logo (accessibilité)" hint="Quelques mots pour décrire le logo aux personnes qui ne le voient pas."><input className={fieldClass} placeholder="Ex. Logo Sherco" value={brandForm.logoAlt} onChange={(event) => setBrandForm({ ...brandForm, logoAlt: event.target.value })} /></Field></div><div className="space-y-3"><p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Logo de la marque</p><ImageFilePicker images={brandForm.logoImage ? [brandForm.logoImage] : []} onChange={(images) => setBrandForm({ ...brandForm, logoImage: images[0] ?? null })} disabled={busy} /></div><Field label="Présentation de la marque"><textarea className={`${fieldClass} min-h-24`} placeholder="Ex. Motos et équipements TVS proposés par Funbike." value={brandForm.description} onChange={(event) => setBrandForm({ ...brandForm, description: event.target.value })} /></Field><div className="grid gap-4 sm:grid-cols-2"><DisplayOrderField value={brandForm.sortOrder} onChange={(sortOrder) => setBrandForm({ ...brandForm, sortOrder })} /><Field label="Statut"><select className={fieldClass} value={String(brandForm.isActive)} onChange={(event) => setBrandForm({ ...brandForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field></div><div className="flex flex-wrap gap-3">{editingBrandId && <button type="button" className={buttonSecondary} onClick={() => { setEditingBrandId(null); setBrandForm(emptyBrandForm()); }}>Annuler</button>}<button className={buttonPrimary} type="submit" disabled={busy}>{editingBrandId ? "Enregistrer" : "Créer la marque"}</button></div></form>
           </section>
         )}
 
         {tab === "categories" && (
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]"><div className="space-y-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-2xl font-bold">Catégories de la page d’accueil</h2></div><div className="border border-black/10 bg-white dark:border-white/10 dark:bg-[#1c1d1a]"><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{CATEGORY_DESTINATIONS.find((destination) => destination.page === category.to)?.label ?? category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: formatDisplayOrder(category.sortOrder), isActive: category.isActive }); }}>Modifier</button><button className="text-xs font-bold text-red-600 dark:text-red-300" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
-            <form onSubmit={saveCategory} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+          <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"><div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Accueil</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Catégories de la page d’accueil</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Choisissez les cartes mises en avant et leur destination sur le site.</p></div><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{(data?.adminCategories ?? []).map((category) => <li key={category.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-semibold">{category.title}</p><p className="truncate text-xs text-black/45 dark:text-white/45">{CATEGORY_DESTINATIONS.find((destination) => destination.page === category.to)?.label ?? category.to} · {category.isActive ? "Active" : "Archivée"}</p></div><button className={buttonSecondary} onClick={() => { setEditingCategoryId(category.id); setCategoryForm({ title: category.title, desc: category.desc, image: imageFromStoredUrl(category.src, `category-${category.id}-image`), to: category.to, brand: category.brand ?? "", sortOrder: formatDisplayOrder(category.sortOrder), isActive: category.isActive }); }}>Modifier</button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveCategory(category)}>Archiver</button></li>)}{!data?.adminCategories.length && <li className="p-5 text-sm text-black/45 dark:text-white/45">Aucune catégorie enregistrée.</li>}</ul></div></div>
+            <form onSubmit={saveCategory} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingCategoryId ? "Modification" : "Nouvelle catégorie"}</p>
                 <h3 className="mt-1 font-display text-xl font-bold">Carte de la page d’accueil</h3>
@@ -1269,9 +1312,9 @@ export default function Admin() {
               <Field label="Courte description" hint="Expliquez en une phrase ce que le visiteur trouvera.">
                 <textarea className={`${fieldClass} min-h-20`} required placeholder="Ex. Découvrez les motos TVS pour vos trajets quotidiens." value={categoryForm.desc} onChange={(event) => setCategoryForm({ ...categoryForm, desc: event.target.value })} />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-white/55">Photo de la catégorie</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2 min-w-0 space-y-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-black/60 dark:text-white/60">Photo de la catégorie</p>
                   <ImageFilePicker images={categoryForm.image ? [categoryForm.image] : []} onChange={(images) => setCategoryForm({ ...categoryForm, image: images[0] ?? null })} disabled={busy} />
                 </div>
                 <Field label="Page à ouvrir au clic" hint="Choisissez où le visiteur sera dirigé.">
@@ -1291,7 +1334,7 @@ export default function Admin() {
                 <DisplayOrderField value={categoryForm.sortOrder} onChange={(sortOrder) => setCategoryForm({ ...categoryForm, sortOrder })} />
                 <Field label="Statut"><select className={fieldClass} value={String(categoryForm.isActive)} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.value === "true" })}><option value="true">Active</option><option value="false">Archivée</option></select></Field>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-3">
                 {editingCategoryId && <button type="button" className={buttonSecondary} onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm()); }}>Annuler</button>}
                 <button className={buttonPrimary} type="submit" disabled={busy}>{editingCategoryId ? "Enregistrer" : "Créer la catégorie"}</button>
               </div>
@@ -1303,14 +1346,14 @@ export default function Admin() {
           <section className="mx-auto max-w-2xl space-y-6">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Compte administrateur</p>
-              <h2 className="mt-1 font-display text-2xl font-bold">Sécurité</h2>
+              <h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Sécurité</h2>
               <p className="mt-2 text-sm text-black/55 dark:text-white/55">
                 Connecté en tant que <strong>{user.email}</strong>. Chaque changement vérifie le mot de passe actuel,
                 révoque les sessions actives et vous demande de vous reconnecter.
               </p>
             </div>
 
-            <form onSubmit={updateEmail} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+            <form onSubmit={updateEmail} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Identifiant</p>
                 <h3 className="mt-1 font-display text-xl font-bold">Modifier l’adresse e-mail</h3>
@@ -1324,7 +1367,7 @@ export default function Admin() {
               <button className={buttonPrimary} type="submit" disabled={busy}>{busy ? "Mise à jour…" : "Changer l’e-mail"}</button>
             </form>
 
-            <form onSubmit={updatePassword} className="space-y-4 border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1d1a]">
+            <form onSubmit={updatePassword} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Authentification</p>
                 <h3 className="mt-1 font-display text-xl font-bold">Modifier le mot de passe</h3>
@@ -1341,7 +1384,7 @@ export default function Admin() {
               <button className={buttonPrimary} type="submit" disabled={busy}>{busy ? "Mise à jour…" : "Changer le mot de passe"}</button>
             </form>
 
-            <div className="border border-black/10 bg-white p-5 text-sm leading-relaxed text-black/55 dark:border-white/10 dark:bg-[#1c1d1a] dark:text-white/55">
+            <div className={`${panelClass} p-5 text-sm leading-relaxed text-black/55 dark:text-white/55`}>
               <h3 className="font-bold text-[#171816] dark:text-white">Conseils</h3>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 <li>Choisissez un mot de passe unique et ne le partagez pas.</li>
