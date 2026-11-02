@@ -1,29 +1,27 @@
-# Motorcycle family is reached through Subfamily.family; no family enum is used.
+# Motorcycle-specific fields retain the Bike and BikeSpec vocabulary.
 #import "./accessories.graphql"
 
-"""Caractéristique propre à une moto, telle qu'utilisée dans Bike.specs."""
 type BikeSpec {
+  characteristic: CharacteristicDefinition
   label: String!
   value: String!
 }
 
-"""
-Moto du catalogue. La marque et la sous-famille sont des relations vers des
-entités administrables; la famille se déduit de `subfamily.family`.
-`price` reste une chaîne, car le frontend affiche notamment `Sur devis`.
-"""
 type Motorcycle implements CatalogProduct {
   id: ID!
   name: String!
-  brand: Brand!
-  subfamily: Subfamily!
-  price: String!
-  tag: String
-  alt: String!
-  image: String!
+  reference: String
+  brand: Brand
+  subfamily: Subfamily
+  price: String
+  image: String
   gallery: [String!]
-  specs: [BikeSpec!]!
-  desc: String!
-  recommendation: String
+  desc: String
+  status: ProductStatus!
   publishedAt: String
+  family: Family
+  tag: String
+  alt: String
+  specs: [BikeSpec!]!
+  recommendation: String
 }

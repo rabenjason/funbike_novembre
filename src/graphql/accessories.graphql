@@ -1,50 +1,158 @@
-# Common product relationships and the separate accessory domain.
+# Shared product contract and standalone accessory model.
 #import "./brands.graphql"
 #import "./categories.graphql"
 
-"""
-Contrat commun des modèles produits. Chaque produit référence une marque et
-une sous-famille comme enregistrements administrables, et non comme enums.
-"""
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+}
+
+"""Fixed structural product models; editable classifications remain records."""
+enum ProductKind {
+  MOTORCYCLE
+  SPARE_PART
+  EQUIPMENT
+  ACCESSORY
+}
+
+enum LookupKind {
+  FAMILY
+  SUBFAMILY
+  PART_TYPE
+  EQUIPMENT_TYPE
+  ACCESSORY_TYPE
+  CATEGORY
+  USAGE
+  CHARACTERISTIC
+}
+
+type User {
+  id: ID!
+  email: String!
+  role: String!
+  isActive: Boolean!
+}
+
+type AuthPayload {
+  accessToken: String!
+  tokenType: String!
+  expiresIn: Int!
+  user: User!
+}
+
+input BrandInput {
+  slug: String!
+  name: String!
+  logo: String
+  logoAlt: String
+  description: String
+  isActive: Boolean
+  sortOrder: Int
+}
+
+input LookupInput {
+  name: String!
+  familyId: ID
+  unit: String
+  applicableTo: String
+  isActive: Boolean
+  sortOrder: Int
+}
+
+input ProductImageInput {
+  url: String!
+  alt: String
+  isPrimary: Boolean
+  sortOrder: Int
+}
+
+input ProductSpecInput {
+  characteristicId: ID!
+  value: String!
+  sortOrder: Int
+}
+
+input ProductInput {
+  kind: ProductKind!
+  name: String!
+  reference: String
+  brandId: ID
+  subfamilyId: ID
+  price: String
+  desc: String
+  familyId: ID
+  tag: String
+  alt: String
+  recommendation: String
+  partTypeId: ID
+  equipmentTypeId: ID
+  accessoryTypeId: ID
+  categoryId: ID
+  sourceUrl: String
+  compatibleBrandIds: [ID!]
+  universalCompatibility: Boolean
+  usageIds: [ID!]
+  images: [ProductImageInput!]
+  specs: [ProductSpecInput!]
+}
+
+"""Common data for products. Brand and subfamily can be absent on drafts."""
 interface CatalogProduct {
   id: ID!
   name: String!
-  brand: Brand!
-  subfamily: Subfamily!
-  price: String!
-  image: String!
+  reference: String
+  brand: Brand
+  subfamily: Subfamily
+  price: String
+  image: String
+  gallery: [String!]
+  desc: String
+  status: ProductStatus!
+  publishedAt: String
 }
 
-"""Caractéristiques facultatives propres aux produits non-motos."""
+"""Definition of an editable, reusable product characteristic."""
+type CharacteristicDefinition {
+  id: ID!
+  name: String!
+  unit: String
+  applicableTo: String
+  isActive: Boolean!
+  sortOrder: Int
+}
+
+"""Value stored for a product; label is projected from its definition."""
 type ProductSpec {
+  characteristic: CharacteristicDefinition
   label: String!
   value: String!
 }
 
-"""
-Type d'accessoire administrable. Les enregistrements sont fournis par la future
-source de données; le SDL ne préremplit aucune liste de types.
-"""
 type AccessoryType {
   id: ID!
   name: String!
+  isActive: Boolean!
+  sortOrder: Int
   accessories: [Accessory!]!
 }
 
-"""
-Accessoire autonome. Le frontend actuel ne contient pas encore de collection
-d'accessoires distincte; ce type ne crée donc aucun enregistrement fictif.
-"""
 type Accessory implements CatalogProduct {
   id: ID!
   name: String!
-  brand: Brand!
-  subfamily: Subfamily!
-  price: String!
-  image: String!
-  accessoryType: AccessoryType!
-  sourceUrl: String
+  reference: String
+  brand: Brand
+  subfamily: Subfamily
+  price: String
+  image: String
   gallery: [String!]
   desc: String
-  specs: [ProductSpec!]
+  status: ProductStatus!
+  publishedAt: String
+  accessoryType: AccessoryType
+  category: AccessoryCategory
+  usages: [ProductUsage!]!
+  sourceUrl: String
+  specs: [ProductSpec!]!
 }
+
+union ProductDetail = SparePart | Equipment | Accessory

@@ -1,30 +1,29 @@
-# Equipment types are database records, not a fixed GraphQL enum.
+# Pilot equipment classifications are editable records, not enums.
 #import "./accessories.graphql"
 
-"""
-Type d'équipement pilote administrable. Aucune liste de valeurs n'est codée
-ici; les valeurs viendront des futurs enregistrements.
-"""
 type EquipmentType {
   id: ID!
   name: String!
+  isActive: Boolean!
+  sortOrder: Int
   equipment: [Equipment!]!
 }
 
-"""
-Équipement pilote avec son type administrable et ses caractéristiques propres.
-Les détails sourceUrl/gallery/desc/specs restent facultatifs comme dans Part.
-"""
 type Equipment implements CatalogProduct {
   id: ID!
   name: String!
-  brand: Brand!
-  subfamily: Subfamily!
-  price: String!
-  image: String!
-  equipmentType: EquipmentType!
-  sourceUrl: String
+  reference: String
+  brand: Brand
+  subfamily: Subfamily
+  price: String
+  image: String
   gallery: [String!]
   desc: String
-  specs: [ProductSpec!]
+  status: ProductStatus!
+  publishedAt: String
+  equipmentType: EquipmentType
+  category: AccessoryCategory
+  usages: [ProductUsage!]!
+  sourceUrl: String
+  specs: [ProductSpec!]!
 }

@@ -10,10 +10,12 @@ import Product from "./pages/Product";
 import AccessoryDetail from "./pages/AccessoryDetail";
 import Contact from "./pages/Contact";
 import Dealers from "./pages/Dealers";
+import Admin from "./pages/Admin";
 import { BIKES } from "./data/motorcycles";
 import { FEATURED_BANNERS } from "./data/banners";
 import { findPart } from "./data/index";
 import { content } from "./constants";
+import { getApiHealth } from "./lib/graphqlClient";
 
 const FIRST_HERO = FEATURED_BANNERS[0].image;
 
@@ -59,6 +61,7 @@ export default function App() {
   const [cookieOpen, setCookieOpen] = useState(false);
   const [progressKey, setProgressKey] = useState(0);
 
+  const isAdminPage = window.location.pathname.replace(/\/+$/, "") === "/admin";
   const route = history[history.length - 1];
   const canGoBack = history.length > 1;
   const previousRoute = canGoBack ? history[history.length - 2] : null;
@@ -72,6 +75,17 @@ export default function App() {
     localStorage.setItem("fb-theme-v2", dark ? "dark" : "light");
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", dark ? "#141513" : "#ffffff");
   }, [dark]);
+
+  // Verify the same-origin GraphQL route used by the frontend client.
+  useEffect(() => {
+    void getApiHealth()
+      .then(({ health }) => {
+        console.info(`[Funbike API] ${health.status}; MySQL ${health.database}.`);
+      })
+      .catch((error: unknown) => {
+        console.warn("[Funbike API] Backend unavailable; local display remains usable.", error);
+      });
+  }, []);
 
   // Fast splash: wait for the first hero photo (min 650 ms, max 1.6 s)
   useEffect(() => {
@@ -150,6 +164,8 @@ export default function App() {
     },
     [],
   );
+
+  if (isAdminPage) return <Admin />;
 
   return (
     <MotionConfig reducedMotion="user">
