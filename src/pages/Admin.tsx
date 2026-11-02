@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import ImageFilePicker, { type ImageSelection } from "../components/ImageFilePicker";
 import BrandSectionAssociationsEditor, { type BrandSectionFormValue } from "../components/BrandSectionAssociationsEditor";
 import SiteContentAdmin from "../components/SiteContentAdmin";
@@ -236,7 +236,7 @@ const emptyProductForm = (): ProductForm => ({
   specs: [],
 });
 
-const emptyLookupForm = (): LookupForm => ({ name: "", familyId: "", unit: "", applicableTo: "", sortOrder: "0", isActive: true });
+const emptyLookupForm = (): LookupForm => ({ name: "", familyId: "", unit: "", applicableTo: "", sortOrder: "1", isActive: true });
 const emptyBrandForm = (): BrandForm => ({ slug: "", name: "", logoImage: null, logoAlt: "", description: "", sortOrder: "0", isActive: true, sections: [] });
 const emptyCategoryForm = (): CategoryForm => ({ title: "", desc: "", image: null, to: "", brand: "", sortOrder: "0", isActive: true });
 
@@ -298,6 +298,50 @@ function formatDisplayOrder(value: number | null | undefined): string {
 function parseDisplayOrder(value: string): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 && parsed <= MAX_DISPLAY_ORDER ? parsed : 0;
+}
+
+const MAX_LIST_POSITION = MAX_DISPLAY_ORDER + 1;
+
+function parseLookupPosition(value: string): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= MAX_LIST_POSITION ? parsed - 1 : 0;
+}
+
+function lookupPosition(row: Lookup, rows: Lookup[], kind: LookupKind): number {
+  const siblings = kind === "SUBFAMILY"
+    ? rows.filter((candidate) => candidate.family?.id === row.family?.id)
+    : rows;
+  const index = siblings.findIndex((candidate) => candidate.id === row.id);
+  return index < 0 ? siblings.length + 1 : index + 1;
+}
+
+function nextLookupPosition(rows: Lookup[], kind: LookupKind, familyId: string): number {
+  const siblings = kind === "SUBFAMILY"
+    ? rows.filter((row) => row.family?.id === familyId)
+    : rows;
+  return siblings.length + 1;
+}
+
+function LookupPositionField({ value, onChange, hint }: { value: string; onChange: (value: string) => void; hint: string }) {
+  return (
+    <Field label="Position dans la liste" hint={hint}>
+      <input
+        className={fieldClass}
+        type="number"
+        min={1}
+        max={MAX_LIST_POSITION}
+        step={1}
+        inputMode="numeric"
+        required
+        placeholder="Ex. 1"
+        value={value}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          if (nextValue === "" || (/^\d+$/.test(nextValue) && Number(nextValue) <= MAX_LIST_POSITION)) onChange(nextValue);
+        }}
+      />
+    </Field>
+  );
 }
 
 function DisplayOrderField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -447,6 +491,7 @@ export default function Admin() {
   const [lookupRows, setLookupRows] = useState<Lookup[]>([]);
   const [lookupForm, setLookupForm] = useState<LookupForm>(emptyLookupForm);
   const [editingLookupId, setEditingLookupId] = useState<string | null>(null);
+  const lookupPositionTouchedRef = useRef(false);
   const [brandForm, setBrandForm] = useState<BrandForm>(emptyBrandForm);
   const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm);
@@ -554,10 +599,18 @@ export default function Admin() {
       "query AdminLookups($kind: LookupKind!) { adminLookups(kind: $kind) { id name family { id name } unit applicableTo isActive sortOrder } }",
       { kind: lookupKind },
       token,
-    ).then(({ adminLookups }) => { if (!cancelled) setLookupRows(adminLookups); })
-      .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Impossible de charger les classifications."); });
+    ).then(({ adminLookups }) => {
+      if (cancelled) return;
+      setLookupRows(adminLookups);
+      if (!editingLookupId && !lookupPositionTouchedRef.current) {
+        setLookupForm((current) => ({
+          ...current,
+          sortOrder: String(nextLookupPosition(adminLookups, lookupKind, current.familyId)),
+        }));
+      }
+    }).catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Impossible de charger les classifications."); });
     return () => { cancelled = true; };
-  }, [token, user, tab, lookupKind, refreshKey]);
+  }, [token, user, tab, lookupKind, refreshKey, editingLookupId]);
 
   useEffect(() => {
     if (!logoutModalOpen && !archiveRequest) return;
@@ -747,7 +800,7 @@ export default function Admin() {
         unit: lookupKind === "CHARACTERISTIC" ? lookupForm.unit || null : null,
         applicableTo: lookupKind === "CHARACTERISTIC" ? lookupForm.applicableTo || null : null,
         isActive: lookupForm.isActive,
-        sortOrder: parseDisplayOrder(lookupForm.sortOrder),
+        sortOrder: parseLookupPosition(lookupForm.sortOrder),
       };
       if (editingLookupId) {
         await graphqlRequest(
@@ -763,6 +816,7 @@ export default function Admin() {
         setNotice("Classification créée.");
       }
       setEditingLookupId(null);
+      lookupPositionTouchedRef.current = false;
       setLookupForm(emptyLookupForm());
       announcePublicCatalogChange();
       reload();
@@ -775,12 +829,13 @@ export default function Admin() {
 
   function editLookup(row: Lookup) {
     setEditingLookupId(row.id);
+    lookupPositionTouchedRef.current = true;
     setLookupForm({
       name: row.name,
       familyId: row.family?.id ?? "",
       unit: row.unit ?? "",
       applicableTo: row.applicableTo ?? "",
-      sortOrder: formatDisplayOrder(row.sortOrder),
+      sortOrder: String(lookupPosition(row, lookupRows, lookupKind)),
       isActive: row.isActive,
     });
   }
@@ -1279,19 +1334,22 @@ export default function Admin() {
 
         {tab === "classifications" && (
           <section className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(230px,0.8fr)_minmax(290px,1fr)_minmax(260px,1fr)]">
-            <div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Listes du catalogue</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les listes utilisées par les formulaires produit : familles de motos, catégories de produits, types et caractéristiques. Ce ne sont pas les cartes éditoriales de l’accueil.</p></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
+            <div className="min-w-0 space-y-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#8c6d00] dark:text-[#ffd100]">Valeurs du catalogue</p><h2 className="mt-1 font-display text-3xl font-bold tracking-tight">Listes du catalogue</h2><p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Gérez les listes utilisées par les formulaires produit : familles de motos, catégories de produits, types et caractéristiques. Ce ne sont pas les cartes éditoriales de l’accueil.</p></div><Field label="Liste à gérer"><select className={fieldClass} value={lookupKind} onChange={(event) => { lookupPositionTouchedRef.current = false; setLookupKind(event.target.value as LookupKind); setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>
               {LOOKUP_KINDS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-            </select></Field><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-3 px-4 py-3.5"><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
+            </select></Field><div className={panelClass}><ul className="divide-y divide-black/10 dark:divide-white/10">{lookupRows.map((row) => <li key={row.id} className="flex items-center gap-3 px-4 py-3.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#ffd100]/30 text-xs font-extrabold text-[#171816] dark:text-[#ffd100]">{lookupPosition(row, lookupRows, lookupKind)}</span><button className="min-w-0 flex-1 text-left" onClick={() => editLookup(row)}><span className="block truncate text-sm font-semibold">{row.name}</span><span className="text-[10px] text-black/45 dark:text-white/45">{row.family?.name ? `${row.family.name} · ` : ""}{row.isActive ? "Actif" : "Archivé"}</span></button><button className="inline-flex min-h-11 items-center px-3 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" onClick={() => void archiveLookup(row)}>Archiver</button></li>)}{lookupRows.length === 0 && <li className="p-4 text-sm text-black/45 dark:text-white/45">Aucune valeur enregistrée.</li>}</ul></div></div>
             <form onSubmit={saveLookup} className={`${panelClass} space-y-5 p-5 sm:p-6`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">{editingLookupId ? "Modification" : "Nouvelle valeur"}</p>
                 <h3 className="mt-1 font-display text-xl font-bold">{LOOKUP_KINDS.find((item) => item.key === lookupKind)?.label}</h3>
               </div>
-              <Field label="Nom à afficher" hint="Ce nom apparaîtra dans les choix du catalogue.">
+              <Field
+                label={lookupKind === "SUBFAMILY" ? "Nom de la gamme ou du modèle" : lookupKind === "FAMILY" ? "Nom de la catégorie de moto" : lookupKind === "CATEGORY" ? "Nom de la catégorie de produit" : "Nom à afficher"}
+                hint="Ce libellé sera proposé dans les formulaires du catalogue."
+              >
                 <input className={fieldClass} required maxLength={160} placeholder={LOOKUP_NAME_EXAMPLES[lookupKind]} value={lookupForm.name} onChange={(event) => setLookupForm({ ...lookupForm, name: event.target.value })} />
               </Field>
               {lookupKind === "SUBFAMILY" && <Field label="Catégorie de moto associée" hint="Choisissez la catégorie à laquelle cette gamme ou ce modèle appartient.">
-                <select required className={fieldClass} value={lookupForm.familyId} onChange={(event) => setLookupForm({ ...lookupForm, familyId: event.target.value })}>
+                <select required className={fieldClass} value={lookupForm.familyId} onChange={(event) => { const familyId = event.target.value; lookupPositionTouchedRef.current = false; setLookupForm((current) => ({ ...current, familyId, sortOrder: String(nextLookupPosition(lookupRows, lookupKind, familyId)) })); }}>
                   <option value="">Choisir une catégorie…</option>
                   {(data?.families ?? []).map((family) => <option key={family.id} value={family.id}>{family.name}</option>)}
                 </select>
@@ -1309,15 +1367,21 @@ export default function Admin() {
                 </Field>
               </div>}
               <div className="grid gap-4 sm:grid-cols-2">
-                <DisplayOrderField value={lookupForm.sortOrder} onChange={(sortOrder) => setLookupForm({ ...lookupForm, sortOrder })} />
+                <LookupPositionField
+                  value={lookupForm.sortOrder}
+                  hint={lookupKind === "SUBFAMILY" && !lookupForm.familyId
+                    ? "Choisissez d’abord la catégorie de moto ; la prochaine position sera calculée pour cette liste."
+                    : "1 = premier ; une position occupée insère la valeur à cet endroit et décale les suivantes. Laisser la valeur proposée ajoute à la fin."}
+                  onChange={(sortOrder) => { lookupPositionTouchedRef.current = true; setLookupForm((current) => ({ ...current, sortOrder })); }}
+                />
                 <Field label="Statut"><select className={fieldClass} value={String(lookupForm.isActive)} onChange={(event) => setLookupForm({ ...lookupForm, isActive: event.target.value === "true" })}><option value="true">Actif</option><option value="false">Archivé</option></select></Field>
               </div>
               <div className="flex flex-wrap gap-3">
-                {editingLookupId && <button type="button" className={buttonSecondary} onClick={() => { setEditingLookupId(null); setLookupForm(emptyLookupForm()); }}>Annuler</button>}
+                {editingLookupId && <button type="button" className={buttonSecondary} onClick={() => { setEditingLookupId(null); lookupPositionTouchedRef.current = false; setLookupForm(emptyLookupForm()); }}>Annuler</button>}
                 <button className={buttonPrimary} type="submit" disabled={busy}>{editingLookupId ? "Enregistrer" : "Créer"}</button>
               </div>
             </form>
-            <aside className={`${panelClass} p-5 text-sm leading-relaxed text-black/60 dark:text-white/60`}><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes des fiches produit</h3><p className="mt-2">Les valeurs créées ici sont proposées dans les formulaires du catalogue. « Catégories de motos » classe les motos ; « Catégories de produits » concerne les pièces, équipements et accessoires.</p><p className="mt-3">Les cartes illustrées de la page d’accueil se gèrent séparément dans « Cartes d’accueil » : elles ne servent pas à classer les produits.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
+            <aside className={`${panelClass} p-5 text-sm leading-relaxed text-black/60 dark:text-white/60`}><h3 className="font-display text-lg font-bold text-[#171816] dark:text-white">Listes des fiches produit</h3><p className="mt-2">Les valeurs créées ici sont proposées dans les formulaires du catalogue. « Catégories de motos » classe les motos ; « Catégories de produits » concerne les pièces, équipements et accessoires.</p><p className="mt-3">Les cartes illustrées de la page d’accueil se gèrent séparément dans « Cartes d’accueil » : elles ne servent pas à classer les produits.</p><p className="mt-3">Les positions commencent à 1. Choisir une position occupée insère la valeur à cet endroit et décale les suivantes ; les gammes et modèles sont ordonnés séparément dans chaque catégorie de moto.</p><p className="mt-3">Archiver une valeur la retire des nouveaux choix sans la supprimer des produits déjà enregistrés.</p></aside>
           </section>
         )}
 
