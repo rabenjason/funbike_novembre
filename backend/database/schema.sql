@@ -284,6 +284,7 @@ CREATE TABLE IF NOT EXISTS products (
   price VARCHAR(255) NULL,
   description TEXT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+  new_arrival_order SMALLINT NULL,
   published_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -293,6 +294,7 @@ CREATE TABLE IF NOT EXISTS products (
   KEY ix_products_subfamily (subfamily_id),
   CONSTRAINT chk_products_kind CHECK (product_kind IN ('MOTORCYCLE', 'SPARE_PART', 'EQUIPMENT', 'ACCESSORY')),
   CONSTRAINT chk_products_status CHECK (status IN ('DRAFT', 'PUBLISHED')),
+  CONSTRAINT chk_products_new_arrival CHECK (new_arrival_order IS NULL OR new_arrival_order BETWEEN 1 AND 3),
   CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE SET NULL,
   CONSTRAINT fk_products_subfamily FOREIGN KEY (subfamily_id) REFERENCES subfamilies(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

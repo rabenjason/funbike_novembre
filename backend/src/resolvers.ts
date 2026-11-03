@@ -51,6 +51,7 @@ type NormalizedProductInput = {
   compatibleBrandIds: number[];
   universalCompatibility: boolean | null;
   usageIds: number[];
+  newArrivalOrder: number | null;
   images: ProductImageInput[];
   specs: Array<{ characteristicId: number; value: string; sortOrder: number }>;
 };
@@ -197,6 +198,7 @@ async function getProducts(
        p.brand_id AS brandId,
        p.subfamily_id AS subfamilyId,
        p.price,
+       p.new_arrival_order AS newArrivalOrder,
        p.description AS description,
        p.status,
        p.published_at AS publishedAt,
@@ -659,6 +661,14 @@ function normalizeProductInput(input: Args): NormalizedProductInput {
   const universalCompatibility = input.universalCompatibility === undefined || input.universalCompatibility === null
     ? null
     : Boolean(input.universalCompatibility);
+  let newArrivalOrder: number | null = null;
+  if (input.newArrivalOrder !== undefined && input.newArrivalOrder !== null) {
+    const order = Number(input.newArrivalOrder);
+    if (!Number.isInteger(order) || order < 1 || order > 3) {
+      return badInput("New arrival rank must be an integer between 1 and 3.");
+    }
+    newArrivalOrder = order;
+  }
 
   if (kind !== "MOTORCYCLE" && (familyId || input.tag || input.alt || input.recommendation)) {
     return badInput("Motorcycle-only fields cannot be used for this product kind.");
@@ -726,6 +736,7 @@ function normalizeProductInput(input: Args): NormalizedProductInput {
     compatibleBrandIds,
     universalCompatibility,
     usageIds,
+    newArrivalOrder,
     images,
     specs,
   };
@@ -770,6 +781,21 @@ async function validateProductRelations(
       [input.subfamilyId, input.familyId],
     );
     if (!rows.length) return badInput("The selected subfamily does not belong to the selected family.");
+  }
+}
+
+async function assertNewArrivalRankAvailable(
+  connection: import("mysql2/promise").PoolConnection,
+  newArrivalOrder: number | null,
+  productId: number,
+): Promise<void> {
+  if (newArrivalOrder === null) return;
+  const [rows] = await connection.query<RowDataPacket[]>(
+    "SELECT id FROM products WHERE new_arrival_order = ? AND id <> ? LIMIT 1",
+    [newArrivalOrder, productId],
+  );
+  if (rows.length) {
+    return badInput(`Rank ${newArrivalOrder} is already used by another new-arrival product.`);
   }
 }
 
@@ -924,6 +950,13 @@ export const resolvers: Record<string, any> = {
     adminProductPage: (_: unknown, args: Args, context: GraphQLContext) => {
       requireAdmin(context);
       return getProductPage(args.kind, args, true);
+    },
+    newArrivalCount: async (_parent: unknown, _args: Args, context: GraphQLContext) => {
+      requireAdmin(context);
+      const [rows] = await getPool().query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS cnt FROM products WHERE new_arrival_order IS NOT NULL",
+      );
+      return Number(rows[0]?.cnt ?? 0);
     },
   },
   Mutation: {
@@ -1109,10 +1142,11 @@ export const resolvers: Record<string, any> = {
       const input = normalizeProductInput(args.input);
       const id = await withTransaction(async (connection) => {
         await validateProductRelations(connection, input);
+        await assertNewArrivalRankAvailable(connection, input.newArrivalOrder, 0);
         const [result] = await connection.execute<ResultSetHeader>(
-          `INSERT INTO products (product_kind, name, reference, brand_id, subfamily_id, price, description, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'DRAFT')`,
-          [input.kind, input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.description],
+          `INSERT INTO products (product_kind, name, reference, brand_id, subfamily_id, price, new_arrival_order, description, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')`,
+          [input.kind, input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.newArrivalOrder, input.description],
         );
         await saveProductRelations(connection, result.insertId, input);
         return result.insertId;
@@ -1131,10 +1165,11 @@ export const resolvers: Record<string, any> = {
         );
         if (!rows[0]) return productNotFound(id);
         await validateProductRelations(connection, input);
+        await assertNewArrivalRankAvailable(connection, input.newArrivalOrder, id);
         await connection.execute(
-          `UPDATE products SET product_kind = ?, name = ?, reference = ?, brand_id = ?, subfamily_id = ?, price = ?, description = ?
+          `UPDATE products SET product_kind = ?, name = ?, reference = ?, brand_id = ?, subfamily_id = ?, price = ?, new_arrival_order = ?, description = ?
            WHERE id = ?`,
-          [input.kind, input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.description, id],
+          [input.kind, input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.newArrivalOrder, input.description, id],
         );
         await saveProductRelations(connection, id, input);
       });

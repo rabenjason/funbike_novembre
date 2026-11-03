@@ -1,4 +1,4 @@
-import type { Bike, Brand, BrandSectionId, Part } from "../types";
+import type { Bike, Brand, BrandSectionId, HomepagePromotion, Part } from "../types";
 import type { PublicBrand, PublicProduct } from "./graphqlClient";
 
 export function toBrand(brand: PublicBrand): Brand {
@@ -80,6 +80,54 @@ export function toPart(product: PublicProduct): Part {
     sourceUrl: product.sourceUrl ?? undefined,
     desc: product.desc ?? undefined,
     specs: product.specs?.map(({ label, value }) => ({ label, value })) ?? [],
+  };
+}
+
+const NEW_ARRIVAL_DESCRIPTION_LIMIT = 180;
+
+function truncateDescription(text: string | null | undefined): string {
+  const value = (text ?? "").trim();
+  if (value.length <= NEW_ARRIVAL_DESCRIPTION_LIMIT) return value;
+  return `${value.slice(0, NEW_ARRIVAL_DESCRIPTION_LIMIT - 1).trimEnd()}…`;
+}
+
+/** Mappe un produit publié vers une carte « Nouveautés / Arrivages » de la page d’accueil. */
+export function toNewArrival(product: PublicProduct): HomepagePromotion {
+  const kindLabel = product.__typename === "Motorcycle"
+    ? "Moto"
+    : product.__typename === "SparePart"
+      ? "Pièce détachée"
+      : product.__typename === "Equipment"
+        ? "Équipement pilote"
+        : "Accessoire moto";
+  const section = product.__typename === "Motorcycle"
+    ? product.family?.name ?? product.subfamily?.family?.name ?? kindLabel
+    : product.category?.name ?? kindLabel;
+  const eyebrow = product.brand?.name ? `${product.brand.name} / ${section}` : section;
+  const specHighlights = (product.specs ?? [])
+    .filter((spec) => spec.value.trim())
+    .slice(0, 3)
+    .map((spec) => `${spec.label} : ${spec.value}`);
+  const usageHighlights = (product.usages ?? []).slice(0, 3).map((usage) => usage.name);
+  const highlights = specHighlights.length ? specHighlights : usageHighlights;
+  const descriptionSource = product.__typename === "Motorcycle"
+    ? product.recommendation || product.desc
+    : product.desc;
+  return {
+    id: `new-arrival-${product.id}`,
+    badge: product.tag || "Nouveauté",
+    eyebrow,
+    title: product.name,
+    description: truncateDescription(descriptionSource),
+    image: product.image ?? product.gallery?.[0] ?? "",
+    alt: product.alt ?? product.name,
+    highlights,
+    price: product.price?.trim() || "Sur devis",
+    targetPage: "product",
+    targetId: product.id,
+    publishedAt: product.publishedAt ?? null,
+    startsAt: null,
+    endsAt: null,
   };
 }
 

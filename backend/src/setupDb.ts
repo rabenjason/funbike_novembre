@@ -33,6 +33,19 @@ try {
     console.log("Database upgrade applied: motorcycles.recommendation added.");
   }
 
+  const [newArrivalColumn] = await connection.query<RowDataPacket[]>(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'products'
+       AND COLUMN_NAME = 'new_arrival_order'
+     LIMIT 1`,
+  );
+  if (newArrivalColumn.length === 0) {
+    await connection.query("ALTER TABLE products ADD COLUMN new_arrival_order SMALLINT NULL");
+    console.log("Database upgrade applied: products.new_arrival_order added.");
+  }
+
   console.log("MySQL schema applied. No sample rows were inserted.");
 } finally {
   await connection.end();

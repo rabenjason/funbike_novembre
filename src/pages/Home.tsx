@@ -26,7 +26,7 @@ import NewArrivals from "../components/NewArrivals";
 import TypedText from "../components/TypedText";
 import { content } from "../constants";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
-import { liveBikes, liveParts, toBrand } from "../lib/catalogAdapters";
+import { liveBikes, liveParts, toBrand, toNewArrival } from "../lib/catalogAdapters";
 
 const CATEGORY_ICONS = [faMotorcycle, faHelmetSafety, faGears, faShirt];
 const HOME_EQUIPMENT_BRANDS = getBrandsForSection("equipements");
@@ -64,7 +64,18 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
   const equipmentBrands = usingApi ? sectionBrands("equipements") : fallback ? HOME_EQUIPMENT_BRANDS : [];
   const featuredBrands = usingApi ? sectionBrands("motos", true) : fallback ? HOME_FEATURED_BRANDS : [];
   const partnerBrands = usingApi ? sectionBrands("partenaires") : fallback ? HOME_PARTNER_BRANDS : [];
-  const homePromotions = usingApi ? catalog.homepagePromotions : fallback ? HOME_PROMOTIONS : [];
+  const newArrivals = useMemo(() => {
+    if (!usingApi) return fallback ? HOME_PROMOTIONS : [];
+    return [...(catalog?.products ?? [])]
+      .filter((product) =>
+        product.status === "PUBLISHED"
+        && product.newArrivalOrder !== null
+        && product.newArrivalOrder !== undefined,
+      )
+      .sort((left, right) => (left.newArrivalOrder ?? 0) - (right.newArrivalOrder ?? 0))
+      .slice(0, 3)
+      .map(toNewArrival);
+  }, [usingApi, fallback, catalog]);
   const heroBanners = usingApi ? catalog.featuredBanners : fallback ? FEATURED_BANNERS : [];
   const editorialBanners = usingApi
     ? catalog.homepageEditorialBannersConfigured ? catalog.homepageEditorialBanners : HOME_EDITORIAL_BANNERS
@@ -251,7 +262,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
       {featuredBrands.length > 0 && <BrandExclusif go={go} brands={featuredBrands} />}
 
-      {homePromotions.length > 0 && <NewArrivals go={go} items={homePromotions} />}
+      {newArrivals.length > 0 && <NewArrivals go={go} items={newArrivals} />}
 
       <Section
         title={content.accueil.motos.titre}

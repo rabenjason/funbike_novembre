@@ -80,6 +80,7 @@ input ProductInput {
   brandId: ID
   subfamilyId: ID
   price: String
+  newArrivalOrder: Int
   desc: String
   familyId: ID
   tag: String
@@ -105,6 +106,7 @@ interface CatalogProduct {
   brand: Brand
   subfamily: Subfamily
   price: String
+  newArrivalOrder: Int
   image: String
   gallery: [String!]
   desc: String
@@ -149,6 +151,7 @@ type Accessory implements CatalogProduct {
   brand: Brand
   subfamily: Subfamily
   price: String
+  newArrivalOrder: Int
   image: String
   gallery: [String!]
   desc: String
