@@ -19,6 +19,14 @@ function sameRoute(a: Route, b: Route) {
   return a.page === b.page && (a.id ?? "") === (b.id ?? "");
 }
 
+function sanitizeCatalogDiagnostic(error: string): string {
+  return error
+    .replace(/([a-z][a-z\d+.-]*:\/\/)[^@\s/]+:[^@\s/]+@/gi, "$1[credentials-redacted]@")
+    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token redacted]")
+    .slice(0, 600);
+}
+
 function routeLabel(route: Route, publicProducts: PublicProduct[] = []): string {
   switch (route.page) {
     case "home":
@@ -45,7 +53,10 @@ function routeLabel(route: Route, publicProducts: PublicProduct[] = []): string 
 }
 
 export default function App() {
-  const { catalog, status: catalogStatus, refresh: refreshCatalog } = usePublicCatalog();
+  const { catalog, status: catalogStatus, error: catalogError, refresh: refreshCatalog } = usePublicCatalog();
+  const catalogDiagnostic = import.meta.env.DEV && catalogError
+    ? sanitizeCatalogDiagnostic(catalogError)
+    : null;
   const [dark, setDark] = useState(
     () => localStorage.getItem("fb-theme-v2") !== "light",
   );
@@ -156,9 +167,19 @@ export default function App() {
         {catalogStatus === "error" && (
           <div role="alert" className="border-b border-amber-400/50 bg-amber-50 px-4 py-3 text-[#171816] dark:bg-[#2a2413] dark:text-[#f2f0ea]">
             <div className="mx-auto flex w-full max-w-(--container-site) flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs leading-5">
-                Impossible de récupérer le catalogue via GraphQL. Vérifiez que le backend est démarré et connecté à MySQL. En développement, configurez backend/.env puis lancez npm run dev:stack. Les données locales ne sont pas utilisées.
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs leading-5">
+                  Impossible de récupérer le catalogue via GraphQL. Le backend peut répondre sans que le schéma MySQL ou le proxy du frontend soient opérationnels. En développement, démarrez le backend dans backend/ et le frontend depuis la racine, ou lancez npm run dev:stack depuis la racine. Les données locales ne sont pas utilisées.
+                </p>
+                {catalogDiagnostic && (
+                  <details className="mt-1 text-xs leading-5">
+                    <summary className="w-fit cursor-pointer font-semibold">Détail technique (développement)</summary>
+                    <pre className="mt-1 max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-black/5 p-2 font-mono text-[11px] dark:bg-white/5">
+                      {catalogDiagnostic}
+                    </pre>
+                  </details>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={refreshCatalog}
