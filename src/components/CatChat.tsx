@@ -19,9 +19,11 @@ import {
   faXmark,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
+import { BIKES } from "../data/motorcycles";
+import { ALL_PARTS } from "../data/index";
 import type { Bike } from "../types";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
-import { liveBikes, liveParts, toBrand } from "../lib/catalogAdapters";
+import { liveBikes, liveParts } from "../lib/catalogAdapters";
 import { content } from "../constants";
 import SmartImage from "./SmartImage";
 import {
@@ -29,6 +31,7 @@ import {
   greetingText,
   initialQuick,
   respond,
+  shopStatus,
   typingDelay,
   type BotReply,
   type ChatAction,
@@ -127,7 +130,7 @@ type Msg = {
 
 type Stored = { messages: Msg[]; memory: Memory; quick: string[] };
 
-const STORE_KEY = "fb_chat_v3";
+const STORE_KEY = "fb_chat_v2";
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const botMsg = (reply: BotReply): Msg => ({
@@ -274,8 +277,8 @@ function ProductStrip({
                 imgClassName="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
               />
               <div className="p-2.5">
-                <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45 dark:text-white/45">
-                  {[bike.brand, bike.family, bike.subfamily].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index).join(" · ")}
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45 dark:text-white/45">
+                  {bike.brand} · {bike.family}
                 </p>
                 <p className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-snug text-[#171816] dark:text-[#f2f0ea]">
                   {bike.name}
@@ -396,10 +399,8 @@ export default function CatChat({
 }) {
   const { catalog, status: catalogStatus } = usePublicCatalog();
   const usingApi = catalogStatus === "ready" && catalog !== null;
-  const bikes = useMemo(() => usingApi ? liveBikes(catalog.products) : [], [usingApi, catalog]);
-  const parts = useMemo(() => usingApi ? liveParts(catalog.products) : [], [usingApi, catalog]);
-  const dealers = useMemo(() => usingApi ? catalog.dealers : [], [usingApi, catalog]);
-  const brands = useMemo(() => usingApi ? catalog.brands.map(toBrand) : [], [usingApi, catalog]);
+  const bikes = useMemo(() => usingApi ? liveBikes(catalog.products) : BIKES, [usingApi, catalog]);
+  const parts = useMemo(() => usingApi ? liveParts(catalog.products) : ALL_PARTS, [usingApi, catalog]);
   const [stored] = useState(loadStored);
   const [messages, setMessages] = useState<Msg[]>(() => stored?.messages ?? [greetMsg()]);
   const [memory, setMemory] = useState<Memory>(() => stored?.memory ?? EMPTY_MEMORY);
@@ -485,7 +486,7 @@ export default function CatChat({
     setQuick([]);
     window.requestAnimationFrame(autoSize);
 
-    const { reply, memory: next } = respond(value, memoryRef.current, bikes, parts, dealers, brands, catalogStatus);
+    const { reply, memory: next } = respond(value, memoryRef.current, bikes, parts);
     memoryRef.current = next;
     setMemory(next);
 
@@ -536,13 +537,8 @@ export default function CatChat({
     setQuick(initialQuick());
   }
 
-  const statusText = typing
-    ? content.chat.ecrit
-    : catalogStatus === "ready"
-      ? "Catalogue connecté"
-      : catalogStatus === "loading"
-        ? "Chargement du catalogue…"
-        : "Catalogue indisponible";
+  const status = shopStatus();
+  const statusText = typing ? content.chat.ecrit : status.open ? content.chat.enLigne : content.chat.enLigneEquipe;
 
   const panelMotion = isMobile
     ? {
@@ -600,7 +596,7 @@ export default function CatChat({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -3 }}
                     transition={{ duration: 0.15 }}
-                    className={"truncate text-[12px] " + (typing || catalogStatus === "ready" ? "text-emerald-600 dark:text-emerald-400" : catalogStatus === "error" ? "text-rose-600 dark:text-rose-400" : "text-black/50 dark:text-white/50")}
+                    className={"truncate text-[12px] " + (typing ? "text-emerald-600 dark:text-emerald-400" : "text-black/50 dark:text-white/50")}
                   >
                     {statusText}
                   </motion.p>

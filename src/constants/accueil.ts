@@ -1,12 +1,13 @@
-/** Textes d’interface de la page d’accueil ; les contenus administrables viennent de GraphQL. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const accueil = {
     hero: {
-      localisation: "Madagascar / Funbike",
-      titreLigne1: "Votre prochaine",
-      titreLigne2: "aventure commence ici.",
-      description: "Découvrez les motos, pièces et équipements publiés dans le catalogue Funbike.",
-      sloganPrefix: "Pensé pour",
-      usages: ["le quotidien", "la route", "l'aventure"],
+      localisation: "Madagascar / Motos, équipement, liberté",
+      titreLigne1: "Le terrain est",
+      titreLigne2: "votre point de départ.",
+      description:
+        "Sherco, Fantic et TVS. Des motos faites pour aller plus loin, des pièces et de l'équipement pour suivre.",
+      sloganPrefix: "Une moto faite pour",
+      usages: ["la ville", "le travail", "le cross", "l'enduro", "les voyages", "les balades"],
       boutonCatalogue: "Explorer le catalogue",
       aLaUne: "À la une",
       annee: "2026",
@@ -16,6 +17,15 @@ export const accueil = {
     univers: {
       surTitre: "Choisir son univers",
       titre: "Pas de mauvaise direction.",
+    },
+    sherco: {
+      surTitre: "L'univers Sherco / À partir de 50 cc",
+      titreLigne1: "La première piste",
+      titreLigne2: "est la plus belle.",
+      description:
+        "Découvrez l'esprit Sherco avec Funbike. Pour les jeunes pilotes, les familles et les amoureux du tout-terrain.",
+      bouton: "Explorer les motos Sherco",
+      imageAlt: "Moto Sherco 50 cc tout-terrain",
     },
     distributeur: {
       surTitre: "Distributeur exclusif / Madagascar",
@@ -27,7 +37,7 @@ export const accueil = {
     nouveautes: {
       surTitre: "Nouveautés / Arrivages",
       titre: "Frais de l'atelier.",
-      description: "Les nouveautés enregistrées dans le catalogue Funbike.",
+      description: "Trois nouveautés sélectionnées par l'équipe Funbike. Disponibilités sur demande.",
       tarif: "Tarif",
       boutonCatalogue: "Parcourir le catalogue",
       decouvrirPrefix: "Découvrir",
@@ -35,13 +45,13 @@ export const accueil = {
     motos: {
       numero: "01 / Motos",
       titre: "À chaque terrain, sa machine.",
-      description: "Consultez les modèles publiés dans le catalogue Funbike.",
+      description: "Une sélection de modèles disponibles chez Funbike.",
       bouton: "Toutes les motos",
     },
     atelier: {
       surTitre: "Atelier / Essentiels",
       titre: "Prêt pour la suite.",
-      description: "Parcourez les pièces et équipements publiés dans le catalogue Funbike.",
+      description: "Pièces, casques et blousons : TVS équipe aussi le pilote, pas seulement sa moto.",
       bouton: "Voir tous les équipements",
     },
     partenaires: {

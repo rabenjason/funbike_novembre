@@ -1,4 +1,4 @@
-/** Données historiques non utilisées par l’interface publique ; les revendeurs viennent de GraphQL. */
+/** Données locales de secours si l’API GraphQL des revendeurs est indisponible. */
 import type { Dealer } from "../types";
 
 export const DEALERS: Dealer[] = [

@@ -3,55 +3,36 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faClock, faEnvelope, faLocationDot, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { PageHeader } from "../components/Layout";
+import { PARTS, TVS_PARTS, SHERCO_PARTS, FANTIC_PARTS } from "../data/spare-parts";
+import { TVS_ACCESSORIES } from "../data/equipment/tvs";
 import { content } from "../constants";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { liveParts } from "../lib/catalogAdapters";
 
-const CONTACT_INFO_FIELDS = [
-  { label: "Showroom & atelier", icon: faLocationDot },
-  { label: "Horaires", icon: faClock },
-  { label: "Téléphone", icon: faPhone },
-  { label: "Email", icon: faEnvelope },
-];
+const CONTACT_EMAIL = content.site.email;
+const CONTACT_ICONS = [faLocationDot, faClock, faPhone, faEnvelope];
+const CONTACT_INFO = content.contact.infos.map((item, index) => ({
+  ...item,
+  icon: CONTACT_ICONS[index],
+  href: index === 2 ? content.site.telephoneLien : index === 3 ? `mailto:${CONTACT_EMAIL}` : undefined,
+}));
 
 export default function Contact({ inquiryId }: { inquiryId?: string }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
   const parts = useMemo(
-    () => usingApi ? liveParts(catalog.products) : [],
-    [usingApi, catalog],
+    () => usingApi
+      ? liveParts(catalog.products)
+      : status === "error" ? [...TVS_ACCESSORIES, ...PARTS, ...TVS_PARTS, ...SHERCO_PARTS, ...FANTIC_PARTS] : [],
+    [usingApi, status, catalog],
   );
-  const primaryDealer = usingApi ? catalog.dealers[0] : undefined;
-  const contactEmail = primaryDealer?.email?.trim() ?? "";
-  const missingContact = status === "loading"
-    ? "Chargement des coordonnées…"
-    : status === "error"
-      ? "Coordonnées indisponibles depuis le backend."
-      : "Non renseigné";
-  const contactInfo = primaryDealer
-    ? [
-        { ...CONTACT_INFO_FIELDS[0], value: [primaryDealer.address, primaryDealer.city].filter(Boolean).join(", "), href: undefined },
-        { ...CONTACT_INFO_FIELDS[1], value: primaryDealer.hours, href: undefined },
-        { ...CONTACT_INFO_FIELDS[2], value: primaryDealer.phone, href: primaryDealer.phone ? `tel:${primaryDealer.phone.replace(/\s/g, "")}` : undefined },
-        { ...CONTACT_INFO_FIELDS[3], value: primaryDealer.email, href: primaryDealer.email ? `mailto:${primaryDealer.email}` : undefined },
-      ]
-    : CONTACT_INFO_FIELDS.map((field) => ({ ...field, value: missingContact, href: undefined }));
-  const contactSubjects = [
-    { value: "pieces", label: "Pièces détachées" },
-    { value: "equipements", label: "Équipements" },
-    ...(usingApi
-      ? catalog.brands.filter((brand) => brand.isActive).map((brand) => ({ value: `brand:${brand.slug}`, label: `Informations ${brand.name}` }))
-      : []),
-    { value: "autres", label: "Autres" },
-  ];
   const [sent, setSent] = useState(false);
   const accessory = parts.find((item) => item.id === inquiryId);
-  const accessoryBrandSlug = accessory?.brandName
-    ? catalog?.brands.find((brand) => brand.name.toLocaleLowerCase("fr") === accessory.brandName?.toLocaleLowerCase("fr"))?.slug
-    : undefined;
   const inquirySubject = accessory?.kind === "piece"
     ? "pieces"
-    : accessory ? accessoryBrandSlug ? `brand:${accessoryBrandSlug}` : "equipements" : "";
+    : accessory?.brandName?.toLocaleLowerCase("fr") === "tvs"
+      ? "tvs-accessoires"
+      : accessory ? "autres" : "";
 
   return (
     <div className="bg-white dark:bg-[#141513]">
@@ -68,7 +49,7 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
             {content.contact.titreAside}
           </h2>
           <div className="mt-8 border-t border-black/15 dark:border-white/15">
-            {contactInfo.map((item) => (
+            {CONTACT_INFO.map((item) => (
               <div key={item.label} className="grid grid-cols-[1.5rem_1fr] gap-3 border-b border-black/15 py-4 dark:border-white/15">
                 <FontAwesomeIcon icon={item.icon} className="mt-1 text-xs text-[#98741b] dark:text-[#ffd100]" />
                 <div>
@@ -95,7 +76,6 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
           transition={{ duration: 0.45, delay: 0.08 }}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!contactEmail) return;
             const form = event.currentTarget;
             const values = new FormData(form);
             const subject = (form.elements.namedItem("subject") as HTMLSelectElement).selectedOptions[0]?.textContent ?? content.contact.sujetEmailDefaut;
@@ -111,7 +91,7 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
                 ? `${content.contact.whatsappEmail}${String(values.get("whatsapp"))}`
                 : content.contact.whatsappNonRenseigne,
             ].join("\n");
-            window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             setSent(true);
           }}
           className="glass-panel border-t border-black/20 p-5 dark:border-white/20 sm:p-8"
@@ -165,7 +145,7 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
               className="contact-subject mt-1.5 min-h-11 w-full cursor-pointer border-x-0 border-b border-t-0 border-black/20 bg-transparent py-2 text-sm text-[#171816] outline-none transition focus:border-[#98741b] focus:outline-none focus:ring-0 dark:border-white/20 dark:text-[#f2f0ea] dark:focus:border-[#ffd100]"
             >
               <option value="" disabled className="text-black/50">{content.contact.choisirSujet}</option>
-              {contactSubjects.map((subject) => (
+              {content.contact.sujets.map((subject) => (
                 <option key={subject.value} value={subject.value}>{subject.label}</option>
               ))}
             </select>
@@ -185,7 +165,7 @@ export default function Contact({ inquiryId }: { inquiryId?: string }) {
           </label>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <button disabled={!contactEmail} className="inline-flex min-h-11 items-center gap-3 bg-[#ffd100] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.13em] text-[#171816] transition hover:bg-[#ffe36b] disabled:cursor-not-allowed disabled:opacity-50">
+            <button className="inline-flex items-center gap-3 bg-[#ffd100] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.13em] text-[#171816] transition hover:bg-[#ffe36b]">
               {content.contact.envoyer} <FontAwesomeIcon icon={faArrowRight} />
             </button>
             <AnimatePresence>

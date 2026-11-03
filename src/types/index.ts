@@ -84,7 +84,6 @@ export interface Bike {
   brandSlug?: string;
   reference?: string;
   family: BikeFamily;
-  subfamily?: string;
   price: string;
   tag?: string;
   alt: string;

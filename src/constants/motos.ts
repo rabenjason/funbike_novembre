@@ -1,15 +1,17 @@
-/** Textes fixes de l’interface FunBike ; les valeurs de classification viennent du catalogue GraphQL. */
+import { BIKE_FAMILIES } from "../data/families";
+
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data. */
 export const catalogue = {
     titreComplet: "Tout le Catalogue",
-    descriptionComplete: "Parcourez les motos, pièces détachées, équipements et accessoires enregistrés dans le catalogue Funbike.",
+    descriptionComplete: "Découvrez nos motos, pièces et équipements officiels.",
     titreMotos: "Catalogue Motos",
     descriptionMotos: "Performance, Aventure et Mobilité Urbaine.",
-    vehicules: "Motos publiées",
+    vehicules: "Véhicules",
     numeroMotos: "01 / Motos",
-    modelesDisponibles: "moto(s) affichée(s)",
+    modelesDisponibles: "modèle(s) disponible(s)",
     pageSur: "page",
     sur: "sur",
-    filtres: ["Tous"],
+    filtres: ["Tous", ...BIKE_FAMILIES],
     rechercheMotosPlaceholder: "Rechercher une moto ou une marque",
     rechercheGlobalePlaceholder: "Motos, casques, blousons, pièces...",
     rechercheAria: "Rechercher dans le catalogue",
@@ -17,14 +19,14 @@ export const catalogue = {
     produitsTrouves: "produit(s) trouvé(s)",
     numeroResultats: "02 / Résultats",
     piecesApercu: {
-      titre: "Pièces détachées publiées",
-      description: "Toutes les références de pièces publiées dans le catalogue, filtrées avec votre recherche.",
+      titre: "Pièces & Consommables",
+      description: "Pneus, kits chaîne, freinage, filtration et pièces mécaniques.",
       numero: "02 / Atelier",
       bouton: "Voir toutes les pièces détachées",
     },
     equipementsApercu: {
-      titre: "Équipements et accessoires publiés",
-      description: "Tous les équipements pilote et accessoires publiés dans le catalogue, filtrés avec votre recherche.",
+      titre: "Équipements pilote",
+      description: "Casques, tenues, bottes et accessoires pour le pilote.",
       numero: "03 / Équipement",
       bouton: "Voir les équipements pilote",
     },
@@ -43,7 +45,7 @@ export const motos = {
       demanderDevis: "Demander un devis",
       messageConseiller: "Un conseiller confirme le modèle, le stock et les options disponibles.",
       contacterEquipe: "Contacter l'équipe",
-      lienEquipementsTvs: "Voir les équipements de cette marque",
+      lienEquipementsTvs: "Casques, blousons et gants TVS",
       similairesTitre: "Dans le même esprit",
       similairesDescription: "D'autres modèles à découvrir.",
       similairesNumero: "À explorer / 02",

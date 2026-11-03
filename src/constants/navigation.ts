@@ -1,8 +1,17 @@
-/** Textes d’interface FunBike ; les données du catalogue sont chargées via GraphQL. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const site = {
     nom: "Funbike",
+    nomComplet: "Funbike Madagascar",
     logoAlt: "Funbike Madagascar",
-    logoUrl: "https://funbike.mg/wp-content/themes/funbike/images/logo-funbike.png",
+    pays: "Madagascar",
+    ville: "Antananarivo",
+    adresse: "Ambodivona, Antananarivo",
+    adresseComplete: "Showroom & atelier Funbike\nAntananarivo, Madagascar",
+    telephoneAffiche: "+261 34 00 000 00",
+    telephoneLien: "tel:+261340000000",
+    email: "contact@funbike.mg",
+    horaires: "Lun – sam · 8h00 - 17h30",
+    horairesCourts: "Lun – Sam · 8h00 – 17h30",
   } as const;
 
 export const navigation = {
@@ -63,12 +72,14 @@ export const footer = {
     demanderDevis: "Demander un devis",
     appeler: "Appeler",
     descriptionMarque:
-      "Le terrain change. La passion reste. Découvrez les motos, pièces détachées et équipements publiés dans le catalogue Funbike.",
+      "Le terrain change. La passion reste. Motos Sherco, Fantic & TVS, pièces détachées et équipements pilote pour les routes de Madagascar.",
     distributeurExclusif: "Distributeur exclusif",
     motosPrefix: "Motos",
     explorer: "Explorer",
     catalogue: "Catalogue",
     nousTrouver: "Nous trouver",
+    showroom: "Showroom & atelier Funbike",
+    adresse: "Ambodivona, Antananarivo",
     revendeurs: "Tous nos revendeurs",
     droitsReserves: "Funbike Madagascar · Tous droits réservés",
     cookies: "Cookies",
@@ -161,7 +172,7 @@ export const chat = {
     messageNonLu: "message non lu",
     ouvrirAvecMessageNonLu: (count: number) => `Ouvrir la discussion, ${count} message non lu`,
     assistantEcrit: "Piston est en train d'écrire",
-    suggestionsRapides: ["Quelle moto pour débuter ?", "Voir les motos disponibles", "Tous les revendeurs", "Pièces pour ma moto"],
+    suggestionsRapides: ["Quelle moto pour débuter ?", "Motos Sherco", "Horaires du showroom", "Pièces pour ma moto"],
   } as const;
 
 export const blog = {

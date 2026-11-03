@@ -1,14 +1,41 @@
-/** Textes fixes de l’interface FunBike ; les références et classifications viennent du catalogue GraphQL. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const equipements = {
     titre: "Équipements Pilote",
-    description: "Découvrez les équipements et accessoires enregistrés dans le catalogue Funbike.",
+    description: "Protection, casques, tenues et accessoires pour le pilote.",
     sectionTitre: "Choisir une marque",
-    sectionDescription: "Touchez une marque pour afficher les références publiées et les informations disponibles.",
+    sectionDescription: "Touchez une marque pour afficher sa gamme et les informations utiles.",
     sectionNumero: "01 / Équipements",
     references: "références",
     page: "page",
     categorieToutes: "Tous",
-    categoriesAria: "Catégories d’équipements",
+    categoriesTvsAria: "Catégories des équipements TVS",
+    noteTvs:
+      "Visuels et références du catalogue officiel TVS. Tarifs, tailles et disponibilités chez Funbike Madagascar à confirmer.",
+    marques: {
+      tld: {
+        titre: "Troy Lee Designs",
+        description:
+          "Parcourez la collection pilote, puis contactez Funbike pour vérifier les tailles et coloris disponibles.",
+      },
+      gaerne: {
+        titre: "Bottes & chaussures moto Gaerne",
+        description: "Sélectionnez votre pratique et votre pointure — l'équipe Funbike confirme la disponibilité.",
+      },
+      mt: {
+        titre: "Casques moto MT Helmets",
+        description: "Choisissez un usage, puis contactez Funbike pour les tailles, coloris et tarifs disponibles.",
+      },
+      tvs: {
+        titre: "Équipements TVS",
+        description: "Casques, blousons et gants TVS Racing : sélection de références issues du catalogue officiel TVS Motor.",
+      },
+      bihr: {
+        titre: "Équipements & accessoires Bihr",
+        description:
+          "Casques, tenues, bottes, gants et accessoires pilote Bihr : sélection et disponibilité à confirmer avec l'équipe Funbike.",
+        lignes: ["Casques & tenues", "Bottes & gants", "Accessoires pilote"],
+      },
+    },
   } as const;
 
 export const accessoires = {
