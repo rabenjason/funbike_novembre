@@ -46,6 +46,27 @@ try {
     console.log("Database upgrade applied: products.new_arrival_order added.");
   }
 
+  const heroCopyColumns = [
+    { column: "new_arrivals_eyebrow", definition: "VARCHAR(255) NULL" },
+    { column: "new_arrivals_title", definition: "VARCHAR(255) NULL" },
+    { column: "new_arrivals_description", definition: "TEXT NULL" },
+  ];
+  for (const heroCopyColumn of heroCopyColumns) {
+    const [existing] = await connection.query<RowDataPacket[]>(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'homepage_hero_copy'
+         AND COLUMN_NAME = ?
+       LIMIT 1`,
+      [heroCopyColumn.column],
+    );
+    if (existing.length === 0) {
+      await connection.query(`ALTER TABLE homepage_hero_copy ADD COLUMN ${heroCopyColumn.column} ${heroCopyColumn.definition}`);
+      console.log(`Database upgrade applied: homepage_hero_copy.${heroCopyColumn.column} added.`);
+    }
+  }
+
   console.log("MySQL schema applied. No sample rows were inserted.");
 } finally {
   await connection.end();

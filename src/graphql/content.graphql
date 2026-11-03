@@ -39,6 +39,9 @@ type HomepageHeroCopy {
   year: String!
   chooseModelLabel: String!
   displayModelLabel: String!
+  newArrivalsEyebrow: String
+  newArrivalsTitle: String
+  newArrivalsDescription: String
 }
 
 input HomepageHeroCopyInput {
@@ -53,6 +56,9 @@ input HomepageHeroCopyInput {
   year: String!
   chooseModelLabel: String!
   displayModelLabel: String!
+  newArrivalsEyebrow: String
+  newArrivalsTitle: String
+  newArrivalsDescription: String
 }
 
 """Additional full-width editorial hero on the home page."""

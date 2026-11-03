@@ -18,24 +18,29 @@ const itemMotion: Variants = {
 export default function NewArrivals({
   go,
   items,
+  copy,
 }: {
   go: (p: string, id?: string) => void;
   items: HomepagePromotion[];
+  copy?: { eyebrow?: string; title?: string; description?: string };
 }) {
+  const eyebrow = copy?.eyebrow || content.accueil.nouveautes.surTitre;
+  const title = copy?.title || content.accueil.nouveautes.titre;
+  const description = copy?.description || content.accueil.nouveautes.description;
   return (
     <section className="bg-white py-10 dark:bg-[#141513] sm:py-12 lg:py-14">
       <div className="mx-auto w-full max-w-(--container-site) px-4 sm:px-7 lg:px-10">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-t border-black/15 pt-4 dark:border-white/15 sm:mb-10">
           <div>
             <p className="fluid-eyebrow mb-2 font-bold uppercase text-[#98741b] dark:text-[#ffd100]">
-              {content.accueil.nouveautes.surTitre}
+              {eyebrow}
             </p>
             <h2 className="fluid-h2 font-display font-semibold text-[#171816] dark:text-[#f2f0ea]">
-              {content.accueil.nouveautes.titre}
+              {title}
             </h2>
           </div>
           <p className="fluid-body max-w-sm text-black/55 dark:text-white/55">
-            {content.accueil.nouveautes.description}
+            {description}
           </p>
         </div>
 

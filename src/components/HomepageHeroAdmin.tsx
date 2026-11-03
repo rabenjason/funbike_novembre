@@ -4,7 +4,15 @@ import { content } from "../constants";
 import { announcePublicCatalogChange, graphqlRequest, type PublicHomepageEditorialBanner, type PublicHomepageHeroCopy } from "../lib/graphqlClient";
 import { deleteUploadedImages, uploadImage } from "../lib/imageUploads";
 
-type HeroCopyForm = Omit<PublicHomepageHeroCopy, "id" | "usages"> & { usagesText: string };
+type HeroCopyForm = Omit<
+  PublicHomepageHeroCopy,
+  "id" | "usages" | "newArrivalsEyebrow" | "newArrivalsTitle" | "newArrivalsDescription"
+> & {
+  usagesText: string;
+  newArrivalsEyebrow: string;
+  newArrivalsTitle: string;
+  newArrivalsDescription: string;
+};
 type EditorialBannerForm = Omit<PublicHomepageEditorialBanner, "image"> & { image: ImageSelection | null };
 type AdminHeroData = {
   adminHomepageHeroCopy: PublicHomepageHeroCopy | null;
@@ -32,6 +40,7 @@ const ADMIN_HOMEPAGE_HERO_QUERY = `
     adminHomepageHeroCopy {
       id localisation titleLine1 titleLine2 description sloganPrefix usages
       catalogButton featuredLabel year chooseModelLabel displayModelLabel
+      newArrivalsEyebrow newArrivalsTitle newArrivalsDescription
     }
     adminHomepageEditorialBanners {
       id eyebrow titleLine1 titleLine2 description image alt buttonText
@@ -62,7 +71,13 @@ function imageFromUrl(url: string, id: string): ImageSelection {
 function heroCopyForm(value: PublicHomepageHeroCopy | null): HeroCopyForm {
   if (value) {
     const { id: _id, usages, ...copy } = value;
-    return { ...copy, usagesText: usages.join("\n") };
+    return {
+      ...copy,
+      usagesText: usages.join("\n"),
+      newArrivalsEyebrow: value.newArrivalsEyebrow || content.accueil.nouveautes.surTitre,
+      newArrivalsTitle: value.newArrivalsTitle || content.accueil.nouveautes.titre,
+      newArrivalsDescription: value.newArrivalsDescription || content.accueil.nouveautes.description,
+    };
   }
   const fallback = content.accueil.hero;
   return {
@@ -77,6 +92,9 @@ function heroCopyForm(value: PublicHomepageHeroCopy | null): HeroCopyForm {
     year: fallback.annee,
     chooseModelLabel: fallback.choisirModele,
     displayModelLabel: fallback.afficherModele,
+    newArrivalsEyebrow: content.accueil.nouveautes.surTitre,
+    newArrivalsTitle: content.accueil.nouveautes.titre,
+    newArrivalsDescription: content.accueil.nouveautes.description,
   };
 }
 
@@ -238,6 +256,9 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
         year: heroForm.year.trim(),
         chooseModelLabel: heroForm.chooseModelLabel.trim(),
         displayModelLabel: heroForm.displayModelLabel.trim(),
+        newArrivalsEyebrow: heroForm.newArrivalsEyebrow.trim(),
+        newArrivalsTitle: heroForm.newArrivalsTitle.trim(),
+        newArrivalsDescription: heroForm.newArrivalsDescription.trim(),
       };
       await graphqlRequest(
         `mutation SaveHomepageHeroCopy($input: HomepageHeroCopyInput!) {
@@ -400,6 +421,25 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
           </Field>
           <Field label="Libellé des boutons de diapositive">
             <input className={fieldClass} required maxLength={160} value={heroForm.displayModelLabel} onChange={(event) => updateHeroField("displayModelLabel", event.target.value)} />
+          </Field>
+        </div>
+        <div className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Section « Nouveautés / Arrivages »</p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-black/55 dark:text-white/55">
+              Les textes affichés au-dessus des produits nouveautés de l’accueil. Laissez un champ vide pour réutiliser le texte par défaut.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Sur-titre de la section">
+              <input className={fieldClass} maxLength={255} value={heroForm.newArrivalsEyebrow} onChange={(event) => updateHeroField("newArrivalsEyebrow", event.target.value)} placeholder={content.accueil.nouveautes.surTitre} />
+            </Field>
+            <Field label="Titre de la section">
+              <input className={fieldClass} maxLength={255} value={heroForm.newArrivalsTitle} onChange={(event) => updateHeroField("newArrivalsTitle", event.target.value)} placeholder={content.accueil.nouveautes.titre} />
+            </Field>
+          </div>
+          <Field label="Description de la section">
+            <textarea className={`${fieldClass} min-h-20`} maxLength={10000} value={heroForm.newArrivalsDescription} onChange={(event) => updateHeroField("newArrivalsDescription", event.target.value)} placeholder={content.accueil.nouveautes.description} />
           </Field>
         </div>
         <button className={buttonPrimary} type="submit" disabled={busy || loading}>{busy ? "Enregistrement…" : "Enregistrer les textes du hero"}</button>
