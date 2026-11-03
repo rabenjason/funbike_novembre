@@ -30,9 +30,18 @@ async function readUploadResponse(response: Response): Promise<{ url?: string }>
   return result;
 }
 
+function unsupportedFormatMessage(file: File): string {
+  const lowerName = file.name.toLowerCase();
+  const isHeic = /\.(heic|heif)$/.test(lowerName) || file.type === "image/heic" || file.type === "image/heif";
+  if (isHeic) {
+    return `Photo HEIC/HEIF non prise en charge : ${file.name}. Convertissez-la en JPG ou PNG avant de l’importer.`;
+  }
+  return `Format d’image non pris en charge : ${file.name}. Utilisez JPG, PNG, WebP, GIF ou AVIF.`;
+}
+
 export async function uploadImage(file: File, accessToken: string): Promise<string> {
   const contentType = getImageContentType(file);
-  if (!contentType) throw new Error(`Format d’image non pris en charge : ${file.name}.`);
+  if (!contentType) throw new Error(unsupportedFormatMessage(file));
   if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
     throw new Error(`${file.name} dépasse la limite de 10 Mo.`);
   }
