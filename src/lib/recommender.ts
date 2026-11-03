@@ -199,7 +199,7 @@ function nextQuestion(p: NeedProfile): Question | null {
 type Match = { bike: Bike; score: number; pitch: string };
 
 function scoreBike(bike: Bike, p: NeedProfile): number {
-  const text = `${bike.family} ${bike.name} ${bike.desc} ${bike.recommendation ?? ""} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`
+  const text = `${bike.family} ${bike.subfamily ?? ""} ${bike.name} ${bike.desc} ${bike.recommendation ?? ""} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`
     .toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const matches = (words: string[]) => words.some((word) => text.includes(word));
   const usageWords: Record<Usage, string[]> = {

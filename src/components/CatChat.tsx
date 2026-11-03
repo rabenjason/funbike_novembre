@@ -274,8 +274,8 @@ function ProductStrip({
                 imgClassName="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
               />
               <div className="p-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45 dark:text-white/45">
-                  {bike.brand} · {bike.family}
+                <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45 dark:text-white/45">
+                  {[bike.brand, bike.family, bike.subfamily].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index).join(" · ")}
                 </p>
                 <p className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-snug text-[#171816] dark:text-[#f2f0ea]">
                   {bike.name}

@@ -32,7 +32,15 @@ export default function Product({
   const gallery = bike?.gallery ?? (bike ? [bike.image] : []);
   const [active, setActive] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const related = bike ? bikes.filter((item) => item.id !== bike.id && item.family === bike.family).slice(0, 4) : [];
+  const bikeClassification = bike
+    ? [bike.family, bike.subfamily].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index).join(" / ")
+    : "";
+  const related = bike
+    ? bikes.filter((item) => item.id !== bike.id && (
+        (bike.family && item.family === bike.family) ||
+        (bike.subfamily && item.subfamily === bike.subfamily)
+      )).slice(0, 4)
+    : [];
 
   if (status === "loading") {
     return <div className="mx-auto min-h-[55vh] max-w-(--container-site) px-4 py-20 text-center text-sm text-black/50 dark:text-white/50">Chargement de la moto…</div>;
@@ -86,7 +94,7 @@ export default function Product({
               imgClassName="object-contain p-3 transition-transform duration-500 group-hover:scale-[1.025] sm:p-5"
             />
             <span className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] truncate border border-white/60 bg-white/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#171816] shadow-sm backdrop-blur-xl sm:bottom-5 sm:left-5 sm:tracking-[0.14em]">
-              {bike.brand} / {bike.family}
+              {[bike.brand, bikeClassification].filter(Boolean).join(" / ")}
             </span>
             <span className="absolute right-3 top-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-black/10 bg-white/85 px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#171816] shadow-sm backdrop-blur transition group-hover:bg-white dark:border-white/10 dark:bg-black/55 dark:text-white dark:group-hover:bg-black/75">
               <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
@@ -117,7 +125,7 @@ export default function Product({
           className="min-w-0 lg:col-span-5 lg:py-4"
         >
           <p className="fluid-eyebrow break-words font-bold uppercase leading-relaxed text-[#98741b] dark:text-[#ffd100]">
-            {bike.brand} / {bike.family} {bike.tag ? `/ ${bike.tag}` : ""}
+            {[bike.brand, bikeClassification, bike.tag].filter(Boolean).join(" / ")}
           </p>
           <h1 className="fluid-h1 mt-2.5 break-words font-display font-semibold text-[#171816] [overflow-wrap:anywhere] dark:text-[#f2f0ea] sm:mt-3">
             {bike.name}

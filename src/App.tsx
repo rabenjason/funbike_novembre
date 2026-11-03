@@ -32,9 +32,9 @@ function routeLabel(route: Route, publicProducts: PublicProduct[] = []): string 
     case "spares":
       return content.navigation.piecesDetachees;
     case "product":
-      return publicProducts.find((product) => product.id === route.id && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
+      return publicProducts.find((product) => product.id === route.id && product.status === "PUBLISHED" && product.__typename === "Motorcycle")?.name ?? content.motos.fiche.titreDefaut;
     case "accessory":
-      return publicProducts.find((product) => product.id === route.id && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
+      return publicProducts.find((product) => product.id === route.id && product.status === "PUBLISHED" && product.__typename !== "Motorcycle")?.name ?? content.accessoires.fiche.titreDefaut;
     case "revendeurs":
       return content.navigation.revendeurs;
     case "contact":

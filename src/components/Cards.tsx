@@ -63,8 +63,8 @@ export function BikeCard({ bike, go }: { bike: Bike; go: (p: string, id?: string
 
       {/* INFO */}
       <div className="flex flex-1 flex-col border-t border-black/[0.07] p-4 sm:p-5 dark:border-white/[0.07]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
-          {bike.brand} · {bike.family}
+        <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
+          {[bike.brand, bike.family, bike.subfamily].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index).join(" · ")}
         </p>
 
         <h3 className="mt-2 font-display text-[clamp(1.25rem,1.05rem+0.7vw,1.6rem)] font-bold uppercase leading-[1.05] tracking-[-0.02em] text-[#171816] dark:text-white">
