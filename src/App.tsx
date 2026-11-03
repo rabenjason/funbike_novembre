@@ -157,7 +157,7 @@ export default function App() {
           <div role="alert" className="border-b border-amber-400/50 bg-amber-50 px-4 py-3 text-[#171816] dark:bg-[#2a2413] dark:text-[#f2f0ea]">
             <div className="mx-auto flex w-full max-w-(--container-site) flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-5">
-                Impossible de récupérer le catalogue depuis le backend GraphQL. Les données locales ne sont pas utilisées.
+                Impossible de récupérer le catalogue via GraphQL. Vérifiez que le backend est démarré et connecté à MySQL. En développement, configurez backend/.env puis lancez npm run dev:stack. Les données locales ne sont pas utilisées.
               </p>
               <button
                 type="button"
