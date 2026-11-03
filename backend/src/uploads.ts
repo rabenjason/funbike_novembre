@@ -7,6 +7,7 @@ import { extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authenticateRequest, requireAdmin } from "./auth.js";
 import { queryRows } from "./db.js";
+import { describeUnsupportedImage, detectImageMimeType } from "./imageSignature.js";
 
 type DbRow = RowDataPacket & {
   isProductImage: number | boolean;
@@ -89,28 +90,9 @@ function declaredMimeType(request: IncomingMessage): string {
   return (Array.isArray(value) ? value[0] : value ?? "").split(";")[0].trim().toLowerCase();
 }
 
-function detectImageMimeType(buffer: Buffer): string | null {
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
-  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
-  if (buffer.length >= 6 && ["GIF87a", "GIF89a"].includes(buffer.toString("ascii", 0, 6))) return "image/gif";
-  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") return "image/webp";
-  if (buffer.length >= 16 && buffer.toString("ascii", 4, 8) === "ftyp") {
-    const limit = Math.min(buffer.length, 40);
-    for (let offset = 8; offset + 4 <= limit; offset += offset === 8 ? 8 : 4) {
-      const brand = buffer.toString("ascii", offset, offset + 4);
-      if (brand === "avif" || brand === "avis") return "image/avif";
-    }
-  }
-  return null;
-}
-
 async function createUpload(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const mimeType = declaredMimeType(request);
-  if (!Object.hasOwn(mimeExtensions, mimeType)) {
-    request.resume();
-    sendJson(response, 415, { error: "Format non pris en charge. Utilisez JPG, PNG, WebP, GIF ou AVIF." });
-    return;
-  }
+  const declaredMime = declaredMimeType(request);
+  const declaredSupported = Object.hasOwn(mimeExtensions, declaredMime);
 
   const contentLength = Number(request.headers["content-length"] ?? 0);
   if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
@@ -134,8 +116,24 @@ async function createUpload(request: IncomingMessage, response: ServerResponse):
     sendJson(response, 400, { error: "Le fichier image est vide." });
     return;
   }
-  if (detectImageMimeType(contents) !== mimeType) {
-    sendJson(response, 415, { error: "Le contenu du fichier ne correspond pas à un format d’image accepté." });
+
+  // Le contenu réel du fichier fait foi : s’il est reconnu, on l’enregistre
+  // sous son vrai format, même si l’extension ou le type déclaré mentent
+  // (ex. un PNG nommé .jpg). Sinon, on explique précisément ce qui ne va pas.
+  const mimeType = detectImageMimeType(contents);
+  if (mimeType === null) {
+    const hint = describeUnsupportedImage(contents);
+    if (hint) {
+      sendJson(response, 415, { error: hint });
+      return;
+    }
+    if (!declaredSupported) {
+      sendJson(response, 415, { error: "Format non pris en charge. Utilisez JPG, PNG, WebP, GIF ou AVIF." });
+      return;
+    }
+    sendJson(response, 415, {
+      error: "Le contenu du fichier est illisible ou corrompu : aucun JPG, PNG, WebP, GIF ou AVIF n’a été détecté. Réessayez avec un autre fichier.",
+    });
     return;
   }
 
