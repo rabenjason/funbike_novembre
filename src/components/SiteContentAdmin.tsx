@@ -68,11 +68,11 @@ type PromotionForm = Omit<HomepagePromotion, "image" | "highlights" | "published
   startsAt: string;
   endsAt: string;
 };
-type DealerForm = Omit<Dealer, "lat" | "lon" | "services" | "assistantLabel"> & {
+type DealerForm = Omit<Dealer, "lat" | "lon" | "assistantLabel"> & {
   assistantLabel: string;
   lat: string;
   lon: string;
-  servicesText: string;
+  serviceDraft: string;
 };
 type ContentSection = "banners" | "homeHeroes" | "promotions" | "dealers";
 type ArchiveTarget =
@@ -153,7 +153,8 @@ const emptyDealer = (): DealerForm => ({
   assistantLabel: "",
   lat: "",
   lon: "",
-  servicesText: "",
+  services: [],
+  serviceDraft: "",
   isActive: true,
   sortOrder: 0,
 });
@@ -347,9 +348,24 @@ export default function SiteContentAdmin({ token }: { token: string }) {
       ...item,
       lat: String(item.lat),
       lon: String(item.lon),
-      servicesText: item.services.join("\n"),
+      serviceDraft: "",
       assistantLabel: item.assistantLabel ?? "",
     });
+  }
+
+  function addDealerService() {
+    const value = dealerForm.serviceDraft.trim();
+    if (!value) return;
+    if (dealerForm.services.length >= 50) {
+      setError("50 services maximum par point de vente.");
+      return;
+    }
+    if (dealerForm.services.some((service) => service.toLowerCase() === value.toLowerCase())) {
+      setDealerForm({ ...dealerForm, serviceDraft: "" });
+      setNotice("Ce service est déjà dans la liste.");
+      return;
+    }
+    setDealerForm({ ...dealerForm, services: [...dealerForm.services, value], serviceDraft: "" });
   }
 
   async function saveBanner(event: FormEvent<HTMLFormElement>) {
@@ -496,7 +512,7 @@ export default function SiteContentAdmin({ token }: { token: string }) {
         assistantLabel: dealerForm.assistantLabel.trim() || null,
         lat,
         lon,
-        services: asLines(dealerForm.servicesText),
+        services: dealerForm.services,
         isActive: dealerForm.isActive,
         sortOrder: dealerForm.sortOrder,
       };
@@ -761,6 +777,13 @@ export default function SiteContentAdmin({ token }: { token: string }) {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{item.city} · {item.name}</p>
                       <p className="text-xs text-black/50 dark:text-white/50">{item.kind} · {item.isActive ? "Actif" : "Archivé"}</p>
+                      {item.services.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {item.services.map((service) => (
+                            <span key={service} className="border border-black/10 px-1.5 py-0.5 text-[10px] text-black/55 dark:border-white/10 dark:text-white/55">{service}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button type="button" className={buttonSecondary} disabled={busy} onClick={() => beginEditDealer(item)}>Modifier</button>
                     {item.isActive && <button type="button" className="min-h-11 px-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" disabled={busy} onClick={() => setArchiveTarget({ type: "dealer", id: item.key, label: `${item.name} · ${item.city}` })}>Archiver</button>}
@@ -816,8 +839,42 @@ export default function SiteContentAdmin({ token }: { token: string }) {
                 <input className={fieldClass} type="number" min={-180} max={180} step="any" required value={dealerForm.lon} onChange={(event) => setDealerForm({ ...dealerForm, lon: event.target.value })} placeholder="Ex. 47.5079" />
               </Field>
             </div>
-            <Field label="Services proposés" hint="Un service par ligne.">
-              <textarea className={`${fieldClass} min-h-24`} value={dealerForm.servicesText} onChange={(event) => setDealerForm({ ...dealerForm, servicesText: event.target.value })} placeholder="Motos\nEssais\nAtelier" />
+            <Field label="Services proposés" hint="Ajoutez-les un par un (ex. Atelier, Essais, Livraison). Ils s’affichent en pastilles sur la page des revendeurs.">
+              <div className="flex gap-2">
+                <input
+                  className={fieldClass}
+                  maxLength={160}
+                  value={dealerForm.serviceDraft}
+                  placeholder="Ex. Atelier"
+                  onChange={(event) => setDealerForm({ ...dealerForm, serviceDraft: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addDealerService();
+                    }
+                  }}
+                />
+                <button type="button" className={buttonSecondary} onClick={addDealerService}>Ajouter</button>
+              </div>
+              {dealerForm.services.length > 0 ? (
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {dealerForm.services.map((service, index) => (
+                    <li key={`${service}-${index}`} className="inline-flex items-center gap-1.5 border border-black/15 bg-black/[0.03] px-2 py-1 text-[11px] font-medium text-black/70 dark:border-white/15 dark:bg-white/[0.05] dark:text-white/70">
+                      {service}
+                      <button
+                        type="button"
+                        aria-label={`Retirer le service ${service}`}
+                        className="grid h-4 w-4 place-items-center rounded-full text-black/45 transition hover:bg-black/10 hover:text-black dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
+                        onClick={() => setDealerForm((current) => ({ ...current, services: current.services.filter((_, itemIndex) => itemIndex !== index) }))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-black/45 dark:text-white/45">Aucun service ajouté pour l’instant.</p>
+              )}
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <DisplayOrder value={dealerForm.sortOrder} onChange={(sortOrder) => setDealerForm({ ...dealerForm, sortOrder })} />
