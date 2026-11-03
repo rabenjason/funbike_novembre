@@ -91,7 +91,7 @@ function indexBikes(bikes: Bike[]) {
   return bikes.map((bike) => ({
     bike,
     name: norm(bike.name),
-    hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.desc} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`),
+    hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.subfamily ?? ""} ${bike.desc} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`),
   }));
 }
 
