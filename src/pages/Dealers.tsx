@@ -213,16 +213,18 @@ export default function Dealers({ go, initialCity }: { go: (p: string, id?: stri
                   </div>
                 </dl>
 
-                <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={content.revendeurs.servicesAria}>
-                  {dealer.services.map((s) => (
-                    <li
-                      key={s}
-                      className="border border-black/10 px-2 py-1 text-[11px] font-medium text-black/60 dark:border-white/10 dark:text-white/60"
-                    >
-                      {s}
-                    </li>
-                  ))}
-                </ul>
+                {dealer.services.length > 0 && (
+                  <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={content.revendeurs.servicesAria}>
+                    {dealer.services.map((s, serviceIndex) => (
+                      <li
+                        key={`${s}-${serviceIndex}`}
+                        className="border border-black/10 px-2 py-1 text-[11px] font-medium text-black/60 dark:border-white/10 dark:text-white/60"
+                      >
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 {/* Phones: primary action full width + two equal 48px buttons.
                     ≥640px: compact inline actions. */}
