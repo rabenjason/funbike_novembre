@@ -1,14 +1,12 @@
 import type { Brand, BrandSectionId } from "../types";
 
-/** Logo Funbike réutilisé par l'interface et la fiche de marque interne. */
+/** Ancienne URL de logo conservée pour compatibilité ; l’interface utilise content.site.logoUrl. */
 export const LOGO = "https://funbike.mg/wp-content/themes/funbike/images/logo-funbike.png";
 
 /**
- * Référentiel local de secours, utilisé lorsque l’API GraphQL est indisponible.
- * En fonctionnement normal, les marques et leurs associations de rubriques
- * proviennent des tables `brands` et `brand_sections`. La rubrique `partenaires`
- * correspond au carrousel de logos de l'accueil. Ces valeurs ne sont pas seedées
- * dans la base de données.
+ * Anciennes données conservées pour référence uniquement. Elles ne sont pas
+ * importées par le site public et ne doivent pas servir de repli ni de seed ;
+ * les marques et associations affichées viennent de l’API GraphQL.
  */
 export const BRANDS = [
   {

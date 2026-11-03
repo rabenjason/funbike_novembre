@@ -1,4 +1,4 @@
-/** Données locales de secours si l’API GraphQL des promotions est indisponible. */
+/** Données historiques non utilisées par l’interface publique ; les promotions doivent venir de GraphQL. */
 import type { HomepagePromotion } from "../types";
 import { BIKES } from "./motorcycles";
 

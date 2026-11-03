@@ -1,7 +1,7 @@
 /**
- * Point d'entrée unique des textes fixes de l'interface.
- * Les contenus administrables sont organisés dans src/data/ et le référentiel des marques
- * dans src/data/brands.ts ; ils pourront être remplacés par une API sans l'implémenter ici.
+ * Point d'entrée unique des textes d'interface.
+ * Les données publiques administrables (catalogue, marques, revendeurs et bannières)
+ * sont chargées via GraphQL ; ce module ne contient que les libellés et états d'interface.
  */
 import { accueil } from "./accueil";
 import { accessoires, equipements } from "./equipements";
