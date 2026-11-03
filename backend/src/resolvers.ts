@@ -1126,18 +1126,15 @@ export const resolvers: Record<string, any> = {
       const input = normalizeProductInput(args.input);
       await withTransaction(async (connection) => {
         const [rows] = await connection.query<RowDataPacket[]>(
-          "SELECT product_kind AS productKind FROM products WHERE id = ? FOR UPDATE",
+          "SELECT id FROM products WHERE id = ? FOR UPDATE",
           [id],
         );
         if (!rows[0]) return productNotFound(id);
-        if (rows[0].productKind !== input.kind) {
-          return badInput("A product's kind cannot be changed after creation.");
-        }
         await validateProductRelations(connection, input);
         await connection.execute(
-          `UPDATE products SET name = ?, reference = ?, brand_id = ?, subfamily_id = ?, price = ?, description = ?
+          `UPDATE products SET product_kind = ?, name = ?, reference = ?, brand_id = ?, subfamily_id = ?, price = ?, description = ?
            WHERE id = ?`,
-          [input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.description, id],
+          [input.kind, input.name, input.reference, input.brandId, input.subfamilyId, input.price, input.description, id],
         );
         await saveProductRelations(connection, id, input);
       });
