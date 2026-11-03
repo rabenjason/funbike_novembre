@@ -31,7 +31,7 @@ Le backend fournit l’API catalogue et les mutations d’administration. Il n�
    npm run db:setup
    ```
 
-   Vous pouvez également sélectionner la base dans phpMyAdmin et importer `database/schema.sql`.
+   Vous pouvez également sélectionner la base dans phpMyAdmin et importer `database/schema.sql` pour une base neuve. Pour une base déjà créée, relancez `npm run db:setup` après une mise à jour du backend : le script applique aussi les migrations idempotentes des colonnes manquantes, notamment `motorcycles.recommendation`. Il n’insère aucune donnée d’exemple.
 
 ## 2. Initialiser le compte administrateur
 

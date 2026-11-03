@@ -1,4 +1,4 @@
-/** Libellés fixes de l’interface ; les revendeurs et coordonnées viennent de GraphQL. */
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data/. */
 export const revendeurs = {
     titre: "Choisissez votre ville.",
     choisirVilleAria: "Choisir une ville",

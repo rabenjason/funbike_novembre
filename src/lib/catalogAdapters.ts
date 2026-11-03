@@ -32,7 +32,6 @@ export function toBike(product: PublicProduct): Bike {
     brandSlug: product.brand?.slug ?? undefined,
     reference: product.reference ?? undefined,
     family: product.family?.name ?? product.subfamily?.family?.name ?? "",
-    subfamily: product.subfamily?.name ?? undefined,
     price: product.price ?? "Sur devis",
     tag: product.tag ?? undefined,
     alt: product.alt ?? product.name,
@@ -85,13 +84,11 @@ export function toPart(product: PublicProduct): Part {
 }
 
 export function liveBikes(products: PublicProduct[]): Bike[] {
-  return products
-    .filter((product) => product.status === "PUBLISHED" && product.__typename === "Motorcycle")
-    .map(toBike);
+  return products.filter((product) => product.__typename === "Motorcycle").map(toBike);
 }
 
 export function liveParts(products: PublicProduct[]): Part[] {
   return products
-    .filter((product) => product.status === "PUBLISHED" && product.__typename !== "Motorcycle")
+    .filter((product) => product.__typename !== "Motorcycle")
     .map(toPart);
 }

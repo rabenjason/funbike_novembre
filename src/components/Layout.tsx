@@ -18,6 +18,8 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { AnimatePresence, motion } from "framer-motion";
+import { LOGO } from "../data/brands";
+import { getFooterFeaturedMotoBrands, getFooterMotoBrands } from "../data/brands";
 import { content } from "../constants";
 import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { toBrand } from "../lib/catalogAdapters";
@@ -36,7 +38,7 @@ export const NAV = [
 function BrandMark({ large = false }: { large?: boolean }) {
   return (
     <img
-      src={content.site.logoUrl}
+      src={LOGO}
       alt={content.site.logoAlt}
       className={
         "logo-clean block w-auto object-contain " +
@@ -169,7 +171,6 @@ export function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => voi
 export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void; onCookies: () => void }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
-  const primaryDealer = usingApi ? catalog.dealers[0] : undefined;
 
   function scrollTop() {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -180,13 +181,13 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
         .filter((brand) => brand.isActive && brand.sections?.some((section) => section.section === "motos" && section.footerOrder !== null && section.footerOrder !== undefined))
         .sort((left, right) => (left.sections?.find((section) => section.section === "motos")?.footerOrder ?? 0) - (right.sections?.find((section) => section.section === "motos")?.footerOrder ?? 0))
         .map(toBrand)
-    : [];
+    : getFooterMotoBrands();
   const footerFeaturedBrands = usingApi
     ? catalog.brands
         .filter((brand) => brand.isActive && brand.sections?.some((section) => section.section === "motos" && section.footerFeaturedOrder !== null && section.footerFeaturedOrder !== undefined))
         .sort((left, right) => (left.sections?.find((section) => section.section === "motos")?.footerFeaturedOrder ?? 0) - (right.sections?.find((section) => section.section === "motos")?.footerFeaturedOrder ?? 0))
         .map(toBrand)
-    : [];
+    : getFooterFeaturedMotoBrands();
   const shopIcons = [faHelmetSafety, faGears, faStore];
   const shop = [
     ...footerMotoBrands.map((brand) => ({
@@ -248,18 +249,14 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
               <span className="truncate">{content.footer.demanderDevis}</span>
               <FontAwesomeIcon icon={faArrowRight} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
             </motion.button>
-            <motion.button
-              type="button"
+            <motion.a
               whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                if (primaryDealer?.phone) window.location.href = `tel:${primaryDealer.phone.replace(/\s/g, "")}`;
-                else go("contact");
-              }}
+              href={content.site.telephoneLien}
               className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 border border-white/20 bg-white/[0.03] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:border-[#ffd100] hover:text-[#ffd100] active:bg-white/10 sm:w-auto"
             >
               <FontAwesomeIcon icon={faPhone} className="shrink-0" />
-              <span className="truncate">{primaryDealer?.phone ? content.footer.appeler : content.navigation.contact}</span>
-            </motion.button>
+              <span className="truncate">{content.footer.appeler}</span>
+            </motion.a>
           </div>
         </motion.div>
 
@@ -283,21 +280,19 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
             <p className="mt-3.5 max-w-sm text-xs leading-relaxed text-white/60 sm:text-sm">
               {content.footer.descriptionMarque}
             </p>
-            {footerFeaturedBrands.length > 0 && (
-              <div className="mt-4 border-t border-white/[0.08] pt-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">
-                  {content.footer.distributeurExclusif}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-white/85">
-                  {footerFeaturedBrands.map((brand, index) => (
-                    <span key={brand.id}>
-                      {index > 0 && <span className="text-[#ffd100]"> · </span>}
-                      {brand.name}
-                    </span>
-                  ))}
-                </p>
-              </div>
-            )}
+            <div className="mt-4 border-t border-white/[0.08] pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">
+                {content.footer.distributeurExclusif}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-white/85">
+                {footerFeaturedBrands.map((brand, index) => (
+                  <span key={brand.id}>
+                    {index > 0 && <span className="text-[#ffd100]"> · </span>}
+                    {brand.name}
+                  </span>
+                ))}
+              </p>
+            </div>
           </motion.div>
 
           {/* Links Section: On mobile, grouped into a responsive 2-column grid */}
@@ -351,44 +346,33 @@ export function Footer({ go, onCookies }: { go: (p: string, id?: string) => void
               <li className="flex items-start gap-3 text-white/75">
                 <FontAwesomeIcon icon={faLocationDot} className="mt-1 w-3.5 shrink-0 text-[#ffd100]" />
                 <span className="leading-snug">
-                  {primaryDealer
-                    ? `${primaryDealer.name} · ${primaryDealer.city}`
-                    : status === "loading"
-                      ? "Chargement des coordonnées…"
-                      : status === "error"
-                        ? "Coordonnées non disponibles. Consultez la page Revendeurs."
-                        : "Aucun revendeur enregistré."}
-                  {primaryDealer?.address && <><br /><span className="text-white/50">{primaryDealer.address}</span></>}
+                  {content.footer.showroom}
+                  <br />
+                  <span className="text-white/50">{content.footer.adresse}</span>
                 </span>
               </li>
-              {primaryDealer?.phone && (
-                <li>
-                  <a
-                    href={`tel:${primaryDealer.phone.replace(/\s/g, "")}`}
-                    className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
-                  >
-                    <FontAwesomeIcon icon={faPhone} className="w-3.5 shrink-0 text-[#ffd100]" />
-                    <span className="font-semibold">{primaryDealer.phone}</span>
-                  </a>
-                </li>
-              )}
-              {primaryDealer?.email && (
-                <li>
-                  <a
-                    href={`mailto:${primaryDealer.email}`}
-                    className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
-                  >
-                    <FontAwesomeIcon icon={faEnvelope} className="w-3.5 shrink-0 text-[#ffd100]" />
-                    <span className="break-all font-semibold">{primaryDealer.email}</span>
-                  </a>
-                </li>
-              )}
-              {primaryDealer?.hours && (
-                <li className="flex items-center gap-3 text-white/60">
-                  <FontAwesomeIcon icon={faClock} className="w-3.5 shrink-0 text-[#ffd100]" />
-                  <span>{primaryDealer.hours}</span>
-                </li>
-              )}
+              <li>
+                <a
+                  href={content.site.telephoneLien}
+                  className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
+                >
+                  <FontAwesomeIcon icon={faPhone} className="w-3.5 shrink-0 text-[#ffd100]" />
+                  <span className="font-semibold">{content.site.telephoneAffiche}</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${content.site.email}`}
+                  className="flex min-h-10 items-center gap-3 text-white/85 transition hover:text-[#ffd100]"
+                >
+                  <FontAwesomeIcon icon={faEnvelope} className="w-3.5 shrink-0 text-[#ffd100]" />
+                  <span className="break-all font-semibold">{content.site.email}</span>
+                </a>
+              </li>
+              <li className="flex items-center gap-3 text-white/60">
+                <FontAwesomeIcon icon={faClock} className="w-3.5 shrink-0 text-[#ffd100]" />
+                <span>{content.site.horaires}</span>
+              </li>
             </ul>
 
             <button

@@ -9,10 +9,18 @@ import {
   faMotorcycle,
   faShirt,
 } from "@fortawesome/free-solid-svg-icons";
+import { BIKES } from "../data/motorcycles";
+import { CATEGORIES } from "../data/categories";
+import { FEATURED_BANNERS } from "../data/banners";
+import { HOME_EDITORIAL_BANNERS } from "../data/editorialBanners";
+import { HOME_PROMOTIONS } from "../data/promotions";
+import { TVS_ACCESSORIES } from "../data/equipment/tvs";
+import { TVS_PARTS } from "../data/spare-parts/tvs";
+import { getBrandsForSection, getHomeFeaturedBrands, getHomePartnerBrands } from "../data/brands";
 import { Section } from "../components/Layout";
 import { BikeCard, PartCard } from "../components/Cards";
 import { AccessoryBrandQuickLinks } from "../components/AccessoryBrands";
-import HomepageEditorialBanner from "../components/HomepageEditorialBanner";
+import HomepageEditorialBanner from "../components/ShercoBanner";
 import BrandExclusif from "../components/BrandExclusif";
 import NewArrivals from "../components/NewArrivals";
 import TypedText from "../components/TypedText";
@@ -21,23 +29,27 @@ import { usePublicCatalog } from "../contexts/PublicCatalogContext";
 import { liveBikes, liveParts, toBrand } from "../lib/catalogAdapters";
 
 const CATEGORY_ICONS = [faMotorcycle, faHelmetSafety, faGears, faShirt];
+const HOME_EQUIPMENT_BRANDS = getBrandsForSection("equipements");
+const HOME_FEATURED_BRANDS = getHomeFeaturedBrands();
+const HOME_PARTNER_BRANDS = getHomePartnerBrands();
 
 export default function Home({ go }: { go: (p: string, id?: string) => void }) {
   const { catalog, status } = usePublicCatalog();
   const usingApi = status === "ready" && catalog !== null;
+  const fallback = status === "error";
   const motorcycles = useMemo(
-    () => usingApi ? liveBikes(catalog.products) : [],
-    [usingApi, catalog],
+    () => usingApi ? liveBikes(catalog.products) : fallback ? BIKES : [],
+    [usingApi, fallback, catalog],
   );
-  const categories = usingApi ? catalog.categories : [];
+  const categories = usingApi ? catalog.categories : fallback ? CATEGORIES : [];
   const homeParts = useMemo(() => {
-    if (!usingApi) return [];
+    if (!usingApi) return fallback ? [TVS_PARTS[0], TVS_PARTS[2], TVS_ACCESSORIES[0], TVS_ACCESSORIES[2]] : [];
     const parts = liveParts(catalog.products);
     return [
       ...parts.filter((part) => part.kind === "piece").slice(0, 2),
       ...parts.filter((part) => part.kind !== "piece").slice(0, 2),
     ];
-  }, [usingApi, catalog]);
+  }, [usingApi, fallback, catalog]);
   const sectionBrands = useMemo(() => (section: string, featuredOnly = false) =>
     [...(catalog?.brands ?? [])]
       .filter((brand) => brand.isActive && brand.sections?.some((association) =>
@@ -49,14 +61,14 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
       )
       .map(toBrand),
   [catalog]);
-  const equipmentBrands = usingApi ? sectionBrands("equipements") : [];
-  const featuredBrands = usingApi ? sectionBrands("motos", true) : [];
-  const partnerBrands = usingApi ? sectionBrands("partenaires") : [];
-  const homePromotions = usingApi ? catalog.homepagePromotions : [];
-  const heroBanners = usingApi ? catalog.featuredBanners : [];
-  const editorialBanners = usingApi && catalog.homepageEditorialBannersConfigured
-    ? catalog.homepageEditorialBanners
-    : [];
+  const equipmentBrands = usingApi ? sectionBrands("equipements") : fallback ? HOME_EQUIPMENT_BRANDS : [];
+  const featuredBrands = usingApi ? sectionBrands("motos", true) : fallback ? HOME_FEATURED_BRANDS : [];
+  const partnerBrands = usingApi ? sectionBrands("partenaires") : fallback ? HOME_PARTNER_BRANDS : [];
+  const homePromotions = usingApi ? catalog.homepagePromotions : fallback ? HOME_PROMOTIONS : [];
+  const heroBanners = usingApi ? catalog.featuredBanners : fallback ? FEATURED_BANNERS : [];
+  const editorialBanners = usingApi
+    ? catalog.homepageEditorialBannersConfigured ? catalog.homepageEditorialBanners : HOME_EDITORIAL_BANNERS
+    : fallback ? HOME_EDITORIAL_BANNERS : [];
   const heroCopy = usingApi && catalog.homepageHeroCopy
     ? {
         localisation: catalog.homepageHeroCopy.localisation,
@@ -71,9 +83,10 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
         choisirModele: catalog.homepageHeroCopy.chooseModelLabel,
         afficherModele: catalog.homepageHeroCopy.displayModelLabel,
       }
-    : { ...content.accueil.hero, annee: "" };
-  // Keep the partner-logo ticker speed consistent with its former nine-logo layout.
-  const partnerScrollDuration = Math.max(1, (22 / 9) * partnerBrands.length);
+    : content.accueil.hero;
+  // 22 seconds corresponds to the current nine-logo reference set. Scale time
+  // with the number of logos so the ticker keeps a consistent perceived speed.
+  const partnerScrollDuration = Math.max(1, (22 / HOME_PARTNER_BRANDS.length) * partnerBrands.length);
 
   const [activeHero, setActiveHero] = useState(0);
   const safeHeroIndex = heroBanners.length ? activeHero % heroBanners.length : 0;
@@ -90,22 +103,21 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
   return (
     <div className="overflow-hidden bg-white text-[#171816] dark:bg-[#141513] dark:text-[#f2f0ea]">
-      {/* Keep the branded hero even when no admin-managed banner has been published. */}
+      {/* Full-bleed hero image with a smooth contrast veil for the headline */}
+      {current && (
       <section className="relative isolate min-h-[max(560px,calc(100svh-64px))] overflow-hidden bg-[#22231f] sm:min-h-[720px] lg:min-h-[min(820px,calc(100svh-68px))]">
-        {current && (
-          <AnimatePresence initial={false} mode="sync">
-            <motion.img
-              key={current.id}
-              src={current.image}
-              alt={current.alt}
-              initial={{ opacity: 0, scale: 1.035 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ opacity: { duration: 0.7 }, scale: { duration: 7, ease: "linear" } }}
-              className="absolute inset-0 h-full w-full object-cover object-[center_52%]"
-            />
-          </AnimatePresence>
-        )}
+        <AnimatePresence initial={false} mode="sync">
+          <motion.img
+            key={current.id}
+            src={current.image}
+            alt={current.alt}
+            initial={{ opacity: 0, scale: 1.035 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ opacity: { duration: 0.7 }, scale: { duration: 7, ease: "linear" } }}
+            className="absolute inset-0 h-full w-full object-cover object-[center_52%]"
+          />
+        </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/20 lg:via-black/70" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" />
 
@@ -149,68 +161,55 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
             >
               {heroCopy.boutonCatalogue} <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
             </button>
-            {current && (
-              <button
-                onClick={() => go(current.targetPage, current.targetId)}
-                className="glass-panel fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 border-white/40 bg-white/10 px-5 py-3 text-center font-bold uppercase text-white transition active:scale-[0.98] hover:border-[#ffd100] hover:text-[#ffd100] sm:min-h-11 sm:w-auto"
-              >
-                <span className="truncate">{current.short}</span>
-                <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
-              </button>
-            )}
+            <button
+              onClick={() => go(current.targetPage, current.targetId)}
+              className="glass-panel fluid-btn inline-flex min-h-12 w-full items-center justify-center gap-3 border-white/40 bg-white/10 px-5 py-3 text-center font-bold uppercase text-white transition active:scale-[0.98] hover:border-[#ffd100] hover:text-[#ffd100] sm:min-h-11 sm:w-auto"
+            >
+              <span className="truncate">{current.short}</span>
+              <FontAwesomeIcon icon={faArrowRight} className="shrink-0" />
+            </button>
           </motion.div>
 
           <div className="order-2 mt-auto flex items-center justify-between gap-3 border-t border-white/30 pr-16 pt-3 sm:order-3 sm:items-end sm:gap-4 sm:pr-0 sm:pt-5">
-            {current ? (
-              <div className="min-w-0 text-white">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={current.id + "caption"}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25 }}
+            <div className="min-w-0 text-white">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={current.id + "caption"}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">{heroCopy.aLaUne} / {current.brand}</p>
+                  <p className="mt-0.5 truncate font-display text-sm font-semibold sm:mt-1 sm:text-base">
+                    {current.short} · {heroCopy.annee}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+              <span className="font-display text-[11px] font-semibold text-white/70 sm:mr-1 sm:text-xs">
+                {String(safeHeroIndex + 1).padStart(2, "0")}
+              </span>
+              <div className="flex items-center" aria-label={heroCopy.choisirModele}>
+                {heroBanners.map((item, index) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveHero(index)}
+                    aria-label={`${heroCopy.afficherModele} ${item.short}`}
+                    aria-pressed={activeHero === index}
+                    className="group grid h-11 w-8 place-items-center px-1.5 sm:h-9"
                   >
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffd100]">{heroCopy.aLaUne} / {current.brand}</p>
-                    <p className="mt-0.5 truncate font-display text-sm font-semibold sm:mt-1 sm:text-base">
-                      {current.short}{heroCopy.annee ? ` · ${heroCopy.annee}` : ""}
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
+                    <span className="block h-[3px] w-full bg-white/45 transition-all group-aria-pressed:bg-[#ffd100]" />
+                  </button>
+                ))}
               </div>
-            ) : (
-              <p className="text-xs font-medium text-white/65">
-                {status === "loading"
-                  ? "Chargement du catalogue…"
-                  : status === "error"
-                    ? "La mise en avant est momentanément indisponible."
-                    : "Aucun modèle mis en avant pour le moment."}
-              </p>
-            )}
-            {heroBanners.length > 0 && (
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-                <span className="font-display text-[11px] font-semibold text-white/70 sm:mr-1 sm:text-xs">
-                  {String(safeHeroIndex + 1).padStart(2, "0")}
-                </span>
-                <div className="flex items-center" aria-label={heroCopy.choisirModele}>
-                  {heroBanners.map((item, index) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveHero(index)}
-                      aria-label={`${heroCopy.afficherModele} ${item.short}`}
-                      aria-pressed={activeHero === index}
-                      className="group grid h-11 w-8 place-items-center px-1.5 sm:h-9"
-                    >
-                      <span className="block h-[3px] w-full bg-white/45 transition-all group-aria-pressed:bg-[#ffd100]" />
-                    </button>
-                  ))}
-                </div>
-                <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">{String(heroBanners.length).padStart(2, "0")}</span>
-              </div>
-            )}
+              <span className="font-display text-[11px] font-semibold text-white/50 sm:text-xs">{String(heroBanners.length).padStart(2, "0")}</span>
+            </div>
           </div>
         </div>
       </section>
+      )}
 
       {/* Category index: compact links instead of large category tiles */}
       <section className="mx-auto w-full max-w-(--container-site) px-4 py-10 sm:px-7 sm:py-12 lg:px-10 lg:py-16">
@@ -223,7 +222,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               {content.accueil.univers.titre}
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             {categories.map((category, index) => (
               <motion.button
                 key={`${category.title}-${index}`}
@@ -262,15 +261,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
         <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8">
           {motorcycles.slice(0, 3).map((bike) => <BikeCard key={bike.id} bike={bike} go={go} />)}
         </div>
-        {motorcycles.length === 0 && (
-          <p className="py-8 text-sm text-black/50 dark:text-white/50">
-            {status === "loading"
-              ? "Chargement du catalogue…"
-              : status === "error"
-                ? "Les motos n’ont pas pu être chargées depuis le catalogue."
-                : "Aucune moto publiée pour le moment."}
-          </p>
-        )}
+        {motorcycles.length === 0 && <p className="py-8 text-sm text-black/50 dark:text-white/50">{status === "loading" ? "Chargement du catalogue…" : "Aucune moto publiée pour le moment."}</p>}
         <button
           onClick={() => go("motos")}
           className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
@@ -301,70 +292,60 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
               <PartCard key={part.id} part={part} go={go} onEnquire={() => go("contact", part.id)} />
             ))}
           </div>
-          {homeParts.length === 0 && (
-            <p className="py-8 text-sm text-black/50 dark:text-white/50">
-              {status === "loading"
-                ? "Chargement du catalogue…"
-                : status === "error"
-                  ? "Les équipements et pièces n’ont pas pu être chargés depuis le catalogue."
-                  : "Aucun équipement ou pièce publié pour le moment."}
-            </p>
-          )}
+          {homeParts.length === 0 && <p className="py-8 text-sm text-black/50 dark:text-white/50">{status === "loading" ? "Chargement du catalogue…" : "Aucun équipement ou pièce publié pour le moment."}</p>}
           <button
             onClick={() => go("equipements")}
-            className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
+          className="mt-8 inline-flex items-center gap-2 border-b border-[#171816] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#171816] transition hover:border-[#98741b] hover:text-[#98741b] dark:border-[#f2f0ea] dark:text-[#f2f0ea] dark:hover:text-[#ffd100]"
           >
             {content.accueil.atelier.bouton} <FontAwesomeIcon icon={faArrowRight} />
           </button>
         </div>
       </section>
 
-      {partnerBrands.length > 0 && (
-        <section className="glass-header overflow-hidden border-y border-white/70 py-10 dark:border-white/10">
-          <div className="mx-auto w-full max-w-(--container-site) px-4 sm:px-7 lg:px-10">
-            <div className="mb-5 flex items-center justify-between border-t border-black/15 pt-3 dark:border-white/15">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/45 dark:text-white/45">{content.accueil.partenaires.titre}</p>
-              <span className="text-[9px] uppercase tracking-[0.16em] text-black/35 dark:text-white/35">{content.accueil.partenaires.description}</span>
-            </div>
-            <div className="group/marquee relative overflow-hidden">
-              {/* Fade edges so logos slide in and out smoothly */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent sm:w-24 dark:from-[#141513]"
-              />
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent sm:w-24 dark:from-[#141513]"
-              />
+      <section className="glass-header overflow-hidden border-y border-white/70 py-10 dark:border-white/10">
+        <div className="mx-auto w-full max-w-(--container-site) px-4 sm:px-7 lg:px-10">
+          <div className="mb-5 flex items-center justify-between border-t border-black/15 pt-3 dark:border-white/15">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/45 dark:text-white/45">{content.accueil.partenaires.titre}</p>
+            <span className="text-[9px] uppercase tracking-[0.16em] text-black/35 dark:text-white/35">{content.accueil.partenaires.description}</span>
+          </div>
+          <div className="group/marquee relative overflow-hidden">
+            {/* Fade edges so logos slide in and out smoothly */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent sm:w-24 dark:from-[#141513]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent sm:w-24 dark:from-[#141513]"
+            />
 
-              <div
-                className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10"
-                style={{ "--fb-partner-duration": `${partnerScrollDuration}s` } as CSSProperties}
-              >
-                {[...partnerBrands, ...partnerBrands].map((brand, index) => (
-                  <motion.div
-                    key={`${brand.name}-${index}`}
-                    whileHover={{ scale: 1.08 }}
-                    transition={{ type: "spring", stiffness: 320, damping: 20 }}
-                    className="brand-logo-tile shrink-0"
-                  >
-                    {brand.logo ? (
-                      <img
-                        src={brand.logo}
-                        alt={`${content.accueil.partenaires.logoPrefix} ${brand.name}`}
-                        loading="lazy"
-                        className="partner-logo h-full w-full object-contain transition-opacity hover:opacity-100"
-                      />
-                    ) : (
-                      <span className="grid h-full place-items-center px-5 text-xs font-bold uppercase text-black/55 dark:text-white/70">{brand.name}</span>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
+            <div
+              className="fb-partner-track flex w-max items-center gap-6 pr-6 sm:gap-10 sm:pr-10"
+              style={{ "--fb-partner-duration": `${partnerScrollDuration}s` } as CSSProperties}
+            >
+              {[...partnerBrands, ...partnerBrands].map((brand, index) => (
+                <motion.div
+                  key={`${brand.name}-${index}`}
+                  whileHover={{ scale: 1.08 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 20 }}
+                  className="brand-logo-tile shrink-0"
+                >
+                  {brand.logo ? (
+                    <img
+                      src={brand.logo}
+                      alt={`${content.accueil.partenaires.logoPrefix} ${brand.name}`}
+                      loading="lazy"
+                      className="partner-logo h-full w-full object-contain transition-opacity hover:opacity-100"
+                    />
+                  ) : (
+                    <span className="grid h-full place-items-center px-5 text-xs font-bold uppercase text-black/55 dark:text-white/70">{brand.name}</span>
+                  )}
+                </motion.div>
+              ))}
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </div>
   );
 }

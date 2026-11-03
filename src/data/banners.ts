@@ -1,4 +1,4 @@
-/** Données historiques non utilisées par l’interface publique ; les bannières viennent de GraphQL. */
+/** Données locales de secours si l’API GraphQL des bannières est indisponible. */
 import type { FeaturedBanner } from "../types";
 
 export const FEATURED_BANNERS: FeaturedBanner[] = [

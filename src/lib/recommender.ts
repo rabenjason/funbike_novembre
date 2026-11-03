@@ -1,3 +1,4 @@
+import { BIKES } from "../data/motorcycles";
 import type { Bike } from "../types";
 import { recommendationCopy } from "../constants";
 import type { ChatAction } from "./assistant";
@@ -78,27 +79,31 @@ function hasAny(t: string, stems: string[]): boolean {
 
 const hasNumber = (t: string) => /(?:^|\s)\d{2,3}(?:cc|cm3)?(?=\s|$)/.test(t);
 
-/* Brand detection uses only names attached to products in the GraphQL catalogue. */
-export function detectBrandText(t: string, bikes: Bike[] = []): string | undefined {
-  return [...new Set(bikes.map((bike) => bike.brand).filter(Boolean))]
+/* Brand detection (self-contained to avoid a circular import). */
+const BRAND_WORDS: Record<string, string[]> = {
+  Sherco: ["sherco", "sef"],
+  Fantic: ["fantic", "xx"],
+  TVS: ["tvs", "apache", "raider", "hlx", "king"],
+  Funbike: ["edition speciale", "serie limitee"],
+};
+
+export function detectBrandText(t: string, bikes: Bike[] = BIKES): string | undefined {
+  const dynamicBrand = [...new Set(bikes.map((bike) => bike.brand).filter(Boolean))]
     .sort((left, right) => right.length - left.length)
     .find((brand) => {
       const terms = brand.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/);
       return terms.some((term) => term.length >= 3 && hasAny(t, [term]));
     });
+  return dynamicBrand ?? Object.keys(BRAND_WORDS).find((brand) => hasAny(t, BRAND_WORDS[brand]));
 }
 
-export function isSpecificModelRequest(t: string, bikes: Bike[] = []): boolean {
+const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
+
+export function isSpecificModelRequest(t: string, bikes: Bike[] = BIKES): boolean {
   const brand = detectBrandText(t, bikes);
   if (!brand) return false;
-  if (hasNumber(t)) return true;
-
-  const brandTerms = brand.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/);
-  return bikes.some((bike) => {
-    const modelTerms = bike.name.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/)
-      .filter((term) => term.length >= 3 && !brandTerms.includes(term) && !/^20\d{2}$/.test(term));
-    return modelTerms.some((term) => hasAny(t, [term]));
-  });
+  const hasModel = MODEL_WORDS.some((kw) => hasAny(t, [kw]));
+  return hasModel || hasNumber(t);
 }
 
 /* ------------------------------------------------------------------ */
@@ -173,6 +178,118 @@ function inferTerrain(p: NeedProfile): void {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Bike knowledge base                                                */
+/* ------------------------------------------------------------------ */
+
+type BikeTags = {
+  usage: Usage[];
+  terrain: Terrain[];
+  distance: Distance[];
+  experience: Experience[];
+  priority: Priority[];
+  transport: Transport[];
+};
+
+const TAGS: Record<string, BikeTags> = {
+  "sherco-sef-250-factory-2026": {
+    usage: ["enduro", "loisir", "sport"],
+    terrain: ["piste", "tout-terrain", "mixte"],
+    distance: ["moyenne", "longue"],
+    experience: ["intermediaire", "experimente"],
+    priority: ["performance"],
+    transport: [],
+  },
+  "sherco-sef-300-factory-2026": {
+    usage: ["enduro", "loisir", "sport"],
+    terrain: ["piste", "tout-terrain", "mixte"],
+    distance: ["moyenne", "longue"],
+    experience: ["intermediaire", "experimente"],
+    priority: ["performance", "puissance", "autonomie"],
+    transport: [],
+  },
+  "xx-125-2026": {
+    usage: ["cross", "enduro", "loisir", "sport"],
+    terrain: ["piste", "tout-terrain", "mixte"],
+    distance: ["courte", "moyenne"],
+    experience: ["debutant", "intermediaire", "experimente"],
+    priority: ["maniable", "performance"],
+    transport: [],
+  },
+  "offroad-450": {
+    usage: ["enduro", "voyage", "loisir"],
+    terrain: ["piste", "tout-terrain", "mixte"],
+    distance: ["longue", "moyenne"],
+    experience: ["experimente", "intermediaire"],
+    priority: ["autonomie", "performance", "puissance"],
+    transport: [],
+  },
+  "offroad-trail": {
+    usage: ["voyage", "loisir", "polyvalent", "travail"],
+    terrain: ["mixte", "route", "tout-terrain"],
+    distance: ["moyenne", "longue"],
+    experience: ["debutant", "intermediaire", "experimente"],
+    priority: ["autonomie", "confort"],
+    transport: [],
+  },
+  "tvs-hlx-plus": {
+    usage: ["travail", "ville", "polyvalent", "transport"],
+    terrain: ["route", "mixte"],
+    distance: ["courte", "moyenne", "longue"],
+    experience: ["debutant", "intermediaire", "experimente"],
+    priority: ["economie", "confort", "autonomie"],
+    transport: ["marchandise", "passager"],
+  },
+  "tvs-bleu": {
+    usage: ["ville", "loisir", "polyvalent"],
+    terrain: ["route", "mixte"],
+    distance: ["courte", "moyenne"],
+    experience: ["debutant", "intermediaire"],
+    priority: ["economie", "maniable", "confort"],
+    transport: ["passager"],
+  },
+  "tvs-200-4v": {
+    usage: ["sport", "ville", "loisir", "voyage"],
+    terrain: ["route", "mixte"],
+    distance: ["moyenne", "longue"],
+    experience: ["intermediaire", "experimente"],
+    priority: ["performance", "puissance", "confort"],
+    transport: ["passager"],
+  },
+  "tvs-red": {
+    usage: ["ville", "loisir", "sport"],
+    terrain: ["route", "mixte"],
+    distance: ["courte", "moyenne"],
+    experience: ["debutant", "intermediaire"],
+    priority: ["maniable", "economie", "performance"],
+    transport: ["passager"],
+  },
+  "tvs-125-hlx-5g": {
+    usage: ["ville", "travail", "loisir", "polyvalent"],
+    terrain: ["route", "mixte"],
+    distance: ["courte", "moyenne"],
+    experience: ["debutant", "intermediaire"],
+    priority: ["economie", "maniable"],
+    transport: ["passager"],
+  },
+  "tuktuk": {
+    usage: ["travail", "transport", "ville"],
+    terrain: ["route"],
+    distance: ["courte", "moyenne"],
+    experience: ["debutant", "intermediaire", "experimente"],
+    priority: ["economie", "confort"],
+    transport: ["passager", "marchandise"],
+  },
+  "concept-urbain": {
+    usage: ["ville", "loisir", "polyvalent", "voyage"],
+    terrain: ["route", "mixte"],
+    distance: ["courte", "moyenne", "longue"],
+    experience: ["debutant", "intermediaire", "experimente"],
+    priority: ["confort", "performance"],
+    transport: ["passager"],
+  },
+};
+
+/* ------------------------------------------------------------------ */
 /*  Questions                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -199,7 +316,19 @@ function nextQuestion(p: NeedProfile): Question | null {
 type Match = { bike: Bike; score: number; pitch: string };
 
 function scoreBike(bike: Bike, p: NeedProfile): number {
-  const text = `${bike.family} ${bike.subfamily ?? ""} ${bike.name} ${bike.desc} ${bike.recommendation ?? ""} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`
+  const tags = TAGS[bike.id];
+  if (tags) {
+    let score = 0;
+    if (p.usage && tags.usage.includes(p.usage)) score += 5;
+    if (p.terrain && tags.terrain.includes(p.terrain)) score += 4;
+    if (p.distance && tags.distance.includes(p.distance)) score += 3;
+    if (p.experience && tags.experience.includes(p.experience)) score += 3;
+    if (p.priority && tags.priority.includes(p.priority)) score += 2;
+    if (p.transport && tags.transport.includes(p.transport)) score += 2;
+    return score;
+  }
+
+  const text = `${bike.family} ${bike.name} ${bike.desc} ${bike.recommendation ?? ""} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`
     .toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const matches = (words: string[]) => words.some((word) => text.includes(word));
   const usageWords: Record<Usage, string[]> = {
@@ -239,13 +368,13 @@ function scoreBike(bike: Bike, p: NeedProfile): number {
   return score;
 }
 
-export function recommend(p: NeedProfile, brand?: string, bikes: Bike[] = []): Match[] {
+export function recommend(p: NeedProfile, brand?: string, bikes: Bike[] = BIKES): Match[] {
   let pool = [...bikes];
-  if (brand) pool = pool.filter((bike) => bike.brand.toLocaleLowerCase("fr").includes(brand.toLocaleLowerCase("fr")));
+  if (brand) pool = pool.filter((bike) => bike.brand.toLocaleLowerCase("fr").includes(brand.toLocaleLowerCase("fr")) || bike.brand === "Funbike");
 
   const matches: Match[] = pool
     .map((bike) => ({ bike, score: scoreBike(bike, p), pitch: bike.recommendation ?? "" }))
-    .filter((match) => match.score >= 5)
+    .filter((match) => match.score >= (TAGS[match.bike.id] ? 7 : 5))
     .sort((left, right) => right.score - left.score);
 
   return matches.slice(0, 3);
@@ -266,7 +395,7 @@ function introText(p: NeedProfile): string {
 /*  Orchestration                                                      */
 /* ------------------------------------------------------------------ */
 
-export function runRecommender(t: string, mem: MemoryLike, bikes: Bike[] = []): { reply: ReplyLike; memory: MemoryLike } {
+export function runRecommender(t: string, mem: MemoryLike, bikes: Bike[] = BIKES): { reply: ReplyLike; memory: MemoryLike } {
   const profile = mem.need && !mem.needComplete ? { ...mem.need } : emptyNeed();
   mergeNeed(profile, extractNeed(t));
   inferTerrain(profile);

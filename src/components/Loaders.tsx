@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { LOGO } from "../data/brands";
 import { content } from "../constants";
 
-/** Short branded splash shown while the application shell starts. */
+/** Short branded splash shown while the first hero image preloads. */
 export function SplashLoader({ show }: { show: boolean }) {
   return (
     <AnimatePresence>
@@ -17,7 +18,7 @@ export function SplashLoader({ show }: { show: boolean }) {
         >
           <div className="flex flex-col items-center gap-5">
             <motion.img
-              src={content.site.logoUrl}
+              src={LOGO}
               alt={content.site.logoAlt}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}

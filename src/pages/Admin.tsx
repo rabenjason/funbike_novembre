@@ -378,6 +378,15 @@ function productKindLabel(kind: AdminProduct["__typename"] | ProductKind): strin
   }
 }
 
+function productLoadErrorMessage(reason: unknown): string {
+  const message = reason instanceof Error ? reason.message : "Impossible de charger les produits.";
+  const normalizedMessage = message.trim().toLocaleLowerCase();
+  if (normalizedMessage === "unexpected error" || normalizedMessage === "unexpected error.") {
+    return "Le serveur n’a pas pu charger le catalogue. Vérifiez que le backend est à jour et que les migrations MySQL ont été appliquées, puis réessayez.";
+  }
+  return message;
+}
+
 function kindFromTypename(name: AdminProduct["__typename"]): ProductKind {
   const kinds = { Motorcycle: "MOTORCYCLE", SparePart: "SPARE_PART", Equipment: "EQUIPMENT", Accessory: "ACCESSORY" } as const;
   return kinds[name];
@@ -485,6 +494,7 @@ export default function Admin() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [productTotalCount, setProductTotalCount] = useState(0);
   const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState("");
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [productEditorOpen, setProductEditorOpen] = useState(false);
   const [lookupKind, setLookupKind] = useState<LookupKind>("FAMILY");
@@ -554,6 +564,7 @@ export default function Admin() {
     if (!token || !user) {
       setProducts([]);
       setProductTotalCount(0);
+      setProductError("");
       setProductLoading(false);
       return;
     }
@@ -563,6 +574,7 @@ export default function Admin() {
     }
     let cancelled = false;
     setProductLoading(true);
+    setProductError("");
     void graphqlRequest<{ adminProductPage: { items: AdminProduct[]; totalCount: number } }>(
       ADMIN_PRODUCTS_PAGE_QUERY,
       {
@@ -582,7 +594,7 @@ export default function Admin() {
       if (cancelled) return;
       setProducts([]);
       setProductTotalCount(0);
-      setError(reason instanceof Error ? reason.message : "Impossible de charger les produits.");
+      setProductError(productLoadErrorMessage(reason));
     }).finally(() => { if (!cancelled) setProductLoading(false); });
     return () => { cancelled = true; };
   }, [token, user, tab, productStatusFilter, productKindFilter, productBrandFilter, appliedSearch, productPage, refreshKey]);
@@ -1197,11 +1209,16 @@ export default function Admin() {
                 <Field label="Publication"><select className={fieldClass} value={productStatusFilter} onChange={(event) => { setProductStatusFilter(event.target.value as ProductStatusFilter); setProductPage(1); }}><option value="ALL">Tous les statuts</option><option value="PUBLISHED">Publiés</option><option value="DRAFT">Brouillons</option></select></Field>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-black/55 dark:text-white/55">
-                <span>{productLoading ? "Mise à jour des résultats…" : `${productTotalCount} produit${productTotalCount === 1 ? "" : "s"}`}</span>
-                <span>{productTotalCount > 0 ? `Affichage ${firstProductNumber}–${lastProductNumber} sur ${productTotalCount}` : "Aucun résultat"}</span>
+                <span>{productError ? "Résultats indisponibles" : productLoading ? "Mise à jour des résultats…" : `${productTotalCount} produit${productTotalCount === 1 ? "" : "s"}`}</span>
+                <span>{productError ? "Le compteur sera affiché une fois la connexion rétablie." : productTotalCount > 0 ? `Affichage ${firstProductNumber}–${lastProductNumber} sur ${productTotalCount}` : "Aucun résultat"}</span>
               </div>
               <div className={`${panelClass} overflow-hidden`}>
-                {productLoading && products.length === 0 ? <p className="px-6 py-12 text-center text-sm text-black/50 dark:text-white/50">Chargement des produits…</p> : products.length === 0 ? <p className="px-6 py-14 text-center text-sm leading-6 text-black/50 dark:text-white/50">Aucun produit ne correspond aux filtres.<br />Les nouveaux produits seront enregistrés en brouillon.</p> : (
+                {productError ? (
+                  <div className="flex flex-col items-center gap-4 px-6 py-10 text-center" role="alert">
+                    <p className="text-sm leading-6 text-red-700 dark:text-red-300">{productError}<br />Les résultats sont indisponibles : ce n’est pas une liste vide.</p>
+                    <button type="button" className={buttonSecondary} disabled={productLoading} onClick={reload}>Réessayer</button>
+                  </div>
+                ) : productLoading && products.length === 0 ? <p className="px-6 py-12 text-center text-sm text-black/50 dark:text-white/50">Chargement des produits…</p> : products.length === 0 ? <p className="px-6 py-14 text-center text-sm leading-6 text-black/50 dark:text-white/50">Aucun produit ne correspond aux filtres.<br />Les nouveaux produits seront enregistrés en brouillon.</p> : (
                   <ul className="divide-y divide-black/10 dark:divide-white/10">
                     {products.map((product) => (
                       <li key={`${product.__typename}-${product.id}`} className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 p-4 transition-colors hover:bg-black/[0.015] lg:grid-cols-[64px_minmax(0,1fr)_auto] lg:gap-5 lg:p-5 dark:hover:bg-white/[0.02]">
@@ -1222,13 +1239,13 @@ export default function Admin() {
                   </ul>
                 )}
               </div>
-              <div className={`${panelClass} flex flex-wrap items-center justify-between gap-4 p-4 sm:px-5`}>
+              {!productError && <div className={`${panelClass} flex flex-wrap items-center justify-between gap-4 p-4 sm:px-5`}>
                 <p className="text-sm text-black/55 dark:text-white/55">Page <strong className="text-[#171816] dark:text-white">{productPage}</strong> sur {productTotalPages} <span className="mx-1 text-black/25 dark:text-white/25">·</span> 20 produits par page</p>
                 <div className="flex gap-3">
                   <button type="button" className={buttonSecondary} disabled={productPage <= 1 || productLoading} onClick={() => setProductPage((current) => Math.max(1, current - 1))}>Précédent</button>
                   <button type="button" className={buttonSecondary} disabled={productPage >= productTotalPages || productLoading} onClick={() => setProductPage((current) => Math.min(productTotalPages, current + 1))}>Suivant</button>
                 </div>
-              </div>
+              </div>}
               </>}
             </div>
 

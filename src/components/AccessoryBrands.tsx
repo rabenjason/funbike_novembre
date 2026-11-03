@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUpRightFromSquare, type IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
 import type { Brand } from "../types";
-import { getBrandLabel } from "../utils/brandLabels";
+import { getBrandLabel } from "../data/brands";
 
 type BrandVisualData = { logo?: string; icon?: IconDefinition; name?: string };
 

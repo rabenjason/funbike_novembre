@@ -1,7 +1,9 @@
-/** Textes fixes de l’interface FunBike ; les types et références viennent du catalogue GraphQL. */
+import { SPARE_PART_TYPES } from "../data/subfamilies";
+
+/** Textes fixes de l’interface FunBike ; les collections restent dans src/data. */
 export const piecesDetachees = {
     titre: "Pièces & Consommables",
-    description: "Consultez les pièces détachées et consommables enregistrés dans le catalogue Funbike.",
+    description: "Pneus, kits chaîne, freinage, filtration et pièces mécaniques.",
     sectionTitre: "Choisir une marque",
     sectionDescription: "Touchez une marque pour afficher ses pièces et consommables.",
     sectionNumero: "01 / Pièces",
@@ -9,11 +11,24 @@ export const piecesDetachees = {
     references: "références",
     page: "page",
     marqueToutes: "Toutes",
-    typesFiltres: ["Toutes"],
+    typesFiltres: ["Toutes", ...SPARE_PART_TYPES],
     titreToutes: "Pièces détachées moto",
-    descriptionToutes: "Consultez les références publiées dans le catalogue et contactez-nous pour confirmer leur compatibilité.",
+    descriptionToutes:
+      "Pneus, kits chaîne, freinage, filtration, pièces mécaniques et consommables. Contactez-nous pour confirmer la compatibilité avec votre moto.",
+    titreMarquePrefix: "Pièces détachées",
+    descriptionMarquePrefix: "Pièces et consommables compatibles",
+    descriptionMarqueSuffix:
+      ". Indiquez le modèle et l'année de votre moto pour vérifier les dimensions et la disponibilité.",
     typeAria: "Type de pièce",
     produitsAria: "spare-parts-products",
+    noteSimulee:
+      "Produits simulés pour structurer le catalogue. Dimensions, compatibilité exacte et disponibilité à confirmer avec le modèle et l'année de la moto.",
+    bihr: {
+      titre: "Pièces & consommables Bihr",
+      description:
+        "Freinage, transmission, filtration et pièces mécaniques Bihr : compatibilité et disponibilité à confirmer avec l'équipe Funbike.",
+      lignes: ["Freinage", "Transmission", "Filtration", "Pièces moteur"],
+    },
     panneauMarque: {
       surTitre: "Marque partenaire Funbike",
       demanderDisponibilites: "Demander les disponibilités",

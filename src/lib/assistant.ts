@@ -1,6 +1,8 @@
-import type { Bike, Brand, Dealer, Part } from "../types";
-import { getBrandSection } from "../utils/brandLabels";
-import { assistantCopy } from "../constants";
+import { BIKES } from "../data/motorcycles";
+import { TLD } from "../data/equipment/tld";
+import { TVS_PARTS } from "../data/spare-parts/tvs";
+import type { Bike, Part } from "../types";
+import { assistantCopy, content } from "../constants";
 import { runRecommender, isSpecificModelRequest, detectBrandText, type NeedProfile } from "./recommender";
 
 /* ------------------------------------------------------------------ */
@@ -33,8 +35,6 @@ export type Memory = {
 };
 
 export const EMPTY_MEMORY: Memory = { lastIds: [], misses: 0 };
-
-export type AssistantCatalogStatus = "loading" | "ready" | "error";
 
 /* ------------------------------------------------------------------ */
 /*  Text helpers                                                       */
@@ -71,72 +71,89 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLower
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 
-const byId = (id: string, bikes: Bike[] = []) => bikes.find((bike) => bike.id === id);
+const byId = (id: string, bikes: Bike[] = BIKES) => bikes.find((bike) => bike.id === id);
+
+/* ------------------------------------------------------------------ */
+/*  Shop facts (single source of truth for the assistant)              */
+/* ------------------------------------------------------------------ */
+
+export const SHOP = {
+  phone: content.site.telephoneAffiche,
+  email: content.site.email,
+  city: content.site.ville,
+  hours: assistantCopy.shopStatus.hours,
+};
+
+/** Opening status computed in Madagascar time (UTC+3). */
+export function shopStatus(now = new Date()): { open: boolean; text: string } {
+  let weekday = "";
+  let minutes = 0;
+  try {
+    const parts = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Indian/Antananarivo",
+      weekday: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    weekday = (parts.find((p) => p.type === "weekday")?.value ?? "").toLowerCase();
+    const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0) % 24;
+    const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+    minutes = h * 60 + m;
+  } catch {
+    weekday = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"][now.getDay()];
+    minutes = now.getHours() * 60 + now.getMinutes();
+  }
+
+  const OPEN = 8 * 60;
+  const CLOSE = 17 * 60 + 30;
+  const sunday = weekday.startsWith("dim");
+  const saturday = weekday.startsWith("sam");
+
+  if (!sunday && minutes >= OPEN && minutes < CLOSE) {
+    const left = CLOSE - minutes;
+    const soon = left <= 60 ? assistantCopy.shopStatus.closingSoon(left) : assistantCopy.shopStatus.openUntil;
+    return { open: true, text: assistantCopy.shopStatus.openNow(soon) };
+  }
+  if (!sunday && minutes < OPEN) return { open: false, text: assistantCopy.shopStatus.beforeOpening };
+  if (sunday) return { open: false, text: assistantCopy.shopStatus.closedSunday };
+  if (saturday) return { open: false, text: assistantCopy.shopStatus.closedSaturday };
+  return { open: false, text: assistantCopy.shopStatus.closedTomorrow };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Catalogue understanding                                            */
 /* ------------------------------------------------------------------ */
 
-function detectFamily(t: string, bikes: Bike[] = []): string | undefined {
-  const compactInput = t.replace(/\s+/g, "");
-  return [...new Set(bikes.map((bike) => bike.family).filter(Boolean))]
-    .sort((left, right) => right.length - left.length)
-    .find((family) => {
-      const normalizedFamily = norm(family);
-      return t.includes(normalizedFamily) || compactInput.includes(normalizedFamily.replace(/\s+/g, ""));
-    });
-}
+const FAMILY_WORDS: Record<Bike["family"], string[]> = {
+  "Off-road": ["enduro", "cross", "motocross", "offroad", "off road", "tout terrain", "piste", "trail", "rallye", "competition", "boue", "terre", "hors piste", "sentier"],
+  Urbain: ["ville", "urbain", "urbaine", "quotidien", "trajet", "bureau", "route", "econom", "consomm", "deplacement", "citadin", "roadster", "sportive urbaine"],
+  "3 roues": ["tuktuk", "tuk", "3 roues", "trois roues", "taxi", "bajaj", "tricycle"],
+};
 
 function indexBikes(bikes: Bike[]) {
   return bikes.map((bike) => ({
     bike,
     name: norm(bike.name),
-    hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.subfamily ?? ""} ${bike.desc} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`),
+    hay: norm(`${bike.name} ${bike.brand} ${bike.family} ${bike.desc} ${bike.specs.map((spec) => `${spec.label} ${spec.value}`).join(" ")}`),
   }));
 }
 
-function detectBrand(t: string, bikes: Bike[] = []): string | undefined {
+function detectFamily(t: string): Bike["family"] | undefined {
+  return (Object.keys(FAMILY_WORDS) as Bike["family"][]).find((f) => hasAny(t, FAMILY_WORDS[f]));
+}
+
+function detectBrand(t: string, bikes: Bike[] = BIKES): string | undefined {
   return detectBrandText(t, bikes);
 }
 
-const STOP = new Set(["moto", "motos", "pour", "avec", "vous", "avez", "est", "quel", "quelle", "quels", "une", "des", "les", "la", "le", "de", "du", "et", "je", "veux", "voudrais", "cherche", "recherche", "bonjour", "salut", "svp", "merci", "plus", "tres", "bien", "cette", "celle", "prix", "tarif", "combien", "cout", "coute", "piece", "pieces", "equipement", "equipements", "accessoire", "accessoires"]);
-
-function searchParts(t: string, parts: Part[]): Part[] {
-  const tokens = wordsOf(t).filter((word) => word.length >= 3 && !STOP.has(word));
-  if (!tokens.length) return [];
-  const scorePart = (part: Part) => {
-    const hay = norm([
-      part.name,
-      part.brandName ?? "",
-      part.category ?? "",
-      part.compatibleBrands?.join(" ") ?? part.compatibleBrand ?? "",
-      part.productType ?? part.partType ?? "",
-      part.usages?.join(" ") ?? "",
-      part.reference ?? "",
-    ].join(" "));
-    return tokens.reduce((score, word) => score + (hay.includes(word) ? (norm(part.name).includes(word) ? 3 : 1) : 0), 0);
-  };
-  return parts
-    .map((part) => ({ part, score: scorePart(part) }))
-    .filter((match) => match.score > 0)
-    .sort((left, right) => right.score - left.score)
-    .map((match) => match.part);
-}
-
-function findBrandMention(t: string, brands: Brand[]): Brand | undefined {
-  return [...brands]
-    .filter((brand) => brand.isActive)
-    .sort((left, right) => right.name.length - left.name.length)
-    .find((brand) => {
-      const name = norm(brand.name);
-      const slug = norm(brand.id);
-      return (name.length >= 3 && t.includes(name)) || (slug.length >= 3 && hasAny(t, [slug]));
-    });
-}
+const STOP = new Set(["moto", "motos", "pour", "avec", "vous", "avez", "est", "quel", "quelle", "quels", "une", "des", "les", "la", "le", "de", "du", "et", "je", "veux", "voudrais", "cherche", "recherche", "bonjour", "salut", "svp", "merci", "plus", "tres", "bien", "cette", "celle"]);
 
 /** Scores every bike against the question, best match first. */
-export function searchBikes(t: string, bikes: Bike[] = []): Bike[] {
-  const family = detectFamily(t, bikes);
+const MODEL_WORDS = ["apache", "raider", "hlx", "king", "tuktuk", "trail", "xx", "sef", "factory", "sport", "edition"];
+
+export function searchBikes(t: string, bikes: Bike[] = BIKES): Bike[] {
+  const family = detectFamily(t);
   const brand = detectBrand(t, bikes);
   // "250", "125cc", "300 cm3"…
   const numbers = Array.from(t.matchAll(/(?:^|\s)(\d{2,3})(?:cc|cm3)?(?=\s|$)/g))
@@ -147,8 +164,8 @@ export function searchBikes(t: string, bikes: Bike[] = []): Bike[] {
   const scored = indexBikes(bikes).map(({ bike, name, hay }) => {
     let score = 0;
     if (brand && bike.brand === brand) score += 5;
-    wordsOf(name).filter((word) => word.length >= 3 && !STOP.has(word)).forEach((word) => {
-      if (hasAny(t, [word])) score += 4;
+    MODEL_WORDS.forEach((kw) => {
+      if (hasAny(t, [kw]) && new RegExp(`\\b${kw}`).test(name)) score += 6;
     });
     if (family && bike.family === family) score += 3;
     numbers.forEach((n) => {
@@ -169,7 +186,7 @@ export function searchBikes(t: string, bikes: Bike[] = []): Bike[] {
 }
 
 /** "la première", "la 2e", "celle-ci" … resolved against the last answer. */
-function resolveReference(t: string, mem: Memory, bikes: Bike[] = []): Bike | undefined {
+function resolveReference(t: string, mem: Memory, bikes: Bike[] = BIKES): Bike | undefined {
   if (!mem.lastIds.length) return undefined;
   const ordinals: [RegExp, number][] = [
     [/\b(premiere|1ere|1re|premier|1er)\b/, 0],
@@ -221,13 +238,13 @@ const I = {
   bye: ["au revoir", "bye$", "a plus", "a bientot", "veloma", "bonne journee", "bonne soiree", "ciao"],
   human: ["conseiller", "humain", "quelqu un", "vendeur", "commercial", "whatsapp", "appeler", "telephone", "numero", "joindre", "parler a"],
   hours: ["horaire", "heure", "ouvert", "ouvre", "fermez", "fermeture", "ferme$", "adresse", "ou etes", "situe", "localis", "vous trouver", "showroom", "magasin", "boutique", "venir chez", "plan$"],
-  dealers: ["revendeur", "point de vente", "points de vente"],
+  dealers: ["revendeur", "point de vente", "points de vente", "toamasina", "tamatave", "mahajanga", "majunga", "fianar", "antsirabe", "diego", "tulear", "tana$"],
   price: ["prix", "tarif", "combien", "cout$", "coute", "cher$", "chere$", "budget", "ariary", "devis", "promo", "remise", "reduction"],
   credit: ["credit", "facilite", "echelon", "mensualit", "plusieurs fois", "financement", "leasing"],
   test: ["essai", "essayer", "tester", "test ride", "rouler avec"],
   service: ["entretien", "revision", "repar", "atelier", "vidange", "panne", "sav$", "garantie", "mecanicien", "diagnostic"],
-  parts: ["piece", "frein", "plaquette", "disque", "chaine", "filtre", "huile", "pneu", "kit$", "consommable", "bougie", "embrayage"],
-  gear: ["casque", "tenue", "gant", "botte", "blouson", "veste", "jacket", "maillot", "protection", "equipement", "accessoire", "lunette", "pantalon"],
+  parts: ["piece", "frein", "plaquette", "disque", "chaine", "filtre", "huile", "pneu", "kit$", "consommable", "bougie", "embrayage", "galfer", "bihr"],
+  gear: ["casque", "tenue", "gant", "botte", "blouson", "veste", "jacket", "maillot", "protection", "equipement", "accessoire", "troy", "tld$", "gaerne", "mt helmet", "mt$", "lunette", "pantalon"],
   size: ["taille", "pointure", "mesure", "size$"],
   compare: ["compar", "difference", "vs$", "versus", "entre la", "ou bien", "mieux entre"],
   recommend: ["conseil", "recommand", "propos", "quelle moto", "choisir", "meilleur", "ideal", "adapte", "pour moi", "suggest", "hesit", "laquelle"],
@@ -260,15 +277,7 @@ function withBikes(reply: BotReply, bikes: Bike[], mem: Memory, max = 4): BotRep
   return { ...reply, productIds: list.map((b) => b.id) };
 }
 
-export function respond(
-  raw: string,
-  memIn: Memory,
-  bikes: Bike[] = [],
-  parts: Part[] = [],
-  dealers: Dealer[] = [],
-  brands: Brand[] = [],
-  catalogStatus: AssistantCatalogStatus = "ready",
-): { reply: BotReply; memory: Memory } {
+export function respond(raw: string, memIn: Memory, bikes: Bike[] = BIKES, parts?: Part[]): { reply: BotReply; memory: Memory } {
   const mem: Memory = { ...memIn, lastIds: [...memIn.lastIds] };
   const t = norm(raw);
   const ws = wordsOf(t);
@@ -278,23 +287,12 @@ export function respond(
     mem.misses = 0;
     return { reply, memory: mem };
   };
-  const getCatalogBrand = (name: string) => {
-    const normalized = norm(name);
-    return brands.find((brand) => brand.isActive && (norm(brand.id) === normalized || norm(brand.name) === normalized || norm(brand.name).includes(normalized)));
+  const equipmentBrandId = (name: string, fallback: string) =>
+    parts?.find((part) => part.kind !== "piece" && part.brandName?.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"))?.kind ?? fallback;
+  const spareBrandId = (name: string, fallback: string) => {
+    const part = parts?.find((item) => item.kind === "piece" && item.compatibleBrands?.some((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")));
+    return part?.compatibleBrandSlugs?.[part.compatibleBrands?.findIndex((brand) => brand.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")) ?? -1] ?? fallback;
   };
-  const equipmentBrandId = (name: string) => getCatalogBrand(name)?.id;
-  const spareBrandId = (name: string) => {
-    const brand = getCatalogBrand(name);
-    return brand ? getBrandSection(brand, "pieces-detachees")?.routeId ?? brand.id : undefined;
-  };
-  const mentionedBrand = findBrandMention(t, brands);
-  const matchingParts = searchParts(t, parts);
-  const matchingDealer = dealers.find((dealer) => {
-    const labels = [dealer.city, dealer.key, dealer.name, dealer.assistantLabel ?? ""]
-      .map((value) => norm(value))
-      .filter(Boolean);
-    return labels.some((label) => t.includes(label) || wordsOf(label).some((word) => word.length >= 4 && hasAny(t, [word])));
-  });
 
   if (!t) return done({ text: assistantCopy.emptyInput, quick: [...DEFAULT_QUICK] });
 
@@ -325,51 +323,47 @@ export function respond(
   /* --- Human / contact ---------------------------------------------- */
   if (hasAny(t, I.human)) {
     return done({
-      text: assistantCopy.contact.team(),
+      text: assistantCopy.contact.team(SHOP.phone, SHOP.email, shopStatus().text),
       actions: [{ label: assistantCopy.contact.writeTeam, page: "contact", icon: "contact" }],
     });
   }
 
-  const needsCatalog = hasAny(t, I.dealers) || matchingDealer !== undefined || mentionedBrand !== undefined ||
-    hasAny(t, I.catalog) || hasAny(t, I.parts) || hasAny(t, I.gear) || hasAny(t, I.recommend) ||
-    hasAny(t, I.price) || hasAny(t, I.compare) || hasAny(t, I.specs) || hasAny(t, I.open) || hasAny(t, I.test) || hasAny(t, I.hours);
-  if (catalogStatus !== "ready" && needsCatalog) {
-    return done({
-      text: assistantCopy.fallback.catalogUnavailable,
-      actions: [
-        { label: assistantCopy.catalog.seeCatalog, page: "catalogue", icon: "catalog" },
-        { label: assistantCopy.contact.writeTeam, page: "contact", icon: "contact" },
-      ],
-    });
-  }
-
   /* --- Dealers ----------------------------------------------------- */
-  if (hasAny(t, I.dealers) || matchingDealer) {
-    const dealerNames = dealers.map((dealer) => `**${dealer.assistantLabel?.trim() || dealer.city}**`).filter(Boolean);
-    const dealerId = matchingDealer?.key;
+  if (hasAny(t, I.dealers)) {
+    const cityHit: Record<string, string> = {
+      toamasina: "toamasina",
+      tamatave: "toamasina",
+      mahajanga: "mahajanga",
+      majunga: "mahajanga",
+      fianar: "fianarantsoa",
+      antsirabe: "fianarantsoa",
+      diego: "mahajanga",
+      tulear: "fianarantsoa",
+      tana: "antananarivo",
+      antananarivo: "antananarivo",
+    };
+    const hitKey = Object.keys(cityHit).find((c) => hasAny(t, [c]));
+    const hit = hitKey ? cityHit[hitKey] : undefined;
     return done({
-      text: matchingDealer
-        ? assistantCopy.dealers.selected(matchingDealer.assistantLabel?.trim() || matchingDealer.city)
-        : dealers.length
-          ? assistantCopy.dealers.overview(dealers.length, dealerNames.join(", "))
-          : assistantCopy.dealers.unavailable,
-      actions: [{
-        label: assistantCopy.dealers.seeDealers,
-        page: "revendeurs",
-        ...(dealerId ? { id: dealerId } : {}),
-        icon: "contact",
-      }],
+      text: hit
+        ? assistantCopy.dealers.selected(assistantCopy.dealers.locations[hit as keyof typeof assistantCopy.dealers.locations])
+        : assistantCopy.dealers.overview(Object.keys(assistantCopy.dealers.locations).length, assistantCopy.dealers.overviewLocations),
+      actions: [
+        {
+          label: assistantCopy.dealers.seeDealers,
+          page: "revendeurs",
+          ...(hit ? { id: hit } : {}),
+          icon: "contact",
+        },
+      ],
       quick: [...assistantCopy.quick.showroom],
     });
   }
 
   /* --- Hours & location -------------------------------------------- */
   if (hasAny(t, I.hours)) {
-    const primaryDealer = dealers[0];
     return done({
-      text: primaryDealer
-        ? assistantCopy.showroom.hours(primaryDealer.city, primaryDealer.hours)
-        : assistantCopy.dealers.unavailable,
+      text: assistantCopy.showroom.hours(SHOP.city, SHOP.hours, shopStatus().text),
       actions: [
         { label: assistantCopy.dealers.allDealers, page: "revendeurs", icon: "contact" },
         { label: assistantCopy.dealers.contactUs, page: "contact", icon: "contact" },
@@ -415,28 +409,21 @@ export function respond(
     mem.lastIds.length > 0 && hasAny(t, [...I.price, ...I.specs, ...I.open, ...I.test]) ? byId(mem.lastIds[0], bikes) : undefined;
   const target = found[0] ?? ref ?? followUp;
 
-  /* --- Price (read from the GraphQL product record) ----------------- */
+  /* --- Price (never invented) --------------------------------------- */
   if (hasAny(t, I.price)) {
-    if ((hasAny(t, I.gear) || hasAny(t, I.parts)) && matchingParts.length > 0) {
-      const part = matchingParts[0];
+    if (hasAny(t, I.gear) && hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
-        text: assistantCopy.price.forProduct(part.name, part.price),
-        actions: [
-          { label: assistantCopy.contact.openSheet, page: "accessory", id: part.id, icon: "product" },
-          CONTACT_ACTION,
-        ],
-        quick: [...assistantCopy.quick.search],
+        text: assistantCopy.price.gearTvs,
+        actions: [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" }],
       });
     }
-    const text = target
-      ? assistantCopy.price.forBike(target.name, target.price)
-      : hasAny(t, I.gear) || hasAny(t, I.parts)
-        ? assistantCopy.price.productNotFound
-        : assistantCopy.price.general;
+    const text = target ? assistantCopy.price.forBike(target.name) : assistantCopy.price.general;
     const reply: BotReply = {
       text,
       actions: [CONTACT_ACTION],
-      quick: target ? [assistantCopy.price.seeSheet, assistantCopy.price.reserveTest] : [...assistantCopy.quick.search],
+      quick: target
+        ? [assistantCopy.price.seeSheet, assistantCopy.price.reserveTest]
+        : [assistantCopy.price.bikesSherco, assistantCopy.price.bikesTvs],
     };
     return done(target ? withBikes(reply, [target], mem, 1) : reply);
   }
@@ -452,7 +439,7 @@ export function respond(
   /* --- Test ride ----------------------------------------------------- */
   if (hasAny(t, I.test)) {
     return done({
-      text: assistantCopy.testRide(you, target?.name ?? ""),
+      text: assistantCopy.testRide(you, target?.name ?? "", shopStatus().text),
       actions: [{ label: assistantCopy.showroom.reserveTest, page: "contact", icon: "contact" }],
     });
   }
@@ -510,30 +497,29 @@ export function respond(
   if (hasAny(t, I.size)) {
     return done({
       text: assistantCopy.sizing,
-      actions: [{ label: assistantCopy.gear.seeAll, page: "equipements", icon: "gear" }],
+      actions: [
+        { label: assistantCopy.gear.seeTroyLee, page: "equipements", id: equipmentBrandId("TLD", "tld"), icon: "gear" },
+        { label: assistantCopy.gear.seeGaerneBoots, page: "equipements", id: equipmentBrandId("Gaerne", "gaerne"), icon: "gear" },
+      ],
     });
   }
 
   /* --- Gear ---------------------------------------------------------- */
   if (hasAny(t, I.gear)) {
-    const equipmentItems = parts.filter((part) => part.kind !== "piece");
-    if (mentionedBrand) {
-      const brandItems = equipmentItems.filter((part) =>
-        part.kind === mentionedBrand.id || part.brandName?.toLocaleLowerCase("fr") === mentionedBrand.name.toLocaleLowerCase("fr"),
-      );
+    if (hasAny(t, ["tvs", "apache", "raider"])) {
       return done({
-        text: assistantCopy.gear.brand(mentionedBrand.name, brandItems.length),
-        actions: [{ label: assistantCopy.gear.seeBrand(mentionedBrand.name), page: "equipements", id: equipmentBrandId(mentionedBrand.id), icon: "gear" }],
-        quick: [...assistantCopy.quick.gearSizing],
+        text: assistantCopy.gear.tvs,
+        actions: [{ label: assistantCopy.gear.seeTvsGear, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" }],
+        quick: [...assistantCopy.quick.gear],
       });
     }
-    const names = [...new Set(equipmentItems.map((part) => part.brandName).filter((name): name is string => Boolean(name)))];
-    const boots = hasAny(t, ["botte", "chaussure"]);
+    const boots = hasAny(t, ["botte", "gaerne", "chaussure"]);
+    const mt = hasAny(t, ["mt helmet", "mt$"]);
     return done({
-      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(equipmentItems.length, names),
+      text: boots ? assistantCopy.gear.boots : assistantCopy.gear.overview(parts?.filter((part) => part.kind !== "piece").length ?? TLD.length),
       actions: [
-        { label: assistantCopy.gear.seeAll, page: "equipements", icon: "gear" },
-        ...(matchingParts[0] ? [{ label: assistantCopy.contact.openSheet, page: "accessory", id: matchingParts[0].id, icon: "product" as const }] : []),
+        { label: boots ? assistantCopy.gear.seeGaerne : mt ? assistantCopy.gear.seeMt : assistantCopy.gear.seeTroyLee, page: "equipements", id: boots ? equipmentBrandId("Gaerne", "gaerne") : mt ? equipmentBrandId("MT", "mt") : equipmentBrandId("TLD", "tld"), icon: "gear" },
+        ...(boots ? [] : [{ label: assistantCopy.gear.seeTvs, page: "equipements", id: equipmentBrandId("TVS", "tvs"), icon: "gear" as const }]),
       ],
       quick: [...assistantCopy.quick.gearSizing],
     });
@@ -541,33 +527,16 @@ export function respond(
 
   /* --- Parts --------------------------------------------------------- */
   if (hasAny(t, I.parts)) {
-    const spareItems = parts.filter((part) => part.kind === "piece");
-    if (mentionedBrand) {
-      const compatibleItems = spareItems.filter((part) =>
-        part.brandName?.toLocaleLowerCase("fr") === mentionedBrand.name.toLocaleLowerCase("fr") ||
-        part.compatibleBrandSlugs?.includes(mentionedBrand.id) ||
-        part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === mentionedBrand.name.toLocaleLowerCase("fr")) ||
-        part.universalCompatibility === true,
-      );
+    const requestedBrand = detectBrandText(t, bikes);
+    if (requestedBrand === "TVS") {
       return done({
-        text: assistantCopy.parts.brand(mentionedBrand.name, compatibleItems.length),
-        actions: [{ label: assistantCopy.parts.seeBrand(mentionedBrand.name), page: "spares", id: spareBrandId(mentionedBrand.id), icon: "parts" }],
-        quick: [...assistantCopy.quick.parts],
-      });
-    }
-    if (matchingParts.length > 0) {
-      const part = matchingParts[0];
-      return done({
-        text: assistantCopy.parts.matches(matchingParts.slice(0, 3).map((item) => item.name)),
-        actions: [
-          { label: assistantCopy.contact.openSheet, page: "accessory", id: part.id, icon: "product" },
-          { label: assistantCopy.parts.seeParts, page: "spares", icon: "parts" },
-        ],
-        quick: [...assistantCopy.quick.parts],
+        text: assistantCopy.parts.tvs(parts?.filter((part) => part.kind === "piece" && (part.brandName?.toLocaleLowerCase("fr") === "tvs" || part.universalCompatibility || part.compatibleBrandSlugs?.includes("tvs") || part.compatibleBrands?.some((name) => name.toLocaleLowerCase("fr") === "tvs"))).length ?? TVS_PARTS.length),
+        actions: [{ label: assistantCopy.parts.seeTvs, page: "spares", id: spareBrandId("TVS", "spare-tvs"), icon: "parts" }],
+        quick: [...assistantCopy.quick.partsTvs],
       });
     }
     return done({
-      text: assistantCopy.parts.overview(spareItems.length, target?.name ?? ""),
+      text: assistantCopy.parts.general(target?.name ?? ""),
       actions: [{ label: assistantCopy.parts.seeParts, page: "spares", icon: "parts" }],
       quick: [...assistantCopy.quick.parts],
     });
@@ -576,7 +545,7 @@ export function respond(
   /* --- Catalogue search --------------------------------------------- */
   if (found.length) {
     const brand = detectBrand(t, bikes);
-    const family = detectFamily(t, bikes);
+    const family = detectFamily(t);
     const label = brand ? assistantCopy.search.brand(brand) : family ? assistantCopy.search.family(family) : assistantCopy.search.found;
     return done(
       withBikes(
@@ -593,10 +562,9 @@ export function respond(
 
   /* --- Catalogue overview ------------------------------------------ */
   if (hasAny(t, I.catalog)) {
-    const familyCounts = [...bikes.reduce((counts, bike) => counts.set(bike.family, (counts.get(bike.family) ?? 0) + 1), new Map<string, number>())]
-      .map(([family, count]) => `${family} (${count})`);
+    const count = (family: Bike["family"]) => bikes.filter((bike) => bike.family === family).length;
     return done({
-      text: assistantCopy.catalog.overview(bikes.length, familyCounts),
+      text: assistantCopy.catalog.overview(bikes.length, count("Off-road"), count("Urbain"), count("3 roues")),
       quick: [...assistantCopy.quick.catalog],
       actions: [{ label: assistantCopy.catalog.seeCatalog, page: "motos", icon: "catalog" }],
     });
@@ -607,7 +575,7 @@ export function respond(
   if (mem.misses >= 2) {
     return {
       reply: {
-        text: assistantCopy.fallback.counselor(you),
+        text: assistantCopy.fallback.counselor(you, SHOP.phone),
         actions: [{ label: assistantCopy.contact.contactCounselor, page: "contact", icon: "phone" }],
         quick: [...DEFAULT_QUICK],
       },

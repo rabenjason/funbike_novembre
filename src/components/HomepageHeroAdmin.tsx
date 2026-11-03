@@ -97,6 +97,24 @@ function emptyEditorialBanner(): EditorialBannerForm {
   };
 }
 
+function shercoStarterBanner(): EditorialBannerForm {
+  const legacy = content.accueil.sherco;
+  return {
+    id: "sherco-50cc",
+    eyebrow: legacy.surTitre,
+    titleLine1: legacy.titreLigne1,
+    titleLine2: legacy.titreLigne2,
+    description: legacy.description,
+    image: imageFromUrl("https://www.sherco.com/wp-content/uploads/SHERCO50ccV2-32.jpg", "legacy-sherco-image"),
+    alt: legacy.imageAlt,
+    buttonText: legacy.bouton,
+    targetPage: "motos",
+    targetId: "sherco",
+    isActive: true,
+    sortOrder: 0,
+  };
+}
+
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block min-w-0 space-y-2">
@@ -139,7 +157,7 @@ function TargetFields({ value, onChange }: {
         </select>
       </Field>
       <Field label="Identifiant de destination" hint="Pour une fiche produit, utilisez son identifiant public, pas une référence commerciale.">
-        <input className={fieldClass} required maxLength={160} value={value.targetId} onChange={(event) => onChange("targetId", event.target.value)} placeholder="Identifiant exact d’une fiche publiée" />
+        <input className={fieldClass} required maxLength={160} value={value.targetId} onChange={(event) => onChange("targetId", event.target.value)} placeholder="Ex. sherco-sef-250" />
       </Field>
     </div>
   );
@@ -364,7 +382,7 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
         <Field label="Description du hero">
           <textarea className={`${fieldClass} min-h-24`} required maxLength={10000} value={heroForm.description} onChange={(event) => updateHeroField("description", event.target.value)} />
         </Field>
-        <Field label="Usages du slogan animé" hint="Saisissez un usage par ligne ; les valeurs ne sont enregistrées qu’après validation du formulaire.">
+        <Field label="Usages du slogan animé" hint="Un usage par ligne. Exemples actuels : la ville, le travail, le cross, l’enduro, les voyages et les balades.">
           <textarea className={`${fieldClass} min-h-28`} value={heroForm.usagesText} onChange={(event) => updateHeroField("usagesText", event.target.value)} placeholder={"la ville\nle travail\nl'enduro"} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -392,7 +410,7 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8c6d00] dark:text-[#ffd100]">Autres grands visuels de l’accueil</p>
             <h3 className="mt-1 font-display text-xl font-bold">Bannières éditoriales <span className="text-sm font-normal text-black/45 dark:text-white/45">({banners.length})</span></h3>
-            <p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Chaque bannière possède sa photo, son texte, son bouton et sa destination. Les contenus affichés ici proviennent de la base de données.</p>
+            <p className="mt-2 text-sm leading-6 text-black/55 dark:text-white/55">Chaque bannière possède sa photo, son texte, son bouton et sa destination. La bannière Sherco actuelle peut être recréée ici puis gérée comme les autres.</p>
           </div>
           <div className={panelClass}>
             <ul className="divide-y divide-black/10 dark:divide-white/10">
@@ -409,7 +427,8 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
               ))}
               {banners.length === 0 && (
                 <li className="space-y-3 p-5">
-                  <p className="text-sm text-black/50 dark:text-white/50">Aucune bannière éditoriale n’est enregistrée. Créez une bannière avec son image, puis enregistrez-la pour la rendre disponible sur l’accueil.</p>
+                  <p className="text-sm text-black/50 dark:text-white/50">Aucune bannière éditoriale enregistrée. Chargez le contenu Sherco déjà affiché pour le modifier, puis enregistrez-le comme contenu administrable.</p>
+                  <button type="button" className={buttonSecondary} disabled={busy} onClick={() => { setEditingBannerId(null); setBannerForm(shercoStarterBanner()); }}>Charger le contenu actuel de Sherco</button>
                 </li>
               )}
             </ul>
@@ -430,7 +449,7 @@ export default function HomepageHeroAdmin({ token }: { token: string }) {
             </Field>
           </div>
           <Field label="Sur-titre">
-            <input className={fieldClass} required maxLength={255} value={bannerForm.eyebrow} onChange={(event) => setBannerForm({ ...bannerForm, eyebrow: event.target.value })} placeholder="Ex. Nouveauté · Sélection du moment" />
+            <input className={fieldClass} required maxLength={255} value={bannerForm.eyebrow} onChange={(event) => setBannerForm({ ...bannerForm, eyebrow: event.target.value })} placeholder="Ex. L’univers Sherco · À partir de 50 cc" />
           </Field>
           <Field label="Titre · deuxième ligne">
             <input className={fieldClass} required maxLength={255} value={bannerForm.titleLine2} onChange={(event) => setBannerForm({ ...bannerForm, titleLine2: event.target.value })} />

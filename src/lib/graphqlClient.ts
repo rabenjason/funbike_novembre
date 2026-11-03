@@ -349,8 +349,7 @@ export async function getPublicCatalog(): Promise<PublicCatalog> {
     offset += pageCount * PUBLIC_PAGE_SIZE;
   }
 
-  const products = [...new Map(pages.flatMap((page) => page.items).map((product) => [product.id, product])).values()]
-    .filter((product) => product.status === "PUBLISHED");
+  const products = [...new Map(pages.flatMap((page) => page.items).map((product) => [product.id, product])).values()];
   return { ...referenceData, products };
 }
 
