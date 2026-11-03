@@ -121,6 +121,9 @@ function normalizeHomepageHeroCopy(input: Args) {
     year: requiredText(input.year, "Hero year label", 40),
     chooseModelLabel: requiredText(input.chooseModelLabel, "Hero carousel label", 255),
     displayModelLabel: requiredText(input.displayModelLabel, "Hero slide button label", 160),
+    newArrivalsEyebrow: optionalText(input.newArrivalsEyebrow, "New arrivals eyebrow", 255),
+    newArrivalsTitle: optionalText(input.newArrivalsTitle, "New arrivals title", 255),
+    newArrivalsDescription: optionalText(input.newArrivalsDescription, "New arrivals description", 10000),
   };
 }
 
@@ -211,7 +214,9 @@ async function getHomepageHeroCopy(): Promise<DbRow | null> {
     `SELECT hero_key AS id, localisation, title_line1 AS titleLine1, title_line2 AS titleLine2,
             description, slogan_prefix AS sloganPrefix, catalog_button AS catalogButton,
             featured_label AS featuredLabel, year_label AS year, choose_model_label AS chooseModelLabel,
-            display_model_label AS displayModelLabel
+            display_model_label AS displayModelLabel,
+            new_arrivals_eyebrow AS newArrivalsEyebrow, new_arrivals_title AS newArrivalsTitle,
+            new_arrivals_description AS newArrivalsDescription
      FROM homepage_hero_copy WHERE hero_key = 'main' LIMIT 1`,
   );
   return rows[0] ?? null;
@@ -411,16 +416,21 @@ export const siteContentResolvers: Record<string, Record<string, (...args: any[]
         await connection.execute(
           `INSERT INTO homepage_hero_copy
            (hero_key, localisation, title_line1, title_line2, description, slogan_prefix,
-            catalog_button, featured_label, year_label, choose_model_label, display_model_label)
-           VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            catalog_button, featured_label, year_label, choose_model_label, display_model_label,
+            new_arrivals_eyebrow, new_arrivals_title, new_arrivals_description)
+           VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE localisation = VALUES(localisation),
              title_line1 = VALUES(title_line1), title_line2 = VALUES(title_line2),
              description = VALUES(description), slogan_prefix = VALUES(slogan_prefix),
              catalog_button = VALUES(catalog_button), featured_label = VALUES(featured_label),
              year_label = VALUES(year_label), choose_model_label = VALUES(choose_model_label),
-             display_model_label = VALUES(display_model_label)`,
+             display_model_label = VALUES(display_model_label),
+             new_arrivals_eyebrow = VALUES(new_arrivals_eyebrow),
+             new_arrivals_title = VALUES(new_arrivals_title),
+             new_arrivals_description = VALUES(new_arrivals_description)`,
           [input.localisation, input.titleLine1, input.titleLine2, input.description, input.sloganPrefix,
-            input.catalogButton, input.featuredLabel, input.year, input.chooseModelLabel, input.displayModelLabel],
+            input.catalogButton, input.featuredLabel, input.year, input.chooseModelLabel, input.displayModelLabel,
+            input.newArrivalsEyebrow, input.newArrivalsTitle, input.newArrivalsDescription],
         );
         await connection.execute("DELETE FROM homepage_hero_usages WHERE hero_key = 'main'");
         for (const [index, usage] of input.usages.entries()) {

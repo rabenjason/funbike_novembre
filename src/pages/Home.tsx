@@ -76,6 +76,12 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
       .slice(0, 3)
       .map(toNewArrival);
   }, [usingApi, fallback, catalog]);
+  const heroCopyRecord = usingApi ? catalog.homepageHeroCopy : null;
+  const newArrivalsCopy = {
+    eyebrow: heroCopyRecord?.newArrivalsEyebrow || content.accueil.nouveautes.surTitre,
+    title: heroCopyRecord?.newArrivalsTitle || content.accueil.nouveautes.titre,
+    description: heroCopyRecord?.newArrivalsDescription || content.accueil.nouveautes.description,
+  };
   const heroBanners = usingApi ? catalog.featuredBanners : fallback ? FEATURED_BANNERS : [];
   const editorialBanners = usingApi
     ? catalog.homepageEditorialBannersConfigured ? catalog.homepageEditorialBanners : HOME_EDITORIAL_BANNERS
@@ -262,7 +268,7 @@ export default function Home({ go }: { go: (p: string, id?: string) => void }) {
 
       {featuredBrands.length > 0 && <BrandExclusif go={go} brands={featuredBrands} />}
 
-      {newArrivals.length > 0 && <NewArrivals go={go} items={newArrivals} />}
+      {newArrivals.length > 0 && <NewArrivals go={go} items={newArrivals} copy={newArrivalsCopy} />}
 
       <Section
         title={content.accueil.motos.titre}

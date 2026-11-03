@@ -139,6 +139,9 @@ export type PublicHomepageHeroCopy = {
   year: string;
   chooseModelLabel: string;
   displayModelLabel: string;
+  newArrivalsEyebrow?: string | null;
+  newArrivalsTitle?: string | null;
+  newArrivalsDescription?: string | null;
 };
 
 export type PublicHomepageEditorialBanner = {
@@ -296,6 +299,7 @@ const PUBLIC_CATALOG_REFERENCE_QUERY = `
     homepageHeroCopy {
       id localisation titleLine1 titleLine2 description sloganPrefix usages
       catalogButton featuredLabel year chooseModelLabel displayModelLabel
+      newArrivalsEyebrow newArrivalsTitle newArrivalsDescription
     }
     homepageEditorialBanners {
       id eyebrow titleLine1 titleLine2 description image alt buttonText

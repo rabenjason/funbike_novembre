@@ -95,6 +95,9 @@ CREATE TABLE IF NOT EXISTS homepage_hero_copy (
   year_label VARCHAR(40) NOT NULL,
   choose_model_label VARCHAR(255) NOT NULL,
   display_model_label VARCHAR(160) NOT NULL,
+  new_arrivals_eyebrow VARCHAR(255) NULL,
+  new_arrivals_title VARCHAR(255) NULL,
+  new_arrivals_description TEXT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (hero_key)
 ) ENGINE=InnoDB;
