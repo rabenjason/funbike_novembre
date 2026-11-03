@@ -61,6 +61,7 @@ type Query {
   allParts(search: String, limit: Int, offset: Int): [ProductDetail!]!
   adminProducts(status: ProductStatus, kind: ProductKind, search: String, limit: Int, offset: Int): [CatalogProduct!]!
   adminProductPage(status: ProductStatus, kind: ProductKind, brandId: ID, search: String, limit: Int, offset: Int): CatalogProductPage!
+  newArrivalCount: Int!
 }
 
 type Mutation {

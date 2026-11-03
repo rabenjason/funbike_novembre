@@ -14,6 +14,7 @@ type Motorcycle implements CatalogProduct {
   brand: Brand
   subfamily: Subfamily
   price: String
+  newArrivalOrder: Int
   image: String
   gallery: [String!]
   desc: String

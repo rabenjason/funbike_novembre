@@ -31,6 +31,7 @@ type AdminProduct = {
   name: string;
   reference?: string | null;
   price?: string | null;
+  newArrivalOrder?: number | null;
   desc?: string | null;
   status: "DRAFT" | "PUBLISHED";
   brand?: { id: string; name: string } | null;
@@ -63,6 +64,7 @@ type ReferenceData = {
   characteristicDefinitions: Lookup[];
   adminBrands: Brand[];
   adminCategories: Category[];
+  newArrivalCount: number;
 };
 type ProductForm = {
   id?: string;
@@ -70,6 +72,8 @@ type ProductForm = {
   name: string;
   reference: string;
   price: string;
+  newArrival: boolean;
+  newArrivalOrder: string;
   desc: string;
   brandId: string;
   subfamilyId: string;
@@ -169,6 +173,7 @@ const REFERENCE_DATA_QUERY = `
       sections { section order label routeId filterable displayMode homeFeatured footerOrder footerFeaturedOrder }
     }
     adminCategories { id title desc src to brand isActive sortOrder }
+    newArrivalCount
   }
 `;
 
@@ -177,7 +182,7 @@ const ADMIN_PRODUCTS_PAGE_QUERY = `
     adminProductPage(status: $status, kind: $kind, brandId: $brandId, search: $search, limit: $limit, offset: $offset) {
       totalCount
       items {
-        __typename id name reference price desc status image gallery
+        __typename id name reference price newArrivalOrder desc status image gallery
         brand { id name }
         subfamily { id name }
         ... on Motorcycle {
@@ -216,6 +221,8 @@ const emptyProductForm = (): ProductForm => ({
   name: "",
   reference: "",
   price: "",
+  newArrival: false,
+  newArrivalOrder: "1",
   desc: "",
   brandId: "",
   subfamilyId: "",
@@ -447,6 +454,8 @@ function formFromProduct(product: AdminProduct): ProductForm {
     name: product.name,
     reference: product.reference ?? "",
     price: product.price ?? "",
+    newArrival: product.newArrivalOrder !== null && product.newArrivalOrder !== undefined,
+    newArrivalOrder: product.newArrivalOrder ? String(product.newArrivalOrder) : "1",
     desc: product.desc ?? "",
     brandId: product.brand?.id ?? "",
     subfamilyId: product.subfamily?.id ?? "",
@@ -712,6 +721,7 @@ export default function Admin() {
         brandId: productForm.brandId || null,
         subfamilyId: productForm.subfamilyId || null,
         price: productForm.price || null,
+        newArrivalOrder: productForm.newArrival ? Number(productForm.newArrivalOrder) : null,
         desc: productForm.desc || null,
         familyId: productForm.kind === "MOTORCYCLE" ? productForm.familyId || null : null,
         tag: productForm.kind === "MOTORCYCLE" ? productForm.tag || null : null,
@@ -1227,7 +1237,7 @@ export default function Admin() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2"><span className="min-w-0 break-words font-semibold leading-5">{product.name}</span><span className={`shrink-0 border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${product.status === "PUBLISHED" ? "border-emerald-600/30 text-emerald-700 dark:text-emerald-300" : "border-black/15 text-black/50 dark:border-white/15 dark:text-white/50"}`}>{product.status === "PUBLISHED" ? "Publié" : "Brouillon"}</span></div>
-                          <p className="mt-1 text-xs leading-5 text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.brand?.name ? ` · ${product.brand.name}` : ""}{product.reference ? ` · ${product.reference}` : ""}{` · ${product.price?.trim() || "Sur devis"}`}</p>
+                          <p className="mt-1 text-xs leading-5 text-black/50 dark:text-white/50">{productKindLabel(product.__typename)}{product.brand?.name ? ` · ${product.brand.name}` : ""}{product.reference ? ` · ${product.reference}` : ""}{` · ${product.price?.trim() || "Sur devis"}`}{product.newArrivalOrder ? ` · Nouveauté ${product.newArrivalOrder}` : ""}</p>
                         </div>
                         <div className="col-span-2 flex flex-wrap gap-2 border-t border-black/10 pt-3 lg:col-span-1 lg:border-0 lg:pt-0 dark:border-white/10">
                           <button type="button" className={buttonSecondary} onClick={() => startProductEdit(product)}>Modifier</button>
@@ -1265,6 +1275,20 @@ export default function Admin() {
                 <Field label="Référence du fabricant (facultatif)" hint="Recopiez la référence indiquée sur la boîte ou la fiche du fabricant."><input className={fieldClass} maxLength={160} placeholder="Ex. TVS-428H-122L" value={productForm.reference} onChange={(event) => setProductForm({ ...productForm, reference: event.target.value })} /></Field>
                 <Field label="Prix affiché" hint="Saisissez un montant. Laissez le champ vide : « Sur devis » sera affiché automatiquement, sans rien écrire."><input className={fieldClass} maxLength={255} placeholder="Ex. 1 250 000 Ar (facultatif)" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /></Field>
                 <Field label="Marque"><select className={fieldClass} value={productForm.brandId} onChange={(event) => setProductForm({ ...productForm, brandId: event.target.value })}><option value="">Choisir une marque (ex. TVS ou Sherco)</option>{(data?.brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></Field>
+                <Field label="Nouveauté / Arrivage (accueil)" hint={`Case cochée : le produit apparaît dans la section « Nouveautés / Arrivages » de la page d’accueil, une fois publié. Maximum 3 produits, classés par rang.${(data?.newArrivalCount ?? 0) >= 3 && !productForm.newArrival ? " Les 3 emplacements sont occupés : retirez d’abord un produit des nouveautés." : ""}`}>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex min-h-10 cursor-pointer items-center gap-2 border border-black/15 bg-white px-3 py-2.5 text-sm dark:border-white/15 dark:bg-[#1c1d1a]">
+                      <input type="checkbox" className="h-4 w-4 accent-[#ffd100]" checked={productForm.newArrival} disabled={!productForm.newArrival && (data?.newArrivalCount ?? 0) >= 3} onChange={(event) => setProductForm({ ...productForm, newArrival: event.target.checked })} />
+                      <span>Afficher sur l’accueil</span>
+                    </label>
+                    <select className={`${fieldClass} w-auto`} disabled={!productForm.newArrival} value={productForm.newArrivalOrder} onChange={(event) => setProductForm({ ...productForm, newArrivalOrder: event.target.value })}>
+                      <option value="1">Rang 1 (1er)</option>
+                      <option value="2">Rang 2 (2e)</option>
+                      <option value="3">Rang 3 (3e)</option>
+                    </select>
+                    <span className="text-xs text-black/45 dark:text-white/45">{data?.newArrivalCount ?? 0} / 3 emplacements occupés</span>
+                  </div>
+                </Field>
               </div>
               {productForm.kind === "MOTORCYCLE" && (
                 <section className="space-y-5 border-t border-black/10 pt-6 dark:border-white/10">

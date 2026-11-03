@@ -201,6 +201,7 @@ export type PublicProduct = {
   brand: PublicBrand | null;
   subfamily: { id: string; name: string; family?: { id: string; name: string } | null } | null;
   price: string | null;
+  newArrivalOrder?: number | null;
   image: string | null;
   gallery: string[] | null;
   desc: string | null;
@@ -244,7 +245,7 @@ export type PublicCatalog = {
 type ProductPage = { items: PublicProduct[]; totalCount: number };
 
 const PUBLIC_PRODUCT_FIELDS = `
-  __typename id name reference price desc image gallery status publishedAt
+  __typename id name reference price newArrivalOrder desc image gallery status publishedAt
   brand { id slug name logo logoAlt description isActive sortOrder }
   subfamily { id name family { id name } }
   ... on Motorcycle {
